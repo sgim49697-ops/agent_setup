@@ -1,0 +1,46 @@
+name: reviewer_optimizer
+display_name: Reviewer Optimizer
+hypothesis: "품질은 더 높아지지만, 호출 비용과 지연도 분명하게 증가한다."
+orchestration:
+  supports_resume: false
+  parallel_workers: 1
+  phases:
+    - name: plan
+      role: planner
+      prompt_file: plan.md
+      expected_output: "구현 범위와 평가 기준을 명확히 한다."
+    - name: implement
+      role: implementer
+      prompt_file: implement.md
+      expected_output: "계획에 따라 초안 구현을 만든다."
+    - name: review
+      role: reviewer
+      prompt_file: review.md
+      expected_output: "문제와 누락을 찾아 수정 지시를 만든다."
+    - name: revise
+      role: optimizer
+      prompt_file: revise.md
+      expected_output: "리뷰를 반영해 구현을 다듬는다."
+    - name: verify
+      role: verifier
+      prompt_file: verify.md
+      expected_output: "최종 검증으로 회귀와 완료 조건을 다시 확인한다."
+simulation:
+  objective:
+    runtime_seconds: 520
+    model_calls: 5
+    token_estimate: 9800
+    replans: 1
+    retries: 2
+    evaluation_catches: 2
+    wrong_assumptions: 0
+    weak_verification: 0
+    localization_failures: 0
+    integration_failures: 0
+    premature_done: 0
+  judge:
+    plan_quality: 0.84
+    requirement_alignment: 0.86
+    code_quality: 0.88
+    verification_quality: 0.92
+    ambiguity_resolution: 0.82

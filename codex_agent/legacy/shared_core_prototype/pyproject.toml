@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "codex-agent-lab"
+version = "0.1.0"
+description = "Shared-core experiment harness for comparing agent architectures."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "PyYAML>=6.0",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+codex_agent = [
+  "architectures/*/config.yaml",
+  "architectures/*/README.md",
+  "architectures/*/prompts/*.md",
+  "reports/templates/*.md",
+  "scenarios/*/*.md",
+  "scenarios/*/*.yaml",
+]

@@ -1,0 +1,38 @@
+name: scaffolded_single
+display_name: Scaffolded Single
+hypothesis: "가장 넓은 작업군에서 평균 품질과 안정성이 좋은 기본형이 된다."
+orchestration:
+  supports_resume: false
+  parallel_workers: 1
+  phases:
+    - name: plan
+      role: planner
+      prompt_file: plan.md
+      expected_output: "구현 계획과 검증 기준을 명시한다."
+    - name: implement
+      role: implementer
+      prompt_file: implement.md
+      expected_output: "계획에 따라 구현을 진행한다."
+    - name: verify
+      role: verifier
+      prompt_file: verify.md
+      expected_output: "완료 조건을 검증하고 미흡하면 되돌린다."
+simulation:
+  objective:
+    runtime_seconds: 360
+    model_calls: 4
+    token_estimate: 7600
+    replans: 1
+    retries: 1
+    evaluation_catches: 1
+    wrong_assumptions: 0
+    weak_verification: 0
+    localization_failures: 0
+    integration_failures: 0
+    premature_done: 0
+  judge:
+    plan_quality: 0.86
+    requirement_alignment: 0.84
+    code_quality: 0.82
+    verification_quality: 0.86
+    ambiguity_resolution: 0.80

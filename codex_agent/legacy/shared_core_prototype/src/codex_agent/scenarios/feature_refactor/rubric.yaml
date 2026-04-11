@@ -1,0 +1,28 @@
+id: feature_refactor
+category: refactor
+goal: "기능을 유지하면서 구조를 개선하고 회귀를 방지한다."
+repo_fixture: "fixtures/sample_service"
+difficulty:
+  ambiguity: 0.35
+  integration: 0.60
+  regression_risk: 0.75
+requirements:
+  required:
+    - 외부 동작을 유지한다.
+    - 책임 분리를 개선한다.
+    - 회귀 위험이 높은 경로를 검증한다.
+  optional:
+    - 리팩터링 의도를 문서화한다.
+    - 향후 분리 가능한 영역을 기록한다.
+acceptance_tests:
+  - 외부 동작이 유지된다.
+  - 구조가 더 명확해지고 책임 분리가 개선된다.
+  - 회귀 위험이 높은 경로에 대한 검증이 수행된다.
+scoring:
+  required_artifacts:
+    - plan.md
+    - execution_trace.json
+    - final_report.md
+  process_expectations:
+    - explicit regression-focused verification
+    - rationale for scope control

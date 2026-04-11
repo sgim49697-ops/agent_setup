@@ -1,0 +1,46 @@
+name: long_horizon
+display_name: Long Horizon
+hypothesis: "긴 과제와 세션 재개에서는 강하지만, 단기 과제에서는 오버헤드가 크다."
+orchestration:
+  supports_resume: true
+  parallel_workers: 1
+  phases:
+    - name: checkpoint_bootstrap
+      role: state_manager
+      prompt_file: checkpoint_bootstrap.md
+      expected_output: "현재 상태와 목표를 외부화한다."
+    - name: plan
+      role: planner
+      prompt_file: plan.md
+      expected_output: "이번 세션에서 끝낼 slice를 계획한다."
+    - name: implement_slice
+      role: implementer
+      prompt_file: implement_slice.md
+      expected_output: "계획된 범위만 구현한다."
+    - name: checkpoint_update
+      role: state_manager
+      prompt_file: checkpoint_update.md
+      expected_output: "다음 세션이 이어받을 상태를 저장한다."
+    - name: verify
+      role: verifier
+      prompt_file: verify.md
+      expected_output: "이번 세션 산출물의 안정성을 확인한다."
+simulation:
+  objective:
+    runtime_seconds: 460
+    model_calls: 5
+    token_estimate: 9400
+    replans: 1
+    retries: 1
+    evaluation_catches: 1
+    wrong_assumptions: 0
+    weak_verification: 0
+    localization_failures: 0
+    integration_failures: 0
+    premature_done: 0
+  judge:
+    plan_quality: 0.85
+    requirement_alignment: 0.81
+    code_quality: 0.80
+    verification_quality: 0.87
+    ambiguity_resolution: 0.79

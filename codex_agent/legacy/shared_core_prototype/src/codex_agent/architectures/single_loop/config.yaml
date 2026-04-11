@@ -1,0 +1,38 @@
+name: single_loop
+display_name: Single Loop
+hypothesis: "가장 빠르게 움직이지만, 종료 조건과 자기 검증이 약하면 품질 분산이 커진다."
+orchestration:
+  supports_resume: false
+  parallel_workers: 1
+  phases:
+    - name: explore
+      role: explorer
+      prompt_file: explore.md
+      expected_output: "문제 맥락과 수정 후보를 빠르게 파악한다."
+    - name: edit_loop
+      role: executor
+      prompt_file: edit_loop.md
+      expected_output: "탐색과 구현을 한 루프 안에서 반복한다."
+    - name: self_check
+      role: self_checker
+      prompt_file: self_check.md
+      expected_output: "스스로 빠진 요구와 위험을 점검한다."
+simulation:
+  objective:
+    runtime_seconds: 240
+    model_calls: 3
+    token_estimate: 5400
+    replans: 0
+    retries: 1
+    evaluation_catches: 0
+    wrong_assumptions: 1
+    weak_verification: 1
+    localization_failures: 0
+    integration_failures: 0
+    premature_done: 1
+  judge:
+    plan_quality: 0.62
+    requirement_alignment: 0.70
+    code_quality: 0.74
+    verification_quality: 0.66
+    ambiguity_resolution: 0.64

@@ -1,0 +1,28 @@
+id: feature_small
+category: feature
+goal: "명확한 요구사항을 가진 소형 기능 추가를 안정적으로 끝낸다."
+repo_fixture: "fixtures/sample_service"
+difficulty:
+  ambiguity: 0.15
+  integration: 0.25
+  regression_risk: 0.20
+requirements:
+  required:
+    - 새 기능을 end-to-end로 구현한다.
+    - 기존 동작을 회귀 없이 유지한다.
+    - 검증 절차를 수행하고 결과를 남긴다.
+  optional:
+    - 변경 이유를 짧게 문서화한다.
+    - 새 동작에 대한 테스트를 추가한다.
+acceptance_tests:
+  - 새 기능이 명세대로 동작한다.
+  - 기존 핵심 테스트가 회귀 없이 통과한다.
+  - 변경 범위가 기능 목적과 직접 연결된다.
+scoring:
+  required_artifacts:
+    - plan.md
+    - execution_trace.json
+    - final_report.md
+  process_expectations:
+    - explicit verification step
+    - rationale for file selection

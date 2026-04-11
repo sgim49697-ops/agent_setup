@@ -1,0 +1,33 @@
+execution:
+  mode: simulate
+  command: ""
+  timeout_seconds: 900
+  repeat_default: 3
+  workspace_root: ".."
+  keep_prompt_bundle: true
+
+paths:
+  runs_dir: "runs"
+  scenarios_dir: "src/codex_agent/scenarios"
+  report_template: "src/codex_agent/reports/templates/experiment_summary.md"
+
+budgets:
+  runtime_seconds: 1800
+  model_calls: 12
+  token_budget: 50000
+  replans: 3
+  retries: 4
+
+evaluation:
+  weights:
+    task_success: 0.30
+    requirement_coverage: 0.25
+    regression_score: 0.20
+    efficiency_score: 0.10
+    process_score: 0.15
+  failure_taxonomy:
+    - localization_failure
+    - wrong_assumption
+    - weak_verification
+    - integration_failure
+    - premature_done

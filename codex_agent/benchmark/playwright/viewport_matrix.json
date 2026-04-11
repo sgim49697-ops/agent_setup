@@ -1,0 +1,10 @@
+{
+  "desktop": {
+    "width": 1440,
+    "height": 1200
+  },
+  "mobile": {
+    "width": 390,
+    "height": 844
+  }
+}

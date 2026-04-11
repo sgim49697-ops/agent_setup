@@ -1,0 +1,15 @@
+default_profile: balanced
+
+profiles:
+  balanced:
+    model: gpt-5.4
+    reasoning_effort: medium
+    notes: "범용 비교 실험용 기본 프로필"
+  fast:
+    model: GPT-5.4-Mini
+    reasoning_effort: low
+    notes: "지연과 비용을 낮춘 실험용"
+  reviewer:
+    model: gpt-5.4
+    reasoning_effort: high
+    notes: "검증자/리뷰어 역할에 적합한 프로필"

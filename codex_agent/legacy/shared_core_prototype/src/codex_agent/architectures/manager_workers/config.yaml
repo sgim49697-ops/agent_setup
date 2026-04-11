@@ -1,0 +1,48 @@
+name: manager_workers
+display_name: Manager Workers
+hypothesis: "탐색력과 분업은 강하지만, 통합 단계에서 품질 리스크가 새로 생긴다."
+orchestration:
+  supports_resume: false
+  parallel_workers: 3
+  phases:
+    - name: decompose
+      role: manager
+      prompt_file: decompose.md
+      expected_output: "작업을 독립 가능한 하위 단위로 나눈다."
+    - name: worker_search
+      role: worker
+      prompt_file: worker_search.md
+      parallel_group: "research"
+      expected_output: "각 워커가 관련 맥락과 변경 후보를 병렬 탐색한다."
+    - name: worker_implement
+      role: worker
+      prompt_file: worker_implement.md
+      parallel_group: "implementation"
+      expected_output: "각 워커가 맡은 영역을 구현한다."
+    - name: integrate
+      role: manager
+      prompt_file: integrate.md
+      expected_output: "병렬 결과를 통합하고 충돌을 해결한다."
+    - name: verify
+      role: verifier
+      prompt_file: verify.md
+      expected_output: "통합 결과와 회귀를 검증한다."
+simulation:
+  objective:
+    runtime_seconds: 410
+    model_calls: 6
+    token_estimate: 11200
+    replans: 1
+    retries: 2
+    evaluation_catches: 1
+    wrong_assumptions: 1
+    weak_verification: 0
+    localization_failures: 0
+    integration_failures: 1
+    premature_done: 0
+  judge:
+    plan_quality: 0.82
+    requirement_alignment: 0.80
+    code_quality: 0.79
+    verification_quality: 0.84
+    ambiguity_resolution: 0.78

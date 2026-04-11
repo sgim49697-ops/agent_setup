@@ -1,0 +1,38 @@
+name: workflow_pipeline
+display_name: Workflow Pipeline
+hypothesis: "재현성과 안전성은 높지만, 애매한 기능 요구를 재해석하는 능력은 제한적이다."
+orchestration:
+  supports_resume: false
+  parallel_workers: 1
+  phases:
+    - name: localize
+      role: localizer
+      prompt_file: localize.md
+      expected_output: "수정 대상 파일과 변경 범위 후보를 명시한다."
+    - name: repair
+      role: repairer
+      prompt_file: repair.md
+      expected_output: "선정된 위치에 맞는 코드 변경안을 만든다."
+    - name: validate
+      role: validator
+      prompt_file: validate.md
+      expected_output: "회귀 여부와 요구사항 충족 여부를 검증한다."
+simulation:
+  objective:
+    runtime_seconds: 320
+    model_calls: 3
+    token_estimate: 6200
+    replans: 0
+    retries: 1
+    evaluation_catches: 1
+    wrong_assumptions: 1
+    weak_verification: 0
+    localization_failures: 0
+    integration_failures: 0
+    premature_done: 0
+  judge:
+    plan_quality: 0.74
+    requirement_alignment: 0.72
+    code_quality: 0.78
+    verification_quality: 0.84
+    ambiguity_resolution: 0.60
