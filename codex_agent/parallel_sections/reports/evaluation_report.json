@@ -1,6 +1,6 @@
 {
   "harness": "parallel_sections",
-  "evaluated_at": "2026-04-12T07:38:58Z",
+  "evaluated_at": "2026-04-12T09:55:11Z",
   "l1_playwright": {
     "smoke_total": 28,
     "smoke_passed": 28,
@@ -13,7 +13,7 @@
     "source_files": 7,
     "source_lines": 2576,
     "build_success": true,
-    "build_seconds": 1.46,
+    "build_seconds": 1.54,
     "bundle_bytes": 251238,
     "smoke_total": 28,
     "smoke_passed": 28,
