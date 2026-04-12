@@ -13,6 +13,7 @@ import type {
   Tone,
   WorkerId,
   WorkerOutput,
+  WorkerStatus,
 } from './contracts'
 import {
   assembleFinalOutputs,
@@ -103,7 +104,7 @@ const initialGeneration: GenerationState = {
   workerStatuses: emptyWorkerStatuses(),
   orchestratorPlan: null,
   outputs: {},
-  statusMessage: 'Orchestrator is waiting for a brief. Generate the product to see task decomposition first.',
+  statusMessage: '오케스트레이터가 브리프를 기다리고 있습니다. 먼저 글 생성 시작(Generate post)으로 작업 분해를 확인하세요.',
   errorMessage: null,
 }
 
@@ -124,7 +125,7 @@ function reducer(state: AppState, action: Action): AppState {
           state.generation.status === 'error'
             ? {
                 ...initialGeneration,
-                statusMessage: 'Brief updated. Generate again to restart orchestrator planning.',
+                statusMessage: '브리프를 업데이트했습니다. 다시 생성하면 오케스트레이터 계획이 처음부터 재시작됩니다.',
               }
             : state.generation,
       }
@@ -134,7 +135,7 @@ function reducer(state: AppState, action: Action): AppState {
         inputs: action.payload,
         generation: {
           ...state.generation,
-          statusMessage: 'Preset loaded. The orchestrator can now decompose the product into worker bundles.',
+          statusMessage: '프리셋을 불러왔습니다. 이제 오케스트레이터가 작업을 워커 번들로 분해할 수 있습니다.',
           errorMessage: null,
         },
         copyFeedback: '',
@@ -274,7 +275,7 @@ function reducer(state: AppState, action: Action): AppState {
           workerStatuses: emptyWorkerStatuses(),
           orchestratorPlan: null,
           outputs: {},
-          statusMessage: 'Orchestrator planning stopped before worker ownership could be assigned.',
+          statusMessage: '워커 소유 범위를 배정하기 전에 오케스트레이터 계획이 중단되었습니다.',
           errorMessage: action.message,
         },
         copyFeedback: '',
@@ -290,12 +291,22 @@ function sleep(ms: number) {
 
 function statusLabel(status: GenerationStatus) {
   const labels: Record<GenerationStatus, string> = {
-    initial: 'Initial',
-    loading: 'Generating...',
-    populated: 'Pipeline populated',
-    'review-complete': 'Review complete',
-    'export-ready': 'Export ready',
-    error: 'Error',
+    initial: '대기 중',
+    loading: '생성 중',
+    populated: '초안 준비됨',
+    'review-complete': '리뷰 완료',
+    'export-ready': '내보내기 준비 완료',
+    error: '오류',
+  }
+  return labels[status]
+}
+
+function workerStatusLabel(status: WorkerStatus) {
+  const labels: Record<WorkerStatus, string> = {
+    pending: '대기',
+    working: '작업 중',
+    complete: '완료',
+    error: '오류',
   }
   return labels[status]
 }
@@ -315,7 +326,7 @@ function App() {
 
     dispatch({
       type: 'start-run',
-      message: 'Orchestrator is decomposing the product into worker bundles and integration checkpoints.',
+      message: '오케스트레이터가 제품을 워커 번들과 통합 체크포인트로 분해하고 있습니다.',
     })
 
     await sleep(240)
@@ -326,7 +337,7 @@ function App() {
     if (/^\s*(fail|error)\b/i.test(state.inputs.topic)) {
       dispatch({
         type: 'set-error',
-        message: 'Orchestrator planning stage could not produce a valid decomposition plan. Update the topic and rerun the harness.',
+        message: '오케스트레이터 계획 단계에서 유효한 분해안을 만들지 못했습니다. 주제를 수정한 뒤 하니스를 다시 실행하세요.',
       })
       return
     }
@@ -335,7 +346,7 @@ function App() {
     dispatch({
       type: 'set-plan',
       plan,
-      message: 'Orchestrator plan is locked. Worker ownership and integration checklist are now visible.',
+      message: '오케스트레이터 계획이 확정되었습니다. 워커 소유 범위와 통합 체크리스트를 바로 확인할 수 있습니다.',
     })
 
     await sleep(180)
@@ -346,7 +357,7 @@ function App() {
     dispatch({
       type: 'set-worker-working',
       workerId: 'ui_worker',
-      message: 'UI Worker is shaping the surface hierarchy and status copy.',
+      message: 'UI 워커가 기본 화면 계층과 상태 문구를 정리하고 있습니다.',
     })
     await sleep(160)
     if (runRef.current !== runId) {
@@ -357,7 +368,7 @@ function App() {
     dispatch({
       type: 'set-worker-output',
       workerOutput: uiWorkerOutput,
-      message: 'UI Worker finished its ownership slice and handed interface notes to the integrator.',
+      message: 'UI 워커가 맡은 범위를 마쳤고, 인터페이스 메모를 통합 담당자에게 넘겼습니다.',
     })
 
     await sleep(140)
@@ -368,7 +379,7 @@ function App() {
     dispatch({
       type: 'set-worker-working',
       workerId: 'state_worker',
-      message: 'State Worker is locking the reducer semantics and completion rules.',
+      message: '상태 워커가 리듀서 의미 체계와 완료 규칙을 고정하고 있습니다.',
     })
     await sleep(160)
     if (runRef.current !== runId) {
@@ -379,7 +390,7 @@ function App() {
     dispatch({
       type: 'set-worker-output',
       workerOutput: stateWorkerOutput,
-      message: 'State Worker finished the state transition contract and handoff rules.',
+      message: '상태 워커가 상태 전이 계약과 핸드오프 규칙을 마쳤습니다.',
     })
 
     await sleep(140)
@@ -390,7 +401,7 @@ function App() {
     dispatch({
       type: 'set-worker-working',
       workerId: 'content_worker',
-      message: 'Content Worker is generating research, outline, drafts, and review content.',
+      message: '콘텐츠 워커가 리서치, 아웃라인, 초안, 리뷰 콘텐츠를 생성하고 있습니다.',
     })
     await sleep(180)
     if (runRef.current !== runId) {
@@ -401,7 +412,7 @@ function App() {
     dispatch({
       type: 'set-worker-output',
       workerOutput: contentBundle.workerOutput,
-      message: 'Content Worker finished the article spine. Integrator can now connect the full product.',
+      message: '콘텐츠 워커가 글의 뼈대를 완성했습니다. 이제 통합 담당자가 전체 제품 흐름을 연결할 수 있습니다.',
     })
 
     dispatch({
@@ -410,7 +421,7 @@ function App() {
       key: 'research_summary',
       value: contentBundle.researchSummary,
       status: 'loading',
-      message: 'Research results are ready. The outline is now being attached to the orchestrator plan.',
+      message: '리서치 결과가 준비되었습니다. 이제 아웃라인을 오케스트레이터 계획에 연결합니다.',
     })
 
     await sleep(150)
@@ -424,7 +435,7 @@ function App() {
       key: 'outline',
       value: contentBundle.outline,
       status: 'loading',
-      message: 'Outline is connected. Section drafts are being surfaced through the worker board.',
+      message: '아웃라인이 연결되었습니다. 이제 워커 보드에 섹션 초안을 노출합니다.',
     })
 
     await sleep(150)
@@ -438,7 +449,7 @@ function App() {
       key: 'section_drafts',
       value: contentBundle.sectionDrafts,
       status: 'populated',
-      message: 'Worker outputs and content drafts are populated. Integration review is next.',
+      message: '워커 산출물과 콘텐츠 초안이 채워졌습니다. 다음 단계는 통합 리뷰입니다.',
     })
 
     await sleep(150)
@@ -452,14 +463,14 @@ function App() {
       key: 'review_notes',
       value: contentBundle.reviewNotes,
       status: 'review-complete',
-      message: 'Content review notes are ready. Integrator is now checking cross-worker consistency.',
+      message: '콘텐츠 리뷰 노트가 준비되었습니다. 이제 통합 담당자가 워커 간 일관성을 점검합니다.',
     })
 
     const integrationReview = buildIntegrationReview(state.inputs)
     dispatch({
       type: 'set-integration-review',
       review: integrationReview,
-      message: 'Integration review completed. Fixes applied are now visible in the review desk.',
+      message: '통합 리뷰가 완료되었습니다. 적용된 수정 사항이 리뷰 데스크에 정리되었습니다.',
     })
 
     await sleep(150)
@@ -482,7 +493,7 @@ function App() {
     dispatch({
       type: 'finalize-run',
       finalOutputs,
-      message: 'Orchestrator pipeline is complete. Final post and evaluation checklist are ready.',
+      message: '오케스트레이터 파이프라인이 완료되었습니다. 최종 글과 평가 체크리스트가 준비되었습니다.',
     })
   }
 
@@ -491,7 +502,7 @@ function App() {
     if (!payload) {
       dispatch({
         type: 'set-copy-feedback',
-        message: 'Generate the final post first. Copy only works after export-ready state.',
+        message: '먼저 최종 글을 생성하세요. 복사는 내보내기 준비 완료 상태에서만 동작합니다.',
       })
       return
     }
@@ -500,12 +511,12 @@ function App() {
       await navigator.clipboard.writeText(payload)
       dispatch({
         type: 'set-copy-feedback',
-        message: 'Final markdown copied from the integrated worker output.',
+        message: '통합된 워커 결과에서 최종 마크다운을 복사했습니다.',
       })
     } catch {
       dispatch({
         type: 'set-copy-feedback',
-        message: 'Clipboard copy failed here, but the final markdown remains visible below.',
+        message: '클립보드 복사는 실패했지만, 아래에 최종 마크다운은 그대로 보입니다.',
       })
     }
   }
@@ -539,37 +550,37 @@ function App() {
   const canCopy = Boolean(finalPost)
   const completedWorkerCount = workerOutputs.length
   const currentMoment = !plan
-    ? 'Waiting for the orchestrator to assign worker ownership and the first integration checkpoint.'
+    ? '오케스트레이터가 워커 소유 범위와 첫 통합 체크포인트를 아직 배정하지 않았습니다.'
     : completedWorkerCount < workerProfiles.length
-      ? `${completedWorkerCount}/${workerProfiles.length} workers have delivered. The orchestrator is still collecting ownership slices before integration can begin.`
+      ? `${completedWorkerCount}/${workerProfiles.length}개 워커가 산출물을 넘겼습니다. 통합을 시작하기 전에 남은 소유 범위를 더 모으는 중입니다.`
       : !integrationReview
-        ? 'All worker slices are in. The integration desk is reconciling layout, state, and content into one product surface.'
+        ? '모든 워커 산출물이 도착했습니다. 통합 데스크가 레이아웃, 상태, 콘텐츠를 하나의 제품 화면으로 맞추고 있습니다.'
         : finalPost
-          ? 'Integration is complete. The final post is reader-ready and export is unlocked.'
-          : 'Integration review is complete. Final assembly is the only step left.'
+          ? '통합이 완료되었습니다. 최종 글은 읽을 준비가 되었고 내보내기도 열렸습니다.'
+          : '통합 리뷰는 끝났고, 이제 최종 조립만 남았습니다.'
   const nextAction = !plan
-    ? 'Generate the post to let the orchestrator define ownership before any worker starts.'
+    ? '글 생성 시작(Generate post)으로 오케스트레이터가 소유 범위를 먼저 정의하게 하세요.'
     : completedWorkerCount < workerProfiles.length
-      ? 'Keep the worker board focused until every ownership slice is delivered.'
+      ? '모든 워커 산출물이 도착할 때까지 워커 보드에 집중하세요.'
       : !integrationReview
-        ? 'Use the integration checkpoint to resolve overlap before opening export.'
+        ? '내보내기를 열기 전에 통합 체크포인트에서 겹치는 부분을 먼저 정리하세요.'
         : !finalPost
-          ? 'Finish the final assembly, then promote the reader surface.'
-          : 'Read the integrated post, then copy the markdown when it looks ready.'
+          ? '최종 조립을 마친 뒤 리더 표면을 최상단으로 올리세요.'
+          : '통합된 글을 먼저 읽고, 준비됐으면 마크다운을 복사하세요.'
   const checkpointLabel = !plan
-    ? 'Ownership not assigned'
+    ? '소유 범위 미배정'
     : completedWorkerCount < workerProfiles.length
-      ? 'Collecting worker outputs'
+      ? '워커 산출물 수집 중'
       : !integrationReview
-        ? 'Integration checkpoint active'
+        ? '통합 체크포인트 진행 중'
         : finalPost
-          ? 'Release candidate ready'
-          : 'Final assembly in progress'
+          ? '릴리스 후보 준비 완료'
+          : '최종 조립 진행 중'
 
   const artifactPreview: ArtifactIndex = {
     screenshots: ['runs/desktop-verification.png', 'runs/mobile-verification.png'],
     final_urls: ['http://127.0.0.1:<dev-port>'],
-    notes: ['ownership board visible', 'integration checkpoint visible', 'evaluation drawer secondary'],
+    notes: ['소유 범위 보드가 먼저 보임', '통합 체크포인트가 바로 읽힘', '평가 드로어는 보조 레이어로 후퇴'],
     deliverables: deliverables.map((item) => item.title),
   }
 
@@ -597,11 +608,11 @@ function App() {
     <main className="shell">
       <section className="hero">
         <div className="hero-copy">
-          <p className="eyebrow">Orchestrator Worker Harness</p>
-          <h1>Tech Blog Post Generator</h1>
+          <p className="eyebrow">오케스트레이터 워커 하니스</p>
+          <h1>기술 블로그 포스트 생성기</h1>
           <p className="lead">
-            The orchestrator decomposes the product into disjoint worker ownership, then the
-            integrator reconnects UI, state, and content into one coherent experience.
+            오케스트레이터가 제품을 겹치지 않는 워커 소유 범위로 분해한 뒤, 통합 담당자가 UI,
+            상태, 콘텐츠를 다시 하나의 일관된 경험으로 묶습니다.
           </p>
 
           <div className="hero-actions">
@@ -611,10 +622,12 @@ function App() {
               disabled={state.generation.status === 'loading'}
               onClick={handleGenerate}
             >
-              {state.generation.status === 'loading' ? 'Generating...' : 'Generate post'}
+              {state.generation.status === 'loading'
+                ? '생성 중...'
+                : '글 생성 시작 (Generate post)'}
             </button>
             <button type="button" className="secondary" disabled={!canCopy} onClick={copyMarkdown}>
-              Copy markdown
+              마크다운 복사 (Copy markdown)
             </button>
           </div>
 
@@ -627,29 +640,29 @@ function App() {
           </div>
 
           <div className="next-move-card">
-            <p className="panel-label">Next move</p>
-            <h2>{finalPost ? 'Read and export the integrated post' : 'Keep the ownership board clean'}</h2>
+            <p className="panel-label">다음 행동</p>
+            <h2>{finalPost ? '통합된 글을 읽고 내보내세요' : '소유 범위 보드를 먼저 정리하세요'}</h2>
             <p>{nextAction}</p>
             <div className="chip-row">
-              <span className="meta-chip">Worker ownership</span>
-              <span className="meta-chip">Integration checkpoint</span>
-              <span className="meta-chip">Final post</span>
+              <span className="meta-chip">워커 소유 범위</span>
+              <span className="meta-chip">통합 체크포인트</span>
+              <span className="meta-chip">최종 글 (Final post)</span>
             </div>
           </div>
 
           {state.generation.errorMessage ? (
             <div className="error-panel" role="alert">
-              <strong>Planning failed</strong>
+              <strong>계획 생성 실패</strong>
               <p>{state.generation.errorMessage}</p>
             </div>
           ) : null}
         </div>
 
         <aside className="hero-panel input-rail">
-          <p className="panel-label">Input rail</p>
+          <p className="panel-label">입력 레일</p>
           <form className="input-grid">
             <label>
-              <span>Topic</span>
+              <span>주제 (Topic)</span>
               <textarea
                 aria-label="Topic"
                 name="topic"
@@ -659,56 +672,56 @@ function App() {
               />
             </label>
             <label>
-              <span>Audience</span>
+              <span>독자층 (Audience)</span>
               <select
                 aria-label="Audience"
                 name="audience"
                 value={state.inputs.audience}
                 onChange={(event) => updateField('audience', event.target.value as Audience)}
               >
-                <option value="beginner">Beginner</option>
-                <option value="practitioner">Practitioner</option>
-                <option value="advanced">Advanced</option>
+                <option value="beginner">입문자</option>
+                <option value="practitioner">실무자</option>
+                <option value="advanced">고급 사용자</option>
               </select>
             </label>
             <label>
-              <span>Tone</span>
+              <span>톤 (Tone)</span>
               <select
                 aria-label="Tone"
                 name="tone"
                 value={state.inputs.tone}
                 onChange={(event) => updateField('tone', event.target.value as Tone)}
               >
-                <option value="clear">Clear</option>
-                <option value="pragmatic">Pragmatic</option>
-                <option value="opinionated">Opinionated</option>
+                <option value="clear">명료함</option>
+                <option value="pragmatic">실무형</option>
+                <option value="opinionated">의견형</option>
               </select>
             </label>
             <label>
-              <span>Length</span>
+              <span>분량 (Length)</span>
               <select
                 aria-label="Length"
                 name="length"
                 value={state.inputs.length}
                 onChange={(event) => updateField('length', event.target.value as Length)}
               >
-                <option value="short">Short</option>
-                <option value="medium">Medium</option>
-                <option value="long">Long</option>
+                <option value="short">짧게</option>
+                <option value="medium">보통</option>
+                <option value="long">길게</option>
               </select>
             </label>
           </form>
           <p className="rail-note">
-            This harness stays frontend-only and uses deterministic local generation so the
-            orchestration pattern, not backend latency, is what you are judging.
+            이 하니스는 프론트엔드 전용이며 결정론적 로컬 생성을 사용합니다. 따라서 지금 판단해야
+            할 것은 백엔드 지연이 아니라 오케스트레이션 패턴 자체입니다.
           </p>
 
           <details className="quick-briefs">
             <summary className="quick-briefs-summary">
-              <span className="panel-label">Quick briefs</span>
+              <span className="panel-label">빠른 브리프</span>
               <div>
-                <strong>Open presets only when you want a faster starting brief.</strong>
-                <p>They stay collapsed so the ownership board leads the default surface.</p>
+                <strong>시작 브리프를 빠르게 잡고 싶을 때만 프리셋을 여세요.</strong>
+                <p>기본 표면은 소유 범위 보드가 먼저 보이도록 접힌 상태를 유지합니다.</p>
               </div>
             </summary>
             <div className="quick-brief-list">
