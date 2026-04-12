@@ -101,7 +101,7 @@ fi
 
 RETRY_MODE_LINE='- Normal retry mode: keep iterating until the active harness passes quality gates; do not escalate quality issues to a human blocker.'
 if [[ "$QUALITY_GATE_STREAK" -ge 3 ]]; then
-  RETRY_MODE_LINE="- Repeated quality-gate failure streak=$QUALITY_GATE_STREAK for $ACTIVE_HARNESS. You must explicitly run designer -> critic -> executor, then $ko-copy, then verify again in the same bounded cycle. Do not human-escalate this quality issue; keep retrying until it passes. Last failure signature: $LAST_GATE_SIGNATURE"
+  RETRY_MODE_LINE="- Repeated quality-gate failure streak=$QUALITY_GATE_STREAK for $ACTIVE_HARNESS. You must explicitly run designer -> critic -> executor, then \$ko-copy, then verify again in the same bounded cycle. Do not human-escalate this quality issue; keep retrying until it passes. Last failure signature: $LAST_GATE_SIGNATURE"
 fi
 
 DESIGNER_VERIFIER_LINE='- Use designer-grade review from .codex/prompts/designer.md and verifier-grade review from .codex/prompts/verifier.md when the harness reaches its edit/closure boundary.'
@@ -133,14 +133,14 @@ Required outcomes for this cycle:
 4. For browser review, never use ad-hoc preview ports. Use: `python3 scripts/harness_preview.py ensure $ACTIVE_HARNESS` and record the returned stable URL in last_progress_summary.
 5. Visible copy must be Korean-first. English is allowed only for stable test hooks in aria/live-region text.
 6. Keep state fresh with `python3 scripts/master_loop_state.py .omx/state/master-ux-loop.json <key> <value> ...`, including current_phase, current_harness, last_progress_at, last_progress_summary, remaining_harnesses.
-7. Use `$benchmark-cycle` as the baseline workflow shell for this cycle.
-8. Before finishing any edit phase, invoke `$ko-copy` discipline on the active harness so Korean-first visible copy passes the gate.
+7. Use `\$benchmark-cycle` as the baseline workflow shell for this cycle.
+8. Before finishing any edit phase, invoke `\$ko-copy` discipline on the active harness so Korean-first visible copy passes the gate.
 9. At the start of each `$ACTIVE_HARNESS-edit` phase, explicitly use the `designer` agent to propose and execute the visible UI patch, grounded in Stitch references.
 10. Immediately after the edit draft, explicitly use the `critic` agent to challenge Korean-first copy, information density, a11y, and visual hierarchy; then apply the critic feedback before verify.
-11. Before finishing the edit phase, explicitly invoke `$ko-copy` discipline on the changed harness and rerun `python3 scripts/master_loop_ui_language_gate.py --harness $ACTIVE_HARNESS`.
-12. During browser-review, use `$visual-verdict` if before/after screenshots or reference images are available.
-13. Before bounded completion, run verifier-grade judgment from `.codex/prompts/verifier.md` and then `$code-review` on the changed harness scope.
-14. Run `$harness-gate` semantics via `python3 scripts/master_loop_quality_gate.py --active-harness $ACTIVE_HARNESS --enforce`. If the project is not truly complete, write only the cycle-complete marker.
+11. Before finishing the edit phase, explicitly invoke `\$ko-copy` discipline on the changed harness and rerun `python3 scripts/master_loop_ui_language_gate.py --harness $ACTIVE_HARNESS`.
+12. During browser-review, use `\$visual-verdict` if before/after screenshots or reference images are available.
+13. Before bounded completion, run verifier-grade judgment from `.codex/prompts/verifier.md` and then `\$code-review` on the changed harness scope.
+14. Run `\$harness-gate` semantics via `python3 scripts/master_loop_quality_gate.py --active-harness $ACTIVE_HARNESS --enforce`. If the project is not truly complete, write only the cycle-complete marker.
 
 Dynamic guards:
 $MUST_SHRINK_LINE
@@ -149,7 +149,7 @@ $QUALITY_GATE_MEMORY
 $QUALITY_GATE_WARNING_MEMORY
 $DESIGNER_VERIFIER_LINE
 $RETRY_MODE_LINE
-- If stagnant_cycle_count >= 3, invoke `$stagnant-breaker` semantics to sharpen the plan, but keep the model retrying rather than escalating to a human blocker.
+- If stagnant_cycle_count >= 3, invoke `\$stagnant-breaker` semantics to sharpen the plan, but keep the model retrying rather than escalating to a human blocker.
 PROMPT_EOF
 )
 
