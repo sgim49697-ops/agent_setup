@@ -421,7 +421,7 @@ function App() {
     dispatch({
       type: 'finalize-run',
       outputs: assembleFinalOutputs(brief, outline, assignments, lanePackets, mergeReport, finalArticle),
-      message: 'Newsroom board is complete. The final article is reader-ready and the export panel is live.',
+      message: 'Newsroom board is complete. The final article is reader-ready and Markdown export is available on demand.',
     })
   }
 
@@ -493,6 +493,9 @@ function App() {
         : 'Review the merged article, then export the markdown.'
 
   const currentReaderPanel = finalArticle ? activeReaderPanel ?? 'final' : 'review'
+  const markdownPreview = finalArticle
+    ? finalArticle.markdown.split('\n').slice(0, 8).join('\n')
+    : ''
 
   const artifactPreview: ArtifactIndex = {
     screenshots: ['runs/desktop-verification.png', 'runs/mobile-verification.png'],
@@ -945,10 +948,29 @@ function App() {
                   </div>
                 </div>
 
-                <div className="export-card">
-                  <h3>Markdown export</h3>
-                  <pre className="markdown-preview">{finalArticle.markdown}</pre>
+                <div className="export-card export-preview-card">
+                  <p className="block-label">Markdown export</p>
+                  <h3>Keep the raw handoff short on the default surface</h3>
+                  <p className="subtle-copy">
+                    The excerpt keeps the export contract visible without letting the full raw
+                    Markdown dominate the reader-ready article.
+                  </p>
+                  <pre className="markdown-preview markdown-preview-peek">{markdownPreview}</pre>
                 </div>
+
+                <details className="export-card export-drawer">
+                  <summary className="export-summary">
+                    <div>
+                      <p className="block-label">Markdown export</p>
+                      <h3>Open the raw handoff only when you need the full export</h3>
+                    </div>
+                    <p>
+                      Copy stays available above, so the reader surface can stay focused on the
+                      merged article by default.
+                    </p>
+                  </summary>
+                  <pre className="markdown-preview">{finalArticle.markdown}</pre>
+                </details>
               </>
             ) : (
               <div className="empty-state">

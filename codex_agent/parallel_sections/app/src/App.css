@@ -608,6 +608,33 @@
   margin-top: 18px;
 }
 
+.export-preview-card {
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(16, 35, 58, 0.09);
+  border-radius: 24px;
+  padding: 18px;
+}
+
+.export-drawer {
+  overflow: hidden;
+}
+
+.export-summary {
+  display: grid;
+  gap: 10px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.export-summary::-webkit-details-marker {
+  display: none;
+}
+
+.export-summary h3,
+.export-summary p {
+  margin: 0;
+}
+
 .reader-empty-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -624,6 +651,10 @@
   font-size: 0.92rem;
   line-height: 1.72;
   max-height: 380px;
+}
+
+.markdown-preview-peek {
+  max-height: 164px;
 }
 
 .evidence-grid {
