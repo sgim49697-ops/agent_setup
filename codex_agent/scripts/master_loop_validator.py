@@ -90,6 +90,9 @@ def build_report(state: dict[str, Any]) -> dict[str, Any]:
     if state.get('project_status') == 'in_progress' and not current_harness:
         errors.append('project is still in progress but current_harness is empty')
 
+    if state.get('project_status') == 'in_progress' and remaining and current_harness == 'benchmark_foundation' and phase not in {'benchmark_foundation', 'cycle-resume', 'next_cycle_pending'}:
+        errors.append('current_harness reset to benchmark_foundation during active harness work')
+
     if state.get('project_status') == 'in_progress' and not remaining and state.get('next_cycle_required'):
         warnings.append('remaining_harnesses is empty while project is still in progress; verify if only final browser review remains')
 

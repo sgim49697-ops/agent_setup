@@ -27,6 +27,7 @@ RUNNER_SCRIPT = ROOT / 'scripts/run_master_ux_worker.sh'
 SYNC_SCRIPT = ROOT / 'scripts/openclaw_sync_codex_oauth.py'
 GIT_CHECKPOINT_SCRIPT = ROOT / 'scripts/git_state_checkpoint_watchdog.py'
 BASELINE_SCRIPT = ROOT / 'scripts/master_loop_baseline_metrics.py'
+QUALITY_GATE_SCRIPT = ROOT / 'scripts/master_loop_quality_gate.py'
 STATUS_SCRIPT = ROOT / 'scripts/openclaw_master_loop_status.sh'
 VALIDATOR_REPORT_PATH = ROOT / '.omx/state/master-loop-validator.json'
 TRACE_REPORT_PATH = ROOT / '.omx/state/master-loop-trace-sanity.json'
@@ -253,7 +254,29 @@ def checkpoint_git() -> None:
         log(f'git checkpoint watchdog failed: {checkpoint.stderr.strip() or checkpoint.stdout.strip()}')
 
 
-def run_quality_reports(state: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+def active_harness_for_quality(state: dict[str, Any]) -> str:
+    current = str(state.get('current_harness') or '').strip()
+    if current and current not in {'benchmark_foundation', 'quality_gate', 'cycle-resume', 'cycle-validation'}:
+        return current
+    remaining = normalize_remaining_harnesses(state.get('remaining_harnesses'))
+    return remaining[0] if remaining else 'single_agent'
+
+
+def run_quality_gate(state: dict[str, Any]) -> dict[str, Any]:
+    harness = active_harness_for_quality(state)
+    proc = subprocess.run(['python3', str(QUALITY_GATE_SCRIPT), '--active-harness', harness, '--quiet'], capture_output=True, text=True)
+    report_path = ROOT / '.omx/state/master-loop-quality-gate.json'
+    if report_path.exists():
+        try:
+            return json.loads(report_path.read_text(encoding='utf-8'))
+        except Exception:
+            pass
+    if proc.returncode != 0:
+        log(f'quality gate failed without readable report: {proc.stderr.strip() or proc.stdout.strip()}')
+    return {'ok': proc.returncode == 0, 'errors': [], 'warnings': []}
+
+
+def run_quality_reports(state: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
     validator = build_validator_report(state)
     trace = analyze_trace(read_progress_events(LOG_PATH, state), state)
     write_report(VALIDATOR_REPORT_PATH, validator)
@@ -261,15 +284,17 @@ def run_quality_reports(state: dict[str, Any]) -> tuple[dict[str, Any], dict[str
     baseline_proc = subprocess.run(['python3', str(BASELINE_SCRIPT), '--quiet'], capture_output=True, text=True)
     if baseline_proc.returncode != 0:
         log(f'baseline metrics generation failed: {baseline_proc.stderr.strip() or baseline_proc.stdout.strip()}')
+    quality_gate = run_quality_gate(state)
     state['validator_error_count'] = len(validator['errors'])
     state['validator_warning_count'] = len(validator['warnings'])
     state['trace_error_count'] = len(trace['errors'])
     state['trace_warning_count'] = len(trace['warnings'])
-    if validator['errors'] or trace['errors']:
+    state['quality_gate_error_count'] = len(quality_gate.get('errors', []))
+    if validator['errors'] or trace['errors'] or quality_gate.get('errors'):
         state['regression_count'] = int(state.get('regression_count', 0)) + 1
     else:
         state['regression_count'] = 0
-    return state, validator, trace
+    return state, validator, trace, quality_gate
 
 
 def repair_false_completion(state: dict[str, Any]) -> dict[str, Any]:
@@ -285,8 +310,8 @@ def repair_false_completion(state: dict[str, Any]) -> dict[str, Any]:
     return state
 
 
-def maybe_restart_for_regression(state: dict[str, Any], validator: dict[str, Any], trace: dict[str, Any]) -> bool:
-    severe = bool(trace['errors']) or any('required state fields' in error for error in validator['errors'])
+def maybe_restart_for_regression(state: dict[str, Any], validator: dict[str, Any], trace: dict[str, Any], quality_gate: dict[str, Any]) -> bool:
+    severe = bool(trace['errors']) or bool(quality_gate.get('errors')) or any('required state fields' in error for error in validator['errors'])
     if not severe:
         return False
     if int(state.get('regression_count', 0)) < TRACE_RESTART_THRESHOLD:
@@ -319,7 +344,8 @@ def main() -> int:
     if cleared:
         write_state(state)
 
-    state, validator, trace = run_quality_reports(state)
+    state, validator, trace, quality_gate = run_quality_reports(state)
+    state = read_state()
 
     if validator.get('false_completion_detected'):
         state = repair_false_completion(state)
@@ -347,7 +373,7 @@ def main() -> int:
         return 0
 
     if runner_alive():
-        if maybe_restart_for_regression(state, validator, trace):
+        if maybe_restart_for_regression(state, validator, trace, quality_gate):
             return 0
         progress_age = last_progress_age_minutes(state)
         if progress_age is not None and progress_age > STALL_TIMEOUT_MINUTES:
@@ -379,9 +405,9 @@ def main() -> int:
         checkpoint_git()
         return 0
 
-    if validator['errors'] and not runner_alive():
-        state['last_progress_summary'] = 'watchdog relaunched runner to recover validator errors while idle'
-        state = launch_runner(state, 'validator-errors')
+    if (validator['errors'] or quality_gate.get('errors')) and not runner_alive():
+        state['last_progress_summary'] = 'watchdog relaunched runner to recover quality gate / validator errors while idle'
+        state = launch_runner(state, 'quality-gate-errors')
         write_state(state)
         checkpoint_git()
         return 0
