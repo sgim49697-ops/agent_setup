@@ -167,15 +167,15 @@ def collect_runtime_metrics() -> dict[str, int]:
         'automation_total': 0,
     }
     for line in process_snapshot():
-        if 'master_loop_orchestrator.py' in line:
+        if 'python3 /home/user/projects/agent_setup/codex_agent/scripts/master_loop_orchestrator.py' in line:
             counts['orchestrator'] += 1
-        if 'run_master_ux_worker.sh' in line:
+        if 'bash /home/user/projects/agent_setup/codex_agent/scripts/run_master_ux_worker.sh' in line:
             counts['worker'] += 1
-        if 'codex exec' in line:
+        if '/vendor/x86_64-unknown-linux-musl/codex/codex exec' in line:
             counts['codex_exec'] += 1
-        if 'stitch-mcp' in line:
+        if 'node /home/user/.npm-global/bin/stitch-mcp proxy' in line:
             counts['stitch_mcp'] += 1
-        if 'playwright-mcp' in line:
+        if 'node /home/user/.npm/_npx/' in line and 'playwright-mcp' in line:
             counts['playwright_mcp'] += 1
     counts['automation_total'] = (
         counts['orchestrator']
