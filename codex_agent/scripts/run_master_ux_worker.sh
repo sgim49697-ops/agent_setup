@@ -59,9 +59,12 @@ Rules:
 - Use fine-grained phase tokens instead of repeating generic `benchmark-cycle`: prefer `<harness>-edit`, `<harness>-verify`, `<harness>-browser-review`, `quality_gate`, `cycle-validation`, `cycle-resume`.
 - Before visible UI/UX edits, read `docs/stitch-ux-reference.md` and use Stitch MCP first. If the active harness has UX debt, consult the shared Stitch project/screen/design-system before editing code.
 - If the active harness is `orchestrator_worker`, use Stitch screen `projects/11015732894783859302/screens/a9c46f1393b341f8bb24da291814c1d2` and asset `assets/2271c2a16ec8460c91f7d85b87099fe9` as the default UI reference.
+- If the active harness is `parallel_sections`, use Stitch screen `projects/11015732894783859302/screens/d8a6e9d589d7433181abc1a96b8c6108` and the same shared asset as the default UI reference.
 - After each substantial step, append concise progress to .omx/logs/master-ux-benchmark-v2.log and .omx/notepad, including which Stitch asset or screen was referenced for UI work.
 - User-visible product copy and outputs should be Korean-first unless a stable English test hook is specifically needed.
 - Every Stitch-informed UI change must be followed by Playwright browser review plus benchmark smoke/journey validation.
+- Never rely on ad-hoc `npm run preview` ports. Use `python3 scripts/harness_preview.py ensure <harness>` to get a stable preview URL on the dedicated 4273-4279 range before Playwright navigation.
+- Record the stable preview URL you used in `last_progress_summary` whenever a browser review starts or finishes.
 - Do not stop after writing a replan note. Replan-only completion is a failure.
 - Review-only completion is a failure. If you review, you must either patch, verify, or clearly record a hard blocker.
 - If remaining_harnesses does not shrink in a cycle, explain why in last_progress_summary.
