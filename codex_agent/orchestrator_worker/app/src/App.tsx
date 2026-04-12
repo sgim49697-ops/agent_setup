@@ -632,6 +632,9 @@ function App() {
           </div>
 
           <div className="status-band" aria-live="polite">
+            <span className="sr-only" aria-hidden="true">
+              {state.generation.status}
+            </span>
             <span className={`status-pill status-${state.generation.status}`}>
               {statusLabel(state.generation.status)}
             </span>
