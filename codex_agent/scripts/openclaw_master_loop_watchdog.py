@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from master_loop_state import load_state, normalize_remaining_harnesses, read_safe_mode, save_state
+from master_loop_state import load_state, normalize_remaining_harnesses, parse_bool, read_safe_mode, save_state
 from master_loop_trace_sanity import analyze_trace, read_progress_events
 from master_loop_validator import build_report as build_validator_report
 
@@ -77,6 +77,7 @@ def mark_runner_kill(reason: str) -> None:
     state['last_worker_interrupt_reason'] = reason
     state['last_worker_finish_reason'] = f'watchdog-kill:{reason}'
     state['last_worker_exit_status'] = 'killed-by-watchdog'
+    state['orchestrator_active'] = False
     try:
         save_state(STATE_PATH, state)
     except Exception:
@@ -355,6 +356,8 @@ def is_completed() -> bool:
 
 
 def launch_runner(state: dict[str, Any], reason: str) -> dict[str, Any]:
+    if CYCLE_MARKER.exists():
+        archive_cycle_artifacts(state)
     windows = run(['tmux', 'list-windows', '-t', SESSION, '-F', '#W']).stdout.splitlines()
     if RUNNER_WINDOW in windows:
         kill_runner_window(f'relaunch:{reason}')
@@ -370,6 +373,15 @@ def launch_runner(state: dict[str, Any], reason: str) -> dict[str, Any]:
     state['next_cycle_required'] = False
     log(f'launched runner window (reason={reason})')
     return state
+
+
+def step_pipeline_in_progress(state: dict[str, Any], metrics: dict[str, int]) -> bool:
+    if parse_bool(state.get('orchestrator_active')):
+        return True
+    phase = str(state.get('current_phase') or '')
+    if phase.startswith('orchestrator-'):
+        return True
+    return bool(metrics.get('orchestrator') or metrics.get('codex_exec'))
 
 
 def checkpoint_git() -> None:
@@ -518,16 +530,8 @@ def main() -> int:
             log('cleared legacy human-escalate blocker so the model can keep retrying')
             write_state(state)
 
-    state, validator, trace, quality_gate = run_quality_reports(state)
-    state = read_state()
     maintain_logs()
     notify_if_needed()
-
-    if validator.get('false_completion_detected'):
-        state = repair_false_completion(state)
-        write_state(state)
-        checkpoint_git()
-        validator = build_validator_report(read_state())
 
     if BLOCK_MARKER.exists() or state.get('hard_blocker'):
         state['status'] = 'blocked'
@@ -548,7 +552,38 @@ def main() -> int:
         log('completion marker detected; watchdog exiting without restart')
         return 0
 
-    if runner_alive():
+    runner_active = runner_alive()
+    if runner_active:
+        if step_pipeline_in_progress(state, metrics):
+            progress_age = last_progress_age_minutes(state)
+            if progress_age is not None and progress_age > STALL_TIMEOUT_MINUTES:
+                log(f'runner appears stalled (progress age {progress_age:.1f}m) during active step; recycling runner')
+                kill_runner_window('stalled-progress')
+                state['cycle_status'] = 'stalled'
+                state['status'] = 'stalled'
+                state['last_progress_summary'] = f'watchdog stalled-progress recycle after {progress_age:.1f}m without fresh heartbeat'
+                state = launch_runner(state, 'stalled-progress')
+                write_state(state)
+                checkpoint_git()
+                return 0
+            state['status'] = 'running'
+            state['cycle_status'] = 'running'
+            state['last_seen_running_at'] = utc_now()
+            write_state(state)
+            checkpoint_git()
+            log('runner active with step pipeline in progress; skipped quality-gate restart logic')
+            return 0
+
+    state, validator, trace, quality_gate = run_quality_reports(state)
+    state = read_state()
+
+    if validator.get('false_completion_detected'):
+        state = repair_false_completion(state)
+        write_state(state)
+        checkpoint_git()
+        validator = build_validator_report(read_state())
+
+    if runner_active:
         if maybe_restart_for_regression(state, validator, trace, quality_gate):
             return 0
         progress_age = last_progress_age_minutes(state)
