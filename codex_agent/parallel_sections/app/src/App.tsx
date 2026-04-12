@@ -726,9 +726,9 @@ function App() {
       <section className="board-priority">
         <article className="panel-surface">
           <div className="section-head">
-            <p className="eyebrow">Section drafts</p>
-            <h2>Lane board first, merge readiness second</h2>
-            <p>Each card stays compact until you open a specific lane packet.</p>
+            <p className="eyebrow">레인 보드</p>
+            <h2>병렬 섹션 카드를 먼저 보고, 머지 준비는 그다음에 확인합니다</h2>
+            <p>특정 레인 패킷을 열기 전까지는 모든 카드를 짧고 비교하기 쉬운 밀도로 유지합니다.</p>
           </div>
           <div className="writer-board">
             {writerLanes.map((lane) => {
@@ -740,10 +740,10 @@ function App() {
                 <article key={lane.id} className={`writer-card status-${laneStatus}`}>
                   <div className="writer-head">
                     <div>
-                      <p className="block-label">Lane status</p>
+                      <p className="block-label">레인 상태</p>
                       <h3>{lane.label}</h3>
                     </div>
-                    <span className={`lane-pill lane-${laneStatus}`}>{laneStatus}</span>
+                    <span className={`lane-pill lane-${laneStatus}`}>{unitStatusLabel(laneStatus)}</span>
                   </div>
 
                   <p className="lane-focus">{lane.focus}</p>
@@ -752,7 +752,7 @@ function App() {
                   {assignment ? (
                     <>
                       <div className="sub-block">
-                        <h4>Owned sections</h4>
+                        <h4>담당 섹션</h4>
                         <div className="chip-row">
                           {assignment.sectionIds.map((sectionId) => {
                             const section = outline.find((item) => item.id === sectionId)
@@ -769,14 +769,12 @@ function App() {
                       {packet ? (
                         <>
                           <div className="sub-block">
-                            <h4>Status summary</h4>
+                            <h4>상태 요약</h4>
                             <p>{packet.statusSummary}</p>
                           </div>
 
                           <details className="lane-drawer">
-                            <summary className="lane-drawer-summary">
-                              Open {lane.label} packet
-                            </summary>
+                            <summary className="lane-drawer-summary">{lane.label} 패킷 열기</summary>
 
                             <div className="preview-stack">
                               {packet.draftPreview.map((preview) => (
@@ -794,20 +792,20 @@ function App() {
                             </div>
 
                             <div className="sub-block">
-                              <h4>Handoff note</h4>
+                              <h4>핸드오프 메모</h4>
                               <p>{packet.handoffNote}</p>
                             </div>
                           </details>
                         </>
                       ) : (
                         <div className="empty-state">
-                          <p>This lane is assigned and waiting for the drafting phase.</p>
+                          <p>이 레인은 이미 배정됐고, 초안 작성 단계가 시작되기를 기다리고 있습니다.</p>
                         </div>
                       )}
                     </>
                   ) : (
                     <div className="empty-state">
-                      <p>Coordinator has not assigned this lane yet.</p>
+                      <p>코디네이터가 아직 이 레인을 배정하지 않았습니다.</p>
                     </div>
                   )}
                 </article>
@@ -818,32 +816,32 @@ function App() {
 
         <aside className="panel-surface merge-rail">
           <div className="section-head">
-            <p className="eyebrow">Merge readiness</p>
-            <h2>Current desk pressure and next action</h2>
+            <p className="eyebrow">머지 레일</p>
+            <h2>현재 데스크 압력과 다음 행동을 한 칸에서 확인합니다</h2>
           </div>
 
           <div className="merge-rail-stack">
             <article className="info-card">
-              <p className="block-label">Current moment</p>
-              <h3>{mergeReport ? 'Merge complete' : completedLaneCount ? 'Merge in progress' : 'Waiting on lanes'}</h3>
+              <p className="block-label">현재 시점</p>
+              <h3>{mergeReport ? '머지 완료' : completedLaneCount ? '머지 진행 중' : '레인 대기 중'}</h3>
               <p>{mergeMoment}</p>
             </article>
 
             <article className="info-card">
-              <p className="block-label">Lane coverage</p>
+              <p className="block-label">레인 커버리지</p>
               <h3>
-                {completedLaneCount}/{writerLanes.length} lanes delivered
+                {completedLaneCount}/{writerLanes.length}개 레인 전달 완료
               </h3>
               <p>
                 {assignments.length
-                  ? `${assignments.length} ownership rules are locked across the board.`
-                  : 'Coordinator ownership rules will appear here once the board is initialized.'}
+                  ? `${assignments.length}개의 소유 규칙이 보드 전체에 고정돼 있습니다.`
+                  : '보드가 초기화되면 코디네이터의 소유 규칙이 이곳에 나타납니다.'}
               </p>
             </article>
 
             <article className="info-card">
-              <p className="block-label">Next action</p>
-              <h3>{finalArticle ? 'Export or review' : 'Keep the merge desk focused'}</h3>
+              <p className="block-label">다음 행동</p>
+              <h3>{finalArticle ? '내보내기 또는 재검토' : '머지 데스크 집중 유지'}</h3>
               <p>{nextAction}</p>
             </article>
           </div>
@@ -852,24 +850,27 @@ function App() {
 
       <details className="panel-surface secondary-panel">
         <summary className="secondary-summary">
-          <span className="eyebrow">Research results + Outline</span>
+          <span className="eyebrow">공통 계획 패널</span>
           <div>
-            <h2>Coordinator frame, lane ownership, and merge criteria</h2>
-            <p>Open the planning context only when you need the shared brief behind the board.</p>
+            <h2>코디네이터 프레임, 레인 소유 범위, 머지 기준을 접어 둡니다</h2>
+            <p>보드 뒤에 있는 공통 브리프가 필요할 때만 이 계획 맥락을 열어 확인하세요.</p>
           </div>
         </summary>
 
         <div className="secondary-body">
           <div className="section-head">
-            <p className="eyebrow">Orchestration strip</p>
-            <h2>Common frame first, ownership before drafting</h2>
+            <p className="eyebrow">오케스트레이션 스트립</p>
+            <h2>공통 프레임을 먼저 고정하고, 소유 범위를 정한 뒤에 초안으로 내려갑니다</h2>
           </div>
           <div className="orchestration-grid">
             <article className="info-card">
-              <p className="block-label">Research results</p>
+              <div className="hook-row">
+                <p className="block-label">리서치 결과</p>
+                <span className="hook-chip">Research results</span>
+              </div>
               {brief ? (
                 <>
-                  <h3>Coordinator brief</h3>
+                  <h3>코디네이터 브리프</h3>
                   <p>{brief.angle}</p>
                   <strong>{brief.thesis}</strong>
                   <p className="subtle-copy">{brief.audienceLens}</p>
@@ -877,13 +878,16 @@ function App() {
                 </>
               ) : (
                 <div className="empty-state">
-                  <p>Generate the board to lock the common thesis and audience lens.</p>
+                  <p>보드를 생성해 공통 논지와 독자 관점을 먼저 고정하세요.</p>
                 </div>
               )}
             </article>
 
             <article className="info-card">
-              <p className="block-label">Outline</p>
+              <div className="hook-row">
+                <p className="block-label">아웃라인</p>
+                <span className="hook-chip">Outline</span>
+              </div>
               {outline.length > 0 ? (
                 <>
                   <div className="outline-list">
@@ -899,7 +903,7 @@ function App() {
                   </div>
 
                   <div className="assignment-strip">
-                    <h4>Lane assignments</h4>
+                    <h4>레인 배정</h4>
                     <div className="assignment-list">
                       {assignments.map((assignment) => (
                         <article key={assignment.writerId} className="assignment-card">
@@ -912,13 +916,13 @@ function App() {
                 </>
               ) : (
                 <div className="empty-state">
-                  <p>Outline and lane assignments appear together once the coordinator finishes.</p>
+                  <p>코디네이터가 끝나면 아웃라인과 레인 배정이 함께 나타납니다.</p>
                 </div>
               )}
             </article>
 
             <article className="info-card">
-              <p className="block-label">Merge criteria</p>
+              <p className="block-label">머지 기준</p>
               {brief ? (
                 <div className="criteria-list">
                   {brief.mergeCriteria.map((criterion) => (
@@ -930,7 +934,7 @@ function App() {
                 </div>
               ) : (
                 <div className="empty-state">
-                  <p>Merge criteria appear here before any lane starts drafting.</p>
+                  <p>어떤 레인도 초안을 시작하기 전에 머지 기준이 먼저 이곳에 나타납니다.</p>
                 </div>
               )}
             </article>
