@@ -59,6 +59,7 @@ print(' | '.join(last_gate_errors))
 print(' | '.join(last_gate_warnings))
 print(int(state.get('quality_gate_failure_streak', 0)))
 print(str(state.get('last_quality_gate_signature') or ''))
+print(int(state.get('current_harness_cycle_streak', 0)))
 PY
 )
 CURRENT_CYCLE="${CONTEXT[0]}"
@@ -72,6 +73,7 @@ LAST_GATE_ERRORS="${CONTEXT[7]}"
 LAST_GATE_WARNINGS="${CONTEXT[8]}"
 QUALITY_GATE_STREAK="${CONTEXT[9]}"
 LAST_GATE_SIGNATURE="${CONTEXT[10]}"
+HARNESS_STREAK="${CONTEXT[11]}"
 
 STITCH_REF='shared asset assets/2271c2a16ec8460c91f7d85b87099fe9'
 if [[ "$ACTIVE_HARNESS" == "orchestrator_worker" ]]; then
@@ -105,6 +107,13 @@ if [[ "$QUALITY_GATE_STREAK" -ge 3 ]]; then
 fi
 
 DESIGNER_VERIFIER_LINE='- Use designer-grade review from .codex/prompts/designer.md and verifier-grade review from .codex/prompts/verifier.md when the harness reaches its edit/closure boundary.'
+
+BUDGET_LINE='- Harness cycle budget is healthy.'
+if [[ "$HARNESS_STREAK" -ge 8 ]]; then
+  BUDGET_LINE="- Harness cycle budget exceeded for $ACTIVE_HARNESS (streak=$HARNESS_STREAK, budget=8). Invoke \$stagnant-breaker immediately and either remove the harness this cycle or produce a sharper plan with a fresh artifact."
+fi
+
+MEMORY_LINE='- Use omx_memory MCP to read project/notepad memory at cycle start and append one harness-specific learning after verify or gate completion.'
 
 update_state status running
 update_state project_status in_progress
@@ -140,7 +149,9 @@ Required outcomes for this cycle:
 11. Before finishing the edit phase, explicitly invoke `\$ko-copy` discipline on the changed harness and rerun `python3 scripts/master_loop_ui_language_gate.py --harness $ACTIVE_HARNESS`.
 12. During browser-review, use `\$visual-verdict` if before/after screenshots or reference images are available.
 13. Before bounded completion, run verifier-grade judgment from `.codex/prompts/verifier.md` and then `\$code-review` on the changed harness scope.
-14. Run `\$harness-gate` semantics via `python3 scripts/master_loop_quality_gate.py --active-harness $ACTIVE_HARNESS --enforce`. If the project is not truly complete, write only the cycle-complete marker.
+14. Run `\$harness-gate` semantics via `python3 scripts/master_loop_quality_gate.py --active-harness $ACTIVE_HARNESS --enforce`.
+15. If harness-gate passes with ok=true AND artifact freshness is fresh, REMOVE the active harness from remaining_harnesses in the same cycle by running `python3 scripts/master_loop_complete_harness.py --harness $ACTIVE_HARNESS`. This removal is the harness completion signal.
+16. If the project is not truly complete, write only the cycle-complete marker.
 
 Dynamic guards:
 $MUST_SHRINK_LINE
@@ -148,6 +159,8 @@ $REVIEW_ONLY_LINE
 $QUALITY_GATE_MEMORY
 $QUALITY_GATE_WARNING_MEMORY
 $DESIGNER_VERIFIER_LINE
+$MEMORY_LINE
+$BUDGET_LINE
 $RETRY_MODE_LINE
 - If stagnant_cycle_count >= 3, invoke `\$stagnant-breaker` semantics to sharpen the plan, but keep the model retrying rather than escalating to a human blocker.
 PROMPT_EOF
@@ -178,12 +191,9 @@ if [ "$STATUS" -eq 0 ] && [ "$QUALITY_STATUS" -eq 0 ] && { [ -f "$PROJECT_FINAL_
   update_state project_status project_completed
   update_state cycle_status completed
   update_state next_cycle_required __false__
-elif [ "$STATUS" -eq 0 ] && [ "$QUALITY_STATUS" -eq 0 ] && [ -f "$CYCLE_MARKER" ]; then
-  update_state status cycle_completed
-  update_state project_status in_progress
-  update_state cycle_status completed
-  update_state next_cycle_required __true__
 elif [ "$STATUS" -eq 0 ] && [ "$QUALITY_STATUS" -eq 0 ]; then
+  python3 "$ROOT/scripts/master_loop_complete_harness.py" --harness "$ACTIVE_HARNESS" >/dev/null 2>&1 || true
+  python3 "$QUALITY_GATE" --active-harness "$ACTIVE_HARNESS" --enforce --quiet >/dev/null 2>&1 || true
   update_state status cycle_completed
   update_state project_status in_progress
   update_state cycle_status completed

@@ -58,6 +58,11 @@ def compute_outcome_checks(state: dict, harness: str, validator: dict, trace: di
         if len(set(recent_lists)) == 1:
             errors.append('Recent 4 cycles kept the same remaining_harnesses set; bounded loop is stalled.')
             details['stagnant_recent_cycle_count'] = 4
+
+    harness_streak = int(state.get('current_harness_cycle_streak', 0))
+    details['current_harness_cycle_streak'] = harness_streak
+    if harness_streak >= 8:
+        errors.append(f'Harness cycle budget exceeded for {harness}: streak={harness_streak} (budget=8).')
     recent_counts = [int(entry.get('remaining_count', 0)) for entry in snaps]
     rollback_detected = any(curr > prev for prev, curr in zip(recent_counts, recent_counts[1:]))
     if rollback_detected and recent_counts and recent_counts[-1] >= max(recent_counts):
@@ -88,6 +93,9 @@ def compute_outcome_checks(state: dict, harness: str, validator: dict, trace: di
 
     if state.get('project_status') == 'project_completed' and normalize_remaining_harnesses(state.get('remaining_harnesses')):
         errors.append('Project marked complete while remaining_harnesses is still non-empty.')
+
+    if state.get('quality_gate_status') == '0' and harness in normalize_remaining_harnesses(state.get('remaining_harnesses')) and trace.get('ok') and validator.get('ok'):
+        warnings.append('Harness gate passed but active harness still remains in remaining_harnesses. Use master_loop_complete_harness.py in the same cycle.')
 
     return errors, warnings, details
 

@@ -30,7 +30,9 @@ INT_FIELDS = {
     "review_only_failures",
     "quality_gate_error_count",
     "quality_gate_failure_streak",
+    "current_harness_cycle_streak",
 }
+
 
 LIST_FIELDS = {
     "remaining_harnesses",
@@ -210,6 +212,7 @@ def normalize_state(state: dict[str, Any]) -> dict[str, Any]:
     normalized.setdefault("review_only_failures", 0)
     normalized.setdefault("quality_gate_error_count", 0)
     normalized.setdefault("quality_gate_failure_streak", 0)
+    normalized.setdefault("current_harness_cycle_streak", 0)
     normalized.setdefault("remaining_cycle_history", [])
     normalized.setdefault("phase_history", [])
     normalized["remaining_harnesses"] = normalize_remaining_harnesses(normalized.get("remaining_harnesses"))
@@ -296,6 +299,16 @@ def update_histories(previous: dict[str, Any], current: dict[str, Any]) -> dict[
         else:
             break
     current["stagnant_cycle_count"] = same_count
+
+    harness_streak = 1
+    harness_tail = current["remaining_cycle_history"][-12:]
+    current_harness = snapshot.get("harness")
+    for earlier in reversed(harness_tail[:-1]):
+        if earlier.get("harness") == current_harness:
+            harness_streak += 1
+        else:
+            break
+    current["current_harness_cycle_streak"] = harness_streak
 
     return current
 
