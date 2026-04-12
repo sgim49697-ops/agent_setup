@@ -58,7 +58,9 @@ def compute_outcome_checks(state: dict, harness: str, validator: dict, trace: di
         if len(set(recent_lists)) == 1:
             errors.append('Recent 4 cycles kept the same remaining_harnesses set; bounded loop is stalled.')
             details['stagnant_recent_cycle_count'] = 4
-    if int(state.get('remaining_regression_count', 0)) > 0:
+    recent_counts = [int(entry.get('remaining_count', 0)) for entry in snaps]
+    rollback_detected = any(curr > prev for prev, curr in zip(recent_counts, recent_counts[1:]))
+    if rollback_detected and recent_counts and recent_counts[-1] >= max(recent_counts):
         errors.append('remaining_harnesses regressed after previously shrinking; rollback detected.')
         details['remaining_regression_count'] = int(state.get('remaining_regression_count', 0))
 
