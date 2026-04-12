@@ -24,6 +24,24 @@ const toneDescriptors: Record<Tone, string> = {
   opinionated: '선호와 기준을 분명하게 드러내는 방식',
 }
 
+const audienceLabels: Record<Audience, string> = {
+  beginner: '입문자',
+  practitioner: '실무자',
+  advanced: '고급 사용자',
+}
+
+const toneLabels: Record<Tone, string> = {
+  clear: '명료한 톤',
+  pragmatic: '실무 중심 톤',
+  opinionated: '의견이 분명한 톤',
+}
+
+const lengthLabels: Record<Length, string> = {
+  short: '짧게',
+  medium: '중간 길이',
+  long: '길게',
+}
+
 const lengthDescriptors: Record<Length, string[]> = {
   short: ['왜 지금 중요한가', '핵심 설계 포인트', '바로 적용할 체크리스트'],
   medium: ['문제 정의와 맥락', '권장 접근 방식', '구현 예시와 함정', '팀 적용 체크리스트'],
@@ -53,20 +71,20 @@ function slugify(value: string) {
 function createResearchSummary(inputs: BlogGeneratorInputs): ResearchSummary {
   const cleanTopic = titleCase(inputs.topic)
   return {
-    angle: `${toneDescriptors[inputs.tone]}으로 ${cleanTopic}를 설명하고, ${inputs.audience} 독자가 바로 다음 선택을 할 수 있게 돕는다.`,
+    angle: `${toneDescriptors[inputs.tone]}으로 ${cleanTopic}를 설명하고, ${audienceLabels[inputs.audience]}가 바로 다음 선택을 할 수 있게 돕는다.`,
     thesis: `${cleanTopic}는 단일 기능 소개보다 '언제 쓰고 언제 피해야 하는지'를 알려줄 때 훨씬 설득력 있게 전달된다.`,
-    audienceFit: `${inputs.audience} 독자를 기준으로 보면 ${audienceDescriptors[inputs.audience]}`,
+    audienceFit: `${audienceLabels[inputs.audience]}를 기준으로 보면 ${audienceDescriptors[inputs.audience]}`,
     searchTerms: [
-      `${inputs.topic} architecture`,
-      `${inputs.topic} trade-offs`,
-      `${inputs.topic} best practices`,
-      `${inputs.topic} implementation checklist`,
+      `${inputs.topic} 설계 구조`,
+      `${inputs.topic} 트레이드오프`,
+      `${inputs.topic} 적용 원칙`,
+      `${inputs.topic} 구현 체크리스트`,
     ],
     findings: [
       `${cleanTopic}를 설명할 때는 개념보다 먼저 문제 상황을 제시해야 읽는 속도가 올라간다.`,
-      `${inputs.audience} 독자에게는 이상적인 설계보다 실패 패턴과 회피 기준을 같이 제시하는 편이 유용하다.`,
-      `${inputs.tone} 톤에서는 장단점을 같은 밀도로 다뤄야 글의 신뢰도가 유지된다.`,
-      `${inputs.length} 분량에서는 모든 세부사항을 나열하기보다 우선순위가 높은 판단 기준을 남기는 구성이 적합하다.`,
+      `${audienceLabels[inputs.audience]}에게는 이상적인 설계보다 실패 패턴과 회피 기준을 같이 제시하는 편이 유용하다.`,
+      `${toneLabels[inputs.tone]}에서는 장단점을 같은 밀도로 다뤄야 글의 신뢰도가 유지된다.`,
+      `${lengthLabels[inputs.length]} 구성에서는 모든 세부사항을 나열하기보다 우선순위가 높은 판단 기준을 남기는 편이 적합하다.`,
     ],
     references: [
       '공식 문서와 릴리스 노트',
@@ -83,7 +101,7 @@ function createOutline(inputs: BlogGeneratorInputs, research: ResearchSummary): 
     summary:
       index === 0
         ? research.thesis
-        : `${label}에 맞춰 ${inputs.topic}의 실제 선택 기준과 ${inputs.audience} 독자에게 필요한 설명 수준을 정리한다.`,
+        : `${label}에 맞춰 ${inputs.topic}의 실제 선택 기준과 ${audienceLabels[inputs.audience]}에게 필요한 설명 수준을 정리한다.`,
   }))
 }
 
@@ -111,23 +129,23 @@ function createReviewNotes(
 ): ReviewNote[] {
   return [
     {
-      label: 'Flow clarity',
+      label: '흐름 명확성',
       detail: `첫 섹션에서 독자 문제를 명확히 정의했고, 총 ${outline.length}개 섹션이 한 방향으로 이어진다.`,
       severity: 'good',
     },
     {
-      label: 'Depth balance',
-      detail: `${inputs.length} 분량에 맞는 설명량은 확보했지만, 섹션별 예시 수는 더 늘릴 여지가 있다.`,
+      label: '깊이 균형',
+      detail: `${lengthLabels[inputs.length]} 분량에 맞는 설명량은 확보했지만, 섹션별 예시 수는 더 늘릴 여지가 있다.`,
       severity: 'watch',
     },
     {
-      label: 'Actionability',
-      detail: `${drafts[drafts.length - 1]?.takeaway ?? '마지막 takeaway'} 덕분에 마무리가 실용적이다.`,
+      label: '실행 가능성',
+      detail: `${drafts[drafts.length - 1]?.takeaway ?? '마지막 핵심 정리'} 덕분에 마무리가 실용적이다.`,
       severity: 'good',
     },
     {
-      label: 'Editorial polish',
-      detail: `${inputs.audience} 독자를 기준으로 전문 용어에 짧은 정의를 더하면 진입 장벽을 더 낮출 수 있다.`,
+      label: '문장 다듬기',
+      detail: `${audienceLabels[inputs.audience]}를 기준으로 전문 용어에 짧은 정의를 더하면 진입 장벽을 더 낮출 수 있다.`,
       severity: 'improve',
     },
   ]
@@ -141,12 +159,12 @@ function createFinalPost(
   const header = [
     `# ${titleCase(inputs.topic)}`,
     '',
-    `> Audience: ${titleCase(inputs.audience)} | Tone: ${titleCase(inputs.tone)} | Length: ${titleCase(inputs.length)}`,
+    `> 독자: ${audienceLabels[inputs.audience]} | 톤: ${toneLabels[inputs.tone]} | 분량: ${lengthLabels[inputs.length]}`,
     '',
-    `## Intro`,
-    `${research.thesis} 이 글은 ${inputs.audience} 독자가 ${inputs.topic}를 판단할 때 필요한 기준만 남기도록 설계했다.`,
+    `## 시작`,
+    `${research.thesis} 이 글은 ${audienceLabels[inputs.audience]}가 ${inputs.topic}를 판단할 때 필요한 기준만 남기도록 설계했다.`,
     '',
-    `### Research summary`,
+    `### 리서치 요약`,
     ...research.findings.map((finding) => `- ${finding}`),
     '',
   ]
@@ -156,12 +174,12 @@ function createFinalPost(
     '',
     ...draft.body,
     '',
-    `- Takeaway: ${draft.takeaway}`,
+    `- 핵심 정리: ${draft.takeaway}`,
     '',
   ])
 
   const closing = [
-    `## Closing checklist`,
+    `## 마무리 체크리스트`,
     '',
     `- 공식 문서를 먼저 보고 개념 범위를 확정한다.`,
     `- ${inputs.topic}를 도입할 이유와 피해야 할 이유를 같은 밀도로 적는다.`,

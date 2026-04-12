@@ -5,33 +5,33 @@ import type { DeliverableCard, TopicPreset, WorkflowStage } from './contracts'
 export const workflowStages: WorkflowStage[] = [
   {
     id: 'research',
-    label: 'Research results',
+    label: '리서치 결과',
     output: 'research_summary',
-    description: '핵심 사실, 비교 포인트, 참고 근거를 구조화한다.',
+    description: '핵심 사실, 비교 포인트, 참고 근거를 한눈에 정리한다.',
   },
   {
     id: 'outline',
-    label: 'Outline',
+    label: '개요 설계',
     output: 'outline',
-    description: '문단 구조와 논리 흐름을 설계한다.',
+    description: '문단 순서와 흐름을 읽기 좋은 구조로 잡는다.',
   },
   {
     id: 'drafts',
-    label: 'Section drafts',
+    label: '섹션 초안',
     output: 'section_drafts',
-    description: '섹션별 초안을 작성하고 일관성을 유지한다.',
+    description: '섹션별 초안을 쓰고 톤과 밀도를 맞춘다.',
   },
   {
     id: 'review',
-    label: 'Review notes',
+    label: '검토 메모',
     output: 'review_notes',
-    description: '빠진 논점, 과장, 모호성을 검토한다.',
+    description: '빠진 논점, 과장, 모호성을 빠르게 점검한다.',
   },
   {
     id: 'final',
-    label: 'Final post',
+    label: '최종 글',
     output: 'final_post',
-    description: '최종 Markdown 결과물과 export 액션을 제공한다.',
+    description: '최종 Markdown과 내보내기 준비 상태를 확인한다.',
   },
 ]
 
@@ -49,12 +49,12 @@ export const deliverables: DeliverableCard[] = [
   {
     id: 'review',
     title: 'review_report.md',
-    description: '구현 요약, 리스크, 남은 이슈, self-evaluation을 남긴다.',
+    description: '구현 요약, 리스크, 남은 이슈, 자체 평가를 남긴다.',
   },
   {
     id: 'scorecard',
     title: 'scorecard.json',
-    description: '기능, UX, visual, a11y, process 점수를 저장한다.',
+    description: '기능, UX, 시각 완성도, 접근성, 절차 점수를 저장한다.',
   },
 ]
 
@@ -83,9 +83,9 @@ export const topicPresets: TopicPreset[] = [
 ]
 
 export const reviewLenses = [
-  'flow clarity',
-  'visual quality',
-  'responsiveness',
-  'a11y basics',
-  'process adherence',
+  '흐름 명확성',
+  '시각 완성도',
+  '반응형 대응',
+  '접근성 기본기',
+  '절차 준수',
 ]
