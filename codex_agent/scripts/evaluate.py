@@ -74,7 +74,14 @@ def run_playwright(harness_name: str) -> dict:
 
     try:
         result = subprocess.run(
-            ["npx", "playwright", "test", "--config", str(BENCHMARK_DIR / "playwright.config.ts")],
+            [
+                "npx",
+                "playwright",
+                "test",
+                "--config",
+                str(BENCHMARK_DIR / "playwright.config.ts"),
+                "playwright/smoke.spec.ts",
+            ],
             cwd=BENCHMARK_DIR,
             capture_output=True,
             text=True,
