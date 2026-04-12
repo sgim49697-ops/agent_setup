@@ -51,7 +51,7 @@ const initialGeneration: GenerationState = {
   currentStage: null,
   completedStages: [],
   outputs: {},
-  statusMessage: 'Start with a topic, then move through the single-agent wizard one focused step at a time.',
+  statusMessage: '주제를 정하면 단일 에이전트 작성 흐름이 한 단계씩 차례로 진행됩니다.',
   errorMessage: null,
 }
 
@@ -70,7 +70,7 @@ function reducer(state: AppState, action: Action): AppState {
                 ...state.generation,
                 status: 'initial',
                 errorMessage: null,
-                statusMessage: 'Input changed. Generate again to restart the wizard.',
+                statusMessage: '입력이 바뀌었습니다. 다시 생성하면 작성 흐름이 처음부터 정리됩니다.',
               }
             : state.generation,
       }
@@ -80,7 +80,7 @@ function reducer(state: AppState, action: Action): AppState {
         inputs: action.payload,
         generation: {
           ...state.generation,
-          statusMessage: 'Preset loaded. Generate post to run the full single-agent wizard.',
+          statusMessage: '추천 브리프를 불러왔습니다. 글 생성을 시작하면 단일 에이전트 흐름이 이어집니다.',
           errorMessage: null,
         },
         copyFeedback: '',
@@ -144,7 +144,7 @@ function reducer(state: AppState, action: Action): AppState {
           ...state.generation,
           status: 'error',
           errorMessage: action.message,
-          statusMessage: 'The run stopped before completion. Adjust the topic and try again.',
+          statusMessage: '완료 전에 흐름이 멈췄습니다. 주제를 조정한 뒤 다시 생성해 보세요.',
         },
       }
     case 'select-stage':
@@ -158,11 +158,11 @@ function reducer(state: AppState, action: Action): AppState {
 }
 
 const stageMessages: Record<GenerationStageId, string> = {
-  research: 'Researching the topic and selecting the angle.',
-  outline: 'Turning research into a reading order and section outline.',
-  drafts: 'Writing section drafts with a consistent voice.',
-  review: 'Reviewing the draft for clarity, gaps, and editorial polish.',
-  final: 'Assembling the final Markdown output and export-ready copy.',
+  research: '주제를 해석하고 첫 관점과 제약 조건을 정리하는 중입니다.',
+  outline: '리서치 내용을 읽기 쉬운 순서와 개요로 바꾸는 중입니다.',
+  drafts: '섹션별 초안을 쓰고 문장 밀도를 맞추는 중입니다.',
+  review: '초안을 검토하며 빠진 논점과 다듬을 문장을 확인하는 중입니다.',
+  final: '최종 마크다운과 내보내기 준비 상태를 정리하는 중입니다.',
 }
 
 function sleep(ms: number) {
@@ -201,12 +201,12 @@ function App() {
 
   const statusLabel = useMemo(() => {
     const labels: Record<GenerationStatus, string> = {
-      initial: 'Initial',
-      loading: 'Loading',
-      populated: 'Populated',
-      'review-complete': 'Review complete',
-      'export-ready': 'Export ready',
-      error: 'Error',
+      initial: '준비 완료',
+      loading: '진행 중',
+      populated: '단계 완료',
+      'review-complete': '검토 완료 · Review complete',
+      'export-ready': '내보내기 준비 · Export ready',
+      error: '오류',
     }
     return labels[state.generation.status]
   }, [state.generation.status])
@@ -216,7 +216,7 @@ function App() {
     if (topic.length < 6) {
       dispatch({
         type: 'set-error',
-        message: 'Topic should be at least 6 characters so the pipeline has enough context to work with.',
+        message: '주제는 최소 6자 이상이어야 흐름이 맥락을 충분히 잡을 수 있습니다.',
       })
       return
     }
@@ -224,7 +224,7 @@ function App() {
     if (/^\s*(error|fail)\b/i.test(topic)) {
       dispatch({
         type: 'set-error',
-        message: 'This deterministic demo treats topics starting with "error" or "fail" as a forced error-state check.',
+        message: '"error" 또는 "fail"로 시작하는 주제는 의도적으로 오류 흐름을 점검하는 입력으로 처리합니다.',
       })
       return
     }
@@ -238,7 +238,7 @@ function App() {
 
     dispatch({
       type: 'start-run',
-      message: 'Single-agent run started. Research is collecting the first angle and constraints.',
+      message: '단일 에이전트 흐름을 시작했습니다. 리서치 단계에서 첫 관점과 제약을 모으고 있습니다.',
     })
 
     const sequence: Array<{
@@ -253,35 +253,35 @@ function App() {
         key: 'research_summary',
         value: outputs.research_summary,
         status: 'populated',
-        message: 'Research results are ready. Continue through the wizard to turn them into structure.',
+        message: '리서치 결과가 준비되었습니다. 이제 개요를 잡아 읽기 흐름으로 바꿉니다.',
       },
       {
         stage: 'outline',
         key: 'outline',
         value: outputs.outline,
         status: 'populated',
-        message: 'Outline locked. The single agent can now move into section drafting.',
+        message: '개요가 정리되었습니다. 다음은 섹션 초안을 채워 전체 글의 밀도를 맞춥니다.',
       },
       {
         stage: 'drafts',
         key: 'section_drafts',
         value: outputs.section_drafts,
         status: 'populated',
-        message: 'Section drafts are in place. Review comes next.',
+        message: '섹션 초안이 준비되었습니다. 이제 검토 단계에서 빠진 논점을 정리합니다.',
       },
       {
         stage: 'review',
         key: 'review_notes',
         value: outputs.review_notes,
         status: 'review-complete',
-        message: 'Review notes are complete. The final export is being assembled.',
+        message: '검토 메모가 준비되었습니다. 마지막으로 최종 글과 복사 가능한 원문을 묶습니다.',
       },
       {
         stage: 'final',
         key: 'final_post',
         value: outputs.final_post,
         status: 'export-ready',
-        message: 'Final Markdown is ready. Export and review the post before sharing.',
+        message: '최종 마크다운이 준비되었습니다. 내보내기 전에 한 번 더 읽고 바로 공유할 수 있습니다.',
       },
     ]
 
@@ -309,7 +309,7 @@ function App() {
     if (!markdown) {
       dispatch({
         type: 'set-copy-feedback',
-        message: 'Generate the final post first. The export action becomes active once the wizard reaches Final post.',
+        message: '먼저 최종 글 단계까지 생성해야 합니다. 마지막 단계에 도달하면 복사 버튼이 활성화됩니다.',
       })
       return
     }
@@ -318,12 +318,12 @@ function App() {
       await navigator.clipboard.writeText(markdown)
       dispatch({
         type: 'set-copy-feedback',
-        message: 'Markdown copied. You can paste the full post into your editor or CMS draft.',
+        message: '마크다운을 복사했습니다. 에디터나 CMS 초안에 바로 붙여 넣을 수 있습니다.',
       })
     } catch {
       dispatch({
         type: 'set-copy-feedback',
-        message: 'Clipboard access failed in this browser context. The final Markdown is still visible in the export step.',
+        message: '이 브라우저에서는 클립보드 접근에 실패했습니다. 그래도 최종 글 패널에서 내용을 바로 확인할 수 있습니다.',
       })
     }
   }
@@ -358,7 +358,7 @@ function App() {
       ({
         screenshots: ['desktop-verification.png', 'mobile-verification.png'],
         final_urls: ['http://127.0.0.1:4173'],
-        notes: ['Focused wizard flow replaces the old evidence-heavy dashboard.'],
+        notes: ['집중형 작성 흐름이 기존 evidence-heavy 화면 대신 첫 행동과 다음 단계를 먼저 보여줍니다.'],
         deliverables: deliverables.map((item) => item.title),
       }) satisfies ArtifactIndex,
     [],
@@ -383,12 +383,11 @@ function App() {
     <main className="wizard-shell">
       <section className="wizard-hero">
         <div className="hero-card">
-          <p className="eyebrow">Single Agent Workspace</p>
-          <h1>Focused single-agent writing wizard</h1>
+          <p className="eyebrow">단일 에이전트 작업대</p>
+          <h1>한 번에 한 단계씩 쓰는 단일 에이전트 작성 흐름</h1>
           <p className="lead">
-            One agent owns the whole flow. Instead of showing every artifact at once, this
-            version keeps the user on one current step at a time and moves evidence into a
-            secondary layer.
+            하나의 에이전트가 브리프부터 최종 글까지 끝까지 책임집니다. 첫 화면에서는 지금 해야 할
+            단계와 다음 행동만 남기고, 근거 자료와 평가 정보는 보조 레이어로 뒤로 보냅니다.
           </p>
           <div className="hero-actions">
             <button
@@ -397,10 +396,12 @@ function App() {
               onClick={handleGenerate}
               disabled={state.generation.status === 'loading'}
             >
-              {state.generation.status === 'loading' ? 'Generating...' : 'Generate post'}
+              {state.generation.status === 'loading'
+                ? '생성 중 · Generating...'
+                : '글 생성 시작 · Generate post'}
             </button>
             <button type="button" className="secondary-button" onClick={copyMarkdown}>
-              Copy markdown
+              마크다운 복사 · Copy markdown
             </button>
           </div>
           <div className="status-banner" aria-live="polite">
@@ -410,7 +411,7 @@ function App() {
             </div>
             <p>
               {state.generation.errorMessage ??
-                `Current step: ${selectedStageMeta.label} • Next: ${nextStage ? nextStage.label : 'Export or restart'}`}
+                `현재 단계: ${selectedStageMeta.label} · 다음 단계: ${nextStage ? nextStage.label : '내보내기 또는 다시 시작'}`}
             </p>
             {state.copyFeedback ? <p className="copy-feedback">{state.copyFeedback}</p> : null}
           </div>
@@ -418,17 +419,16 @@ function App() {
 
         <aside className="control-card">
           <div className="section-head">
-            <p className="eyebrow">Brief</p>
-            <h2>Set the article request</h2>
+            <p className="eyebrow">브리프 설정</p>
+            <h2>지금 만들 글 요청을 간단히 정리합니다</h2>
             <p className="section-copy">
-              The wizard keeps the brief simple, then reveals one stage of the generation
-              pipeline at a time.
+              입력은 짧고 단순하게 유지한 뒤, 생성 결과는 현재 단계에 필요한 정보만 한 번에 보여줍니다.
             </p>
           </div>
 
           <form className="form-grid" onSubmit={(event) => event.preventDefault()}>
             <label>
-              <span>Topic</span>
+              <span>주제</span>
               <textarea
                 name="topic"
                 rows={4}
@@ -440,7 +440,7 @@ function App() {
               />
             </label>
             <label>
-              <span>Audience</span>
+              <span>독자</span>
               <select
                 name="audience"
                 aria-label="Audience"
@@ -449,13 +449,13 @@ function App() {
                   dispatch({ type: 'update-input', field: 'audience', value: event.target.value })
                 }
               >
-                <option value="beginner">Beginner</option>
-                <option value="practitioner">Practitioner</option>
-                <option value="advanced">Advanced</option>
+                <option value="beginner">입문자</option>
+                <option value="practitioner">실무자</option>
+                <option value="advanced">고급 사용자</option>
               </select>
             </label>
             <label>
-              <span>Tone</span>
+              <span>톤</span>
               <select
                 name="tone"
                 aria-label="Tone"
@@ -464,13 +464,13 @@ function App() {
                   dispatch({ type: 'update-input', field: 'tone', value: event.target.value })
                 }
               >
-                <option value="clear">Clear</option>
-                <option value="pragmatic">Pragmatic</option>
-                <option value="opinionated">Opinionated</option>
+                <option value="clear">명료하게</option>
+                <option value="pragmatic">실무적으로</option>
+                <option value="opinionated">의견을 분명하게</option>
               </select>
             </label>
             <label>
-              <span>Length</span>
+              <span>분량</span>
               <select
                 name="length"
                 aria-label="Length"
@@ -479,9 +479,9 @@ function App() {
                   dispatch({ type: 'update-input', field: 'length', value: event.target.value })
                 }
               >
-                <option value="short">Short</option>
-                <option value="medium">Medium</option>
-                <option value="long">Long</option>
+                <option value="short">짧게</option>
+                <option value="medium">중간 길이</option>
+                <option value="long">길게</option>
               </select>
             </label>
           </form>
@@ -504,8 +504,8 @@ function App() {
 
       <section className="panel-card stepper-card">
         <div className="section-head">
-          <p className="eyebrow">Wizard steps</p>
-          <h2>Move through one focused stage at a time</h2>
+          <p className="eyebrow">진행 단계</p>
+          <h2>지금 필요한 단계만 또렷하게 따라갑니다</h2>
         </div>
         <div className="stepper" aria-label="Generation progress">
           {stageState.map((stage, index) => (
@@ -540,20 +540,25 @@ function App() {
 
         <aside className="panel-card guide-panel">
           <div className="section-head">
-            <p className="eyebrow">Current focus</p>
-            <h2>What the user should understand now</h2>
+            <p className="eyebrow">현재 포커스</p>
+            <h2>지금 화면에서 바로 이해해야 할 흐름</h2>
           </div>
           <ul className="focus-list">
-            <li>Current step: {selectedStageMeta.label}</li>
-            <li>Primary action: {state.generation.status === 'export-ready' ? 'Copy markdown' : 'Generate post / review current output'}</li>
-            <li>Next step: {nextStage ? nextStage.label : 'Export or restart'}</li>
+            <li>현재 단계: {selectedStageMeta.label}</li>
+            <li>
+              지금 할 행동:{' '}
+              {state.generation.status === 'export-ready'
+                ? '마크다운 복사 · Copy markdown'
+                : '글 생성 이어가기 · Generate post'}
+            </li>
+            <li>다음 단계: {nextStage ? nextStage.label : '내보내기 또는 다시 시작'}</li>
           </ul>
 
           <details className="evidence-drawer">
-            <summary>Open evidence layer</summary>
+            <summary>검토 근거 열기</summary>
             <div className="evidence-stack">
               <article className="artifact-card">
-                <h3>Required deliverables</h3>
+                <h3>필수 산출물</h3>
                 {deliverables.map((item) => (
                   <div key={item.id} className="mini-row">
                     <strong>{item.title}</strong>
@@ -563,7 +568,7 @@ function App() {
               </article>
 
               <article className="artifact-card">
-                <h3>Evaluator lenses</h3>
+                <h3>평가 관점</h3>
                 <ul className="lens-list">
                   {reviewLenses.map((lens) => (
                     <li key={lens}>{lens}</li>
@@ -571,9 +576,9 @@ function App() {
                 </ul>
               </article>
 
-              <PreviewBlock title="run_manifest.json" payload={runManifestPreview} />
-              <PreviewBlock title="artifact_index.json" payload={artifactPreview} />
-              <PreviewBlock title="scorecard.json" payload={scorePreview} />
+              <PreviewBlock title="실행 기록 · run_manifest.json" payload={runManifestPreview} />
+              <PreviewBlock title="산출물 목록 · artifact_index.json" payload={artifactPreview} />
+              <PreviewBlock title="점수 카드 · scorecard.json" payload={scorePreview} />
             </div>
           </details>
         </aside>
@@ -589,9 +594,9 @@ function StageSurface(props: { state: GenerationState; stageId: GenerationStageI
   if (state.status === 'error' && stageId === 'final') {
     return (
       <div className="error-panel" role="alert">
-        <strong>Generation stopped.</strong>
+        <strong>생성이 중단되었습니다.</strong>
         <p>{state.errorMessage}</p>
-        <p>Tip: enter a fuller topic and run the pipeline again to validate the happy path.</p>
+        <p>팁: 더 구체적인 주제를 넣고 다시 생성하면 정상 흐름을 빠르게 확인할 수 있습니다.</p>
       </div>
     )
   }
@@ -620,7 +625,7 @@ function StageSurface(props: { state: GenerationState; stageId: GenerationStageI
           status={state.status}
           currentStage={state.currentStage}
           stageId="research"
-          emptyText="Research summary will appear here once the run begins."
+          emptyText="생성을 시작하면 이 영역에 리서치 요약이 채워집니다."
         />
       )
     case 'outline':
@@ -638,7 +643,7 @@ function StageSurface(props: { state: GenerationState; stageId: GenerationStageI
           status={state.status}
           currentStage={state.currentStage}
           stageId="outline"
-          emptyText="Outline stays empty until research is complete."
+          emptyText="리서치가 끝나기 전까지는 개요가 비어 있습니다."
         />
       )
     case 'drafts':
@@ -659,7 +664,7 @@ function StageSurface(props: { state: GenerationState; stageId: GenerationStageI
           status={state.status}
           currentStage={state.currentStage}
           stageId="drafts"
-          emptyText="Section drafts become visible after the outline locks."
+          emptyText="개요가 정리되면 이곳에 섹션 초안이 순서대로 나타납니다."
         />
       )
     case 'review':
@@ -680,7 +685,7 @@ function StageSurface(props: { state: GenerationState; stageId: GenerationStageI
           status={state.status}
           currentStage={state.currentStage}
           stageId="review"
-          emptyText="Review notes appear after section drafting finishes."
+          emptyText="섹션 초안이 끝나면 검토 메모가 이 패널에 정리됩니다."
         />
       )
     case 'final':
@@ -691,7 +696,7 @@ function StageSurface(props: { state: GenerationState; stageId: GenerationStageI
           status={state.status}
           currentStage={state.currentStage}
           stageId="final"
-          emptyText="Final Markdown becomes available once review is complete."
+          emptyText="검토가 끝나면 이곳에서 최종 마크다운을 바로 읽고 복사할 수 있습니다."
         />
       )
   }
@@ -700,15 +705,15 @@ function StageSurface(props: { state: GenerationState; stageId: GenerationStageI
 function stageTitle(stageId: GenerationStageId) {
   switch (stageId) {
     case 'research':
-      return 'Angle and source plan'
+      return '관점과 근거를 먼저 정리합니다'
     case 'outline':
-      return 'Readable section order'
+      return '읽기 흐름에 맞는 개요를 잡습니다'
     case 'drafts':
-      return 'Drafts written section by section'
+      return '섹션별 초안을 차례로 채웁니다'
     case 'review':
-      return 'Editorial quality pass'
+      return '검토 단계에서 빠진 논점을 다듬습니다'
     case 'final':
-      return 'Export-ready Markdown'
+      return '내보내기 직전 최종 글을 확인합니다'
   }
 }
 
@@ -722,7 +727,7 @@ function EmptyState(props: {
     return (
       <div className="empty-state loading-state" aria-live="polite">
         <span className="loading-dot" />
-        <p>Working on this stage right now.</p>
+        <p>지금 이 단계를 정리하고 있습니다.</p>
       </div>
     )
   }
@@ -730,7 +735,7 @@ function EmptyState(props: {
   if (props.status === 'error') {
     return (
       <div className="empty-state error-state">
-        <p>The run hit an error before this stage was completed.</p>
+        <p>이 단계가 끝나기 전에 오류가 발생했습니다.</p>
       </div>
     )
   }

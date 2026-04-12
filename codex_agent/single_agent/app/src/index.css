@@ -1,25 +1,33 @@
 :root {
-  --paper: #f4ede1;
-  --panel: rgba(255, 251, 245, 0.94);
-  --line: rgba(16, 35, 58, 0.12);
-  --ink: #10233a;
-  --muted: #5a6b7d;
-  --accent: #ff6a3d;
-  --accent-strong: #d94a21;
-  --accent-cool: #136f63;
+  --paper: #faf8ff;
+  --panel: rgba(255, 255, 255, 0.94);
+  --panel-soft: rgba(242, 243, 255, 0.9);
+  --panel-elevated: rgba(226, 231, 255, 0.82);
+  --line: rgba(115, 118, 136, 0.12);
+  --ghost-line: rgba(195, 197, 217, 0.28);
+  --ink: #131b2e;
+  --muted: #58657a;
+  --muted-strong: #434656;
+  --accent: #0052ff;
+  --accent-strong: #003ec7;
+  --accent-cool: #256c5a;
+  --danger: #a32937;
   --shadow-soft:
-    0 22px 44px rgba(16, 35, 58, 0.08),
-    0 8px 18px rgba(16, 35, 58, 0.05);
+    0 28px 48px rgba(19, 27, 46, 0.08),
+    0 10px 22px rgba(19, 27, 46, 0.05);
+  --shadow-glow: 0 24px 48px rgba(0, 82, 255, 0.12);
   font-family:
-    'Space Grotesk',
+    'Noto Sans KR',
+    'Manrope',
     'Segoe UI',
     sans-serif;
   line-height: 1.5;
   font-weight: 400;
   color: var(--ink);
   background:
-    radial-gradient(circle at top left, rgba(255, 106, 61, 0.12), transparent 26%),
-    linear-gradient(180deg, #f8f2e8, #efe6d8);
+    radial-gradient(circle at top left, rgba(0, 82, 255, 0.12), transparent 24%),
+    radial-gradient(circle at top right, rgba(83, 98, 140, 0.08), transparent 22%),
+    linear-gradient(180deg, #fbf9ff, #eef2ff 62%, #e7edff);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -46,7 +54,8 @@ input,
 select,
 textarea {
   font-family:
-    'Space Grotesk',
+    'Noto Sans KR',
+    'Manrope',
     'Segoe UI',
     sans-serif;
 }
@@ -62,7 +71,7 @@ button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 3px solid rgba(255, 106, 61, 0.24);
+  outline: 3px solid rgba(0, 82, 255, 0.2);
   outline-offset: 2px;
 }
 
@@ -70,9 +79,10 @@ h1,
 h2,
 h3 {
   font-family:
-    'Fraunces',
-    Georgia,
-    serif;
+    'Manrope',
+    'Noto Sans KR',
+    'Segoe UI',
+    sans-serif;
   line-height: 1.05;
   color: var(--ink);
 }
