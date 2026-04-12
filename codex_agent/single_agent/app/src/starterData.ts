@@ -5,31 +5,31 @@ import type { DeliverableCard, TopicPreset, WorkflowStage } from './contracts'
 export const workflowStages: WorkflowStage[] = [
   {
     id: 'research',
-    label: '리서치 결과',
+    label: '리서치 결과 · Research results',
     output: 'research_summary',
     description: '핵심 사실, 비교 포인트, 참고 근거를 한눈에 정리한다.',
   },
   {
     id: 'outline',
-    label: '개요 설계',
+    label: '개요 설계 · Outline',
     output: 'outline',
     description: '문단 순서와 흐름을 읽기 좋은 구조로 잡는다.',
   },
   {
     id: 'drafts',
-    label: '섹션 초안',
+    label: '섹션 초안 · Section drafts',
     output: 'section_drafts',
     description: '섹션별 초안을 쓰고 톤과 밀도를 맞춘다.',
   },
   {
     id: 'review',
-    label: '검토 메모',
+    label: '검토 메모 · Review notes',
     output: 'review_notes',
     description: '빠진 논점, 과장, 모호성을 빠르게 점검한다.',
   },
   {
     id: 'final',
-    label: '최종 글',
+    label: '최종 글 · Final post',
     output: 'final_post',
     description: '최종 Markdown과 내보내기 준비 상태를 확인한다.',
   },
@@ -38,22 +38,22 @@ export const workflowStages: WorkflowStage[] = [
 export const deliverables: DeliverableCard[] = [
   {
     id: 'manifest',
-    title: 'run_manifest.json',
+    title: '실행 기록 · run_manifest.json',
     description: '실행 시작/종료 시각, harness 이름, 상태를 남긴다.',
   },
   {
     id: 'artifacts',
-    title: 'artifact_index.json',
+    title: '산출물 목록 · artifact_index.json',
     description: '스크린샷, final URL, 결과 파일 목록을 모은다.',
   },
   {
     id: 'review',
-    title: 'review_report.md',
+    title: '리뷰 보고서 · review_report.md',
     description: '구현 요약, 리스크, 남은 이슈, 자체 평가를 남긴다.',
   },
   {
     id: 'scorecard',
-    title: 'scorecard.json',
+    title: '점수 카드 · scorecard.json',
     description: '기능, UX, 시각 완성도, 접근성, 절차 점수를 저장한다.',
   },
 ]
