@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import json
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
+
+from master_loop_state import load_state
+from master_loop_trace_sanity import analyze_trace, parse_events, read_tail
+from master_loop_validator import build_report as build_validator_report
 
 ROOT = Path('/home/user/projects/agent_setup/codex_agent')
 STATE = ROOT / '.omx/state/master-ux-loop.json'
@@ -57,10 +60,12 @@ def main() -> int:
         run(['python3', str(WATCHDOG)])
         return 0
 
-    state = json.loads(STATE.read_text(encoding='utf-8'))
+    state = load_state(STATE)
+    validator = build_validator_report(state)
+    trace = analyze_trace(parse_events(read_tail(LOG)), state)
     status = str(state.get('status', 'idle'))
     project_status = str(state.get('project_status', 'in_progress'))
-    hard_blocker = str(state.get('hard_blocker', 'false')).lower() == 'true'
+    hard_blocker = bool(state.get('hard_blocker', False))
     last_progress = parse_iso(state.get('last_progress_at')) or parse_iso(state.get('updated_at'))
     stale_minutes = None
     if last_progress is not None:
@@ -70,9 +75,19 @@ def main() -> int:
         log('project completion marker exists; no debug recovery action')
         return 0
 
+    if validator.get('false_completion_detected'):
+        log('validator detected false completion; invoking watchdog for recovery')
+        run(['python3', str(WATCHDOG)])
+        return 0
+
     if hard_blocker and stale_minutes is not None and stale_minutes > 25:
         log(f'hard blocker stale for {stale_minutes:.1f}m; running watchdog for self-heal attempt')
         run(['python3', str(WATCHDOG)])
+        return 0
+
+    if trace.get('errors') and stale_minutes is not None and stale_minutes > 15:
+        log(f'trace sanity errors persisted for {stale_minutes:.1f}m; invoking reset script')
+        run([str(RESET)])
         return 0
 
     if not runner_alive() and project_status == 'in_progress':
@@ -85,7 +100,7 @@ def main() -> int:
         run([str(RESET)])
         return 0
 
-    log('no recovery action needed')
+    log(f'no recovery action needed (status={status}, validator_errors={len(validator.get("errors", []))}, trace_errors={len(trace.get("errors", []))})')
     return 0
 
 

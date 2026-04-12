@@ -1,31 +1,24 @@
 {
   "harness": "single_agent",
-  "evaluated_at": "2026-04-12T05:37:23Z",
+  "evaluated_at": "2026-04-12T06:42:21Z",
   "l1_playwright": {
-    "smoke_total": 34,
+    "smoke_total": 28,
     "smoke_passed": 28,
-    "smoke_failed": 6,
-    "smoke_pass_rate": 0.8235,
-    "smoke_failed_tests": [
-      "journey: brief -> research -> outline -> draft/review -> final progression is visible",
-      "journey: final/export state exposes copy action after progression",
-      "journey: error path remains recoverable",
-      "journey: brief -> research -> outline -> draft/review -> final progression is visible",
-      "journey: final/export state exposes copy action after progression",
-      "journey: error path remains recoverable"
-    ]
+    "smoke_failed": 0,
+    "smoke_pass_rate": 1.0,
+    "smoke_failed_tests": []
   },
   "l2_quantitative": {
     "harness": "single_agent",
     "source_files": 7,
     "source_lines": 1785,
     "build_success": true,
-    "build_seconds": 1.49,
+    "build_seconds": 1.35,
     "bundle_bytes": 234872,
-    "smoke_total": 34,
+    "smoke_total": 28,
     "smoke_passed": 28,
-    "smoke_failed": 6,
-    "smoke_pass_rate": 0.8235,
+    "smoke_failed": 0,
+    "smoke_pass_rate": 1.0,
     "run_status": "completed",
     "run_duration_seconds": 685.0
   },
@@ -40,7 +33,7 @@
     "overall_score": 8.4
   },
   "final": {
-    "l1_smoke_score": 8.23,
+    "l1_smoke_score": 10.0,
     "l2_build_score": 10.0,
     "l3_subjective_score": 8.4,
     "l3_missing": false,
@@ -49,6 +42,6 @@
       "l2": 0.2,
       "l3": 0.5
     },
-    "final_score": 8.67
+    "final_score": 9.2
   }
 }

@@ -8,6 +8,11 @@ import socket
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
+
+from master_loop_state import load_state, normalize_remaining_harnesses, save_state
+from master_loop_trace_sanity import analyze_trace, parse_events, read_tail
+from master_loop_validator import build_report as build_validator_report
 
 ROOT = Path('/home/user/projects/agent_setup/codex_agent')
 STATE_PATH = ROOT / '.omx/state/master-ux-loop.json'
@@ -20,7 +25,10 @@ BLOCK_MARKER = ROOT / '.omx/logs/master-ux-benchmark-v2.blocked'
 RUNNER_SCRIPT = ROOT / 'scripts/run_master_ux_worker.sh'
 SYNC_SCRIPT = ROOT / 'scripts/openclaw_sync_codex_oauth.py'
 GIT_CHECKPOINT_SCRIPT = ROOT / 'scripts/git_state_checkpoint_watchdog.py'
+BASELINE_SCRIPT = ROOT / 'scripts/master_loop_baseline_metrics.py'
 STATUS_SCRIPT = ROOT / 'scripts/openclaw_master_loop_status.sh'
+VALIDATOR_REPORT_PATH = ROOT / '.omx/state/master-loop-validator.json'
+TRACE_REPORT_PATH = ROOT / '.omx/state/master-loop-trace-sanity.json'
 SESSION = 'ux-master-bg'
 RUNNER_WINDOW = 'runner'
 LOG_WINDOW = 'log'
@@ -28,6 +36,7 @@ HEARTBEAT_WINDOW = 'heartbeat10'
 ARCHIVE_ROOT = ROOT / '.omx/logs/archive'
 BLOCKER_AUTO_CLEAR_MINUTES = 10
 STALL_TIMEOUT_MINUTES = 18
+TRACE_RESTART_THRESHOLD = 2
 TRANSIENT_BLOCKER_HINTS = (
     'oauth',
     'refresh',
@@ -50,63 +59,17 @@ def log(msg: str) -> None:
         fh.write(f'[{utc_now()}] watchdog: {msg}\n')
 
 
-def normalize_bool(value) -> bool:
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, str):
-        lowered = value.strip().lower()
-        if lowered in {'true', '1', 'yes'}:
-            return True
-        if lowered in {'false', '0', 'no', '', 'null', 'none'}:
-            return False
-    return bool(value)
+def write_report(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
 
 
-def normalize_int(value, default=0) -> int:
-    try:
-        return int(value)
-    except Exception:
-        return default
+def read_state() -> dict[str, Any]:
+    return load_state(STATE_PATH)
 
 
-def normalize_state(state: dict) -> dict:
-    state['hard_blocker'] = normalize_bool(state.get('hard_blocker', False))
-    state['next_cycle_required'] = normalize_bool(state.get('next_cycle_required', True))
-    state['cycle'] = normalize_int(state.get('cycle', 0), 0)
-    blocker_reason = state.get('blocker_reason')
-    if blocker_reason in (True, False, None):
-        state['blocker_reason'] = '' if not blocker_reason else str(blocker_reason)
-    remaining = state.get('remaining_harnesses')
-    if remaining in (None, False):
-        state['remaining_harnesses'] = ''
-    return state
-
-
-def read_state() -> dict:
-    if STATE_PATH.exists():
-        return normalize_state(json.loads(STATE_PATH.read_text(encoding='utf-8')))
-    return normalize_state({
-        'status': 'idle',
-        'cycle': 0,
-        'project_status': 'in_progress',
-        'cycle_status': 'idle',
-        'session': SESSION,
-        'runner_window': RUNNER_WINDOW,
-        'log_path': str(LOG_PATH),
-        'last_path': str(LAST_PATH),
-        'completion_marker': str(PROJECT_FINAL_MARKER),
-        'relaunch_count': 0,
-        'hard_blocker': False,
-        'next_cycle_required': True,
-        'updated_at': utc_now(),
-    })
-
-
-def write_state(state: dict) -> None:
-    STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    state = normalize_state(state)
-    state['updated_at'] = utc_now()
-    STATE_PATH.write_text(json.dumps(state, indent=2) + '\n', encoding='utf-8')
+def write_state(state: dict[str, Any]) -> None:
+    save_state(STATE_PATH, state)
 
 
 def run(cmd: list[str]) -> subprocess.CompletedProcess[str]:
@@ -141,7 +104,7 @@ def blocker_age_minutes() -> float:
     return (datetime.now(timezone.utc).timestamp() - BLOCK_MARKER.stat().st_mtime) / 60.0
 
 
-def try_clear_transient_blocker(state: dict) -> tuple[dict, bool]:
+def try_clear_transient_blocker(state: dict[str, Any]) -> tuple[dict[str, Any], bool]:
     if not (BLOCK_MARKER.exists() or state.get('hard_blocker')):
         return state, False
 
@@ -154,7 +117,9 @@ def try_clear_transient_blocker(state: dict) -> tuple[dict, bool]:
         if BLOCK_MARKER.exists():
             BLOCK_MARKER.unlink(missing_ok=True)
         state['hard_blocker'] = False
+        state['blocker_reason'] = ''
         state['status'] = 'idle'
+        state['cycle_status'] = 'idle'
         state['blocker_cleared_at'] = utc_now()
         log('cleared transient hard-blocker automatically after gateway/auth health recovered')
         return state, True
@@ -206,7 +171,7 @@ def file_age_minutes(path: Path) -> float | None:
     return (datetime.now(timezone.utc).timestamp() - path.stat().st_mtime) / 60.0
 
 
-def last_progress_age_minutes(state: dict) -> float | None:
+def last_progress_age_minutes(state: dict[str, Any]) -> float | None:
     ages: list[float] = []
     ts = parse_iso(state.get('last_progress_at')) or parse_iso(state.get('last_worker_start_at'))
     if ts is not None:
@@ -220,7 +185,7 @@ def last_progress_age_minutes(state: dict) -> float | None:
     return min(ages)
 
 
-def archive_cycle_artifacts(state: dict) -> None:
+def archive_cycle_artifacts(state: dict[str, Any]) -> None:
     cycle = state.get('cycle', 0)
     stamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
     target = ARCHIVE_ROOT / f'cycle-{cycle}-{stamp}'
@@ -232,6 +197,16 @@ def archive_cycle_artifacts(state: dict) -> None:
     log(f'archived cycle artifacts to {target}')
 
 
+def archive_invalid_project_final() -> None:
+    stamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
+    target = ARCHIVE_ROOT / f'invalid-project-final-{stamp}'
+    target.mkdir(parents=True, exist_ok=True)
+    for src in (PROJECT_FINAL_MARKER, LEGACY_FINAL_MARKER):
+        if src.exists():
+            shutil.move(str(src), str(target / src.name))
+    log(f'archived invalid project-final markers to {target}')
+
+
 def is_completed() -> bool:
     if PROJECT_FINAL_MARKER.exists() or LEGACY_FINAL_MARKER.exists():
         return True
@@ -241,7 +216,7 @@ def is_completed() -> bool:
     return False
 
 
-def launch_runner(state: dict, reason: str) -> dict:
+def launch_runner(state: dict[str, Any], reason: str) -> dict[str, Any]:
     windows = run(['tmux', 'list-windows', '-t', SESSION, '-F', '#W']).stdout.splitlines()
     if RUNNER_WINDOW in windows:
         run(['tmux', 'kill-window', '-t', f'{SESSION}:{RUNNER_WINDOW}'])
@@ -252,8 +227,64 @@ def launch_runner(state: dict, reason: str) -> dict:
     state['relaunch_count'] = int(state.get('relaunch_count', 0)) + 1
     state['cycle_status'] = 'running'
     state['project_status'] = 'in_progress'
+    state['next_cycle_required'] = False
     log(f'launched runner window (reason={reason})')
     return state
+
+
+def checkpoint_git() -> None:
+    checkpoint = subprocess.run(['python3', str(GIT_CHECKPOINT_SCRIPT)], capture_output=True, text=True)
+    if checkpoint.returncode != 0:
+        log(f'git checkpoint watchdog failed: {checkpoint.stderr.strip() or checkpoint.stdout.strip()}')
+
+
+def run_quality_reports(state: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    validator = build_validator_report(state)
+    trace = analyze_trace(parse_events(read_tail(LOG_PATH)), state)
+    write_report(VALIDATOR_REPORT_PATH, validator)
+    write_report(TRACE_REPORT_PATH, trace)
+    baseline_proc = subprocess.run(['python3', str(BASELINE_SCRIPT), '--quiet'], capture_output=True, text=True)
+    if baseline_proc.returncode != 0:
+        log(f'baseline metrics generation failed: {baseline_proc.stderr.strip() or baseline_proc.stdout.strip()}')
+    state['validator_error_count'] = len(validator['errors'])
+    state['validator_warning_count'] = len(validator['warnings'])
+    state['trace_error_count'] = len(trace['errors'])
+    state['trace_warning_count'] = len(trace['warnings'])
+    if validator['errors'] or trace['errors']:
+        state['regression_count'] = int(state.get('regression_count', 0)) + 1
+    else:
+        state['regression_count'] = 0
+    return state, validator, trace
+
+
+def repair_false_completion(state: dict[str, Any]) -> dict[str, Any]:
+    archive_invalid_project_final()
+    state['status'] = 'cycle_completed'
+    state['project_status'] = 'in_progress'
+    state['cycle_status'] = 'completed'
+    state['next_cycle_required'] = True
+    state['current_phase'] = 'validator-recovery'
+    state['current_harness'] = state.get('current_harness') or 'benchmark_foundation'
+    state['last_progress_summary'] = 'validator recovered an invalid project completion and queued the next cycle'
+    log('validator detected false project completion; reverting to in-progress state')
+    return state
+
+
+def maybe_restart_for_regression(state: dict[str, Any], validator: dict[str, Any], trace: dict[str, Any]) -> bool:
+    severe = bool(trace['errors']) or any('required state fields' in error for error in validator['errors'])
+    if not severe:
+        return False
+    if int(state.get('regression_count', 0)) < TRACE_RESTART_THRESHOLD:
+        return False
+    log('quality sanity checks crossed restart threshold; recycling runner')
+    run(['tmux', 'kill-window', '-t', f'{SESSION}:{RUNNER_WINDOW}'])
+    state['status'] = 'stalled'
+    state['cycle_status'] = 'stalled'
+    state['last_progress_summary'] = 'watchdog recycled runner after repeated validator/trace regressions'
+    launch_runner(state, 'quality-regression')
+    write_state(state)
+    checkpoint_git()
+    return True
 
 
 def main() -> int:
@@ -268,10 +299,19 @@ def main() -> int:
     if cleared:
         write_state(state)
 
+    state, validator, trace = run_quality_reports(state)
+
+    if validator.get('false_completion_detected'):
+        state = repair_false_completion(state)
+        write_state(state)
+        checkpoint_git()
+        validator = build_validator_report(read_state())
+
     if BLOCK_MARKER.exists() or state.get('hard_blocker'):
         state['status'] = 'blocked'
         state['cycle_status'] = 'blocked'
         write_state(state)
+        checkpoint_git()
         log('blocked marker present; no restart performed')
         return 0
 
@@ -282,29 +322,29 @@ def main() -> int:
         state['next_cycle_required'] = False
         state['completed_at'] = utc_now()
         write_state(state)
-        checkpoint = subprocess.run(['python3', str(GIT_CHECKPOINT_SCRIPT)], capture_output=True, text=True)
-        if checkpoint.returncode != 0:
-            log(f'git checkpoint watchdog failed: {checkpoint.stderr.strip() or checkpoint.stdout.strip()}')
+        checkpoint_git()
         log('completion marker detected; watchdog exiting without restart')
         return 0
 
     if runner_alive():
+        if maybe_restart_for_regression(state, validator, trace):
+            return 0
         progress_age = last_progress_age_minutes(state)
         if progress_age is not None and progress_age > STALL_TIMEOUT_MINUTES:
             log(f'runner appears stalled (progress age {progress_age:.1f}m); recycling runner')
             run(['tmux', 'kill-window', '-t', f'{SESSION}:{RUNNER_WINDOW}'])
             state['cycle_status'] = 'stalled'
             state['status'] = 'stalled'
+            state['last_progress_summary'] = f'watchdog stalled-progress recycle after {progress_age:.1f}m without fresh heartbeat'
             state = launch_runner(state, 'stalled-progress')
             write_state(state)
+            checkpoint_git()
             return 0
         state['status'] = 'running'
         state['cycle_status'] = 'running'
         state['last_seen_running_at'] = utc_now()
         write_state(state)
-        checkpoint = subprocess.run(['python3', str(GIT_CHECKPOINT_SCRIPT)], capture_output=True, text=True)
-        if checkpoint.returncode != 0:
-            log(f'git checkpoint watchdog failed: {checkpoint.stderr.strip() or checkpoint.stdout.strip()}')
+        checkpoint_git()
         log('runner already active; no action needed')
         return 0
 
@@ -313,18 +353,22 @@ def main() -> int:
         state['status'] = 'idle'
         state['cycle_status'] = 'idle'
         state['current_phase'] = 'next_cycle_pending'
+        state['current_harness'] = normalize_remaining_harnesses(state.get('remaining_harnesses'))[0] if normalize_remaining_harnesses(state.get('remaining_harnesses')) else 'benchmark_foundation'
         state = launch_runner(state, 'next-cycle-required')
         write_state(state)
-        checkpoint = subprocess.run(['python3', str(GIT_CHECKPOINT_SCRIPT)], capture_output=True, text=True)
-        if checkpoint.returncode != 0:
-            log(f'git checkpoint watchdog failed: {checkpoint.stderr.strip() or checkpoint.stdout.strip()}')
+        checkpoint_git()
+        return 0
+
+    if validator['errors'] and not runner_alive():
+        state['last_progress_summary'] = 'watchdog relaunched runner to recover validator errors while idle'
+        state = launch_runner(state, 'validator-errors')
+        write_state(state)
+        checkpoint_git()
         return 0
 
     state = launch_runner(state, 'runner-not-active')
     write_state(state)
-    checkpoint = subprocess.run(['python3', str(GIT_CHECKPOINT_SCRIPT)], capture_output=True, text=True)
-    if checkpoint.returncode != 0:
-        log(f'git checkpoint watchdog failed: {checkpoint.stderr.strip() or checkpoint.stdout.strip()}')
+    checkpoint_git()
     return 0
 
 

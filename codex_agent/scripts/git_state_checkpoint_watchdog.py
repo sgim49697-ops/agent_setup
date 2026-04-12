@@ -19,8 +19,11 @@ TRACK_KEYS = [
     "project_status",
     "cycle_status",
     "current_phase",
+    "current_harness",
     "remaining_harnesses",
     "last_progress_summary",
+    "validator_error_count",
+    "trace_error_count",
 ]
 
 
@@ -41,7 +44,7 @@ def read_json(path: Path) -> dict:
 
 def write_json(path: Path, payload: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
 def signature(state: dict) -> dict:
@@ -77,9 +80,7 @@ def main() -> int:
         return 0
 
     msg = (
-        f"Auto checkpoint cycle={state.get('cycle')} "
-        f"phase={state.get('current_phase')} "
-        f"status={state.get('cycle_status')}"
+        f"Preserve automation progress for cycle {state.get('cycle')}"
     )
     proc = subprocess.run(
         ["bash", str(CHECKPOINT_SCRIPT), "--push", "--message", msg],
@@ -93,7 +94,10 @@ def main() -> int:
         return proc.returncode
 
     write_json(CHECKPOINT_STATE, {"signature": current, "updated_at": utc_now()})
-    log(f"git checkpoint committed+pushed ({msg})")
+    log(
+        "git checkpoint committed+pushed "
+        f"(cycle={state.get('cycle')} phase={state.get('current_phase')} harness={state.get('current_harness')})"
+    )
     return 0
 
 
