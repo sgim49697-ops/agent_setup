@@ -26,6 +26,7 @@ import {
   evaluationChecklist,
   reviewLenses,
   topicPresets,
+  workflowStages,
   writerLanes,
 } from './starterData'
 
@@ -89,9 +90,35 @@ const initialGeneration: GenerationState = {
   completedStages: [],
   unitStatuses: emptyUnitStatuses(),
   outputs: {},
-  statusMessage: 'Coordinator is waiting for a brief. Generate the newsroom board to lock the common frame first.',
+  statusMessage: '코디네이터가 공통 브리프를 기다리고 있습니다. 먼저 보드를 생성해 공통 프레임을 고정하세요.',
   errorMessage: null,
 }
+
+const stageHookLabels = {
+  research: 'Research results',
+  outline: 'Outline',
+  drafts: 'Section drafts',
+  review: 'Review notes',
+  final: 'Final post',
+} as const
+
+const audienceOptions: { value: Audience; label: string }[] = [
+  { value: 'beginner', label: '입문자' },
+  { value: 'practitioner', label: '실무자' },
+  { value: 'advanced', label: '고급 사용자' },
+]
+
+const toneOptions: { value: Tone; label: string }[] = [
+  { value: 'clear', label: '명료한 설명' },
+  { value: 'pragmatic', label: '실무 중심' },
+  { value: 'opinionated', label: '선명한 관점' },
+]
+
+const lengthOptions: { value: Length; label: string }[] = [
+  { value: 'short', label: '짧게' },
+  { value: 'medium', label: '중간' },
+  { value: 'long', label: '길게' },
+]
 
 function unique<T>(items: T[]) {
   return Array.from(new Set(items))
@@ -110,7 +137,7 @@ function reducer(state: AppState, action: Action): AppState {
           state.generation.status === 'error'
             ? {
                 ...initialGeneration,
-                statusMessage: 'Brief updated. Generate again to rebuild the newsroom board from the top.',
+                statusMessage: '브리프를 수정했습니다. 다시 생성해 보드를 처음부터 재구성하세요.',
               }
             : state.generation,
       }
@@ -120,7 +147,7 @@ function reducer(state: AppState, action: Action): AppState {
         inputs: action.payload,
         generation: {
           ...state.generation,
-          statusMessage: 'Preset loaded. Coordinator can now split the article into lane ownership.',
+          statusMessage: '프리셋을 불러왔습니다. 이제 코디네이터가 글을 레인별 소유 범위로 나눌 수 있습니다.',
           errorMessage: null,
         },
         copyFeedback: '',
@@ -280,7 +307,7 @@ function reducer(state: AppState, action: Action): AppState {
             coordinator: 'error',
           },
           outputs: {},
-          statusMessage: 'Coordinator stopped before the common brief could be finalized.',
+          statusMessage: '공통 브리프가 완성되기 전에 코디네이터가 멈췄습니다.',
           errorMessage: action.message,
         },
         copyFeedback: '',
@@ -296,25 +323,36 @@ function sleep(ms: number) {
 
 function statusLabel(status: GenerationStatus) {
   const labels: Record<GenerationStatus, string> = {
-    initial: 'Initial',
-    loading: 'Building board',
-    populated: 'Board populated',
-    'review-complete': 'Review complete',
-    'export-ready': 'Export ready',
-    error: 'Error',
+    initial: '준비 전',
+    loading: '보드 구성 중',
+    populated: '보드 준비 완료',
+    'review-complete': '리뷰 정리 완료',
+    'export-ready': '내보내기 준비 완료',
+    error: '오류',
   }
+
+  return labels[status]
+}
+
+function unitStatusLabel(status: GenerationState['unitStatuses'][keyof GenerationState['unitStatuses']]) {
+  const labels = {
+    pending: '대기',
+    loading: '진행 중',
+    complete: '완료',
+    error: '오류',
+  } as const
 
   return labels[status]
 }
 
 function laneStatusLabel(id: WriterLaneId) {
   if (id === 'writer_a') {
-    return 'Opening lane'
+    return '도입 레인'
   }
   if (id === 'writer_b') {
-    return 'Structure lane'
+    return '구조 레인'
   }
-  return 'Closing lane'
+  return '마무리 레인'
 }
 
 function App() {
@@ -333,7 +371,7 @@ function App() {
 
     dispatch({
       type: 'start-run',
-      message: 'Coordinator is locking the common brief before the newsroom splits into three section lanes.',
+      message: '코디네이터가 공통 브리프를 고정한 뒤, 보드를 세 개의 섹션 레인으로 나눕니다.',
     })
 
     await sleep(260)
@@ -345,7 +383,7 @@ function App() {
       dispatch({
         type: 'set-error',
         message:
-          'Coordinator research stage could not produce a valid brief. Update the topic and rerun the newsroom board.',
+          '코디네이터 리서치 단계에서 유효한 브리프를 만들지 못했습니다. 주제를 수정한 뒤 보드를 다시 실행하세요.',
       })
       return
     }
@@ -357,7 +395,7 @@ function App() {
       brief,
       outline,
       assignments,
-      message: 'Coordinator brief is locked. Outline, lane assignments, and merge criteria are now visible.',
+      message: '코디네이터 브리프를 고정했습니다. 이제 아웃라인, 레인 배정, 머지 기준을 확인할 수 있습니다.',
     })
 
     await sleep(220)
@@ -367,7 +405,7 @@ function App() {
 
     dispatch({
       type: 'start-lanes',
-      message: 'Writer A, B, and C are drafting only their owned sections in parallel.',
+      message: '라이터 A, B, C가 자기 소유 섹션만 병렬로 작성하고 있습니다.',
     })
 
     const lanePackets = (
@@ -382,7 +420,7 @@ function App() {
           dispatch({
             type: 'set-lane-packet',
             packet,
-            message: `${laneStatusLabel(packet.writerId)} finished ${packet.draftPreview.length} preview block${packet.draftPreview.length > 1 ? 's' : ''}.`,
+            message: `${laneStatusLabel(packet.writerId)}이 미리보기 블록 ${packet.draftPreview.length}개를 마쳤습니다.`,
           })
           return packet
         }),
@@ -395,7 +433,7 @@ function App() {
 
     dispatch({
       type: 'start-merge',
-      message: 'Merge desk is compressing repetition, inserting transitions, and aligning tone across the bundle.',
+      message: '머지 데스크가 중복을 줄이고, 전환을 넣고, 전체 묶음의 톤을 정렬하고 있습니다.',
     })
 
     await sleep(300)
@@ -408,7 +446,7 @@ function App() {
     dispatch({
       type: 'set-merge-report',
       report: mergeReport,
-      message: 'Merge review is complete. The final article is ready to be assembled for reading and export.',
+      message: '머지 리뷰를 마쳤습니다. 이제 읽기용 최종 글과 내보내기 구성을 준비할 수 있습니다.',
     })
 
     await sleep(180)
@@ -421,7 +459,7 @@ function App() {
     dispatch({
       type: 'finalize-run',
       outputs: assembleFinalOutputs(brief, outline, assignments, lanePackets, mergeReport, finalArticle),
-      message: 'Newsroom board is complete. The final article is reader-ready and Markdown export is available on demand.',
+      message: '뉴스룸 보드가 완료됐습니다. 최종 글은 바로 읽을 수 있고, 필요할 때 마크다운을 내보낼 수 있습니다.',
     })
   }
 
@@ -431,7 +469,7 @@ function App() {
     if (!markdown) {
       dispatch({
         type: 'set-copy-feedback',
-        message: 'Generate the merged article first. Copy only succeeds after export-ready state.',
+        message: '먼저 병합된 글을 생성하세요. 내보내기 준비 완료 상태가 된 뒤에만 복사할 수 있습니다.',
       })
       return
     }
@@ -440,12 +478,12 @@ function App() {
       await navigator.clipboard.writeText(markdown)
       dispatch({
         type: 'set-copy-feedback',
-        message: 'Merged markdown copied from the final article export.',
+        message: '최종 글 내보내기에서 마크다운을 복사했습니다.',
       })
     } catch {
       dispatch({
         type: 'set-copy-feedback',
-        message: 'Clipboard copy failed in this browser context, but the final Markdown remains visible below.',
+        message: '이 브라우저에서는 클립보드 복사에 실패했지만, 아래에 최종 마크다운이 그대로 보입니다.',
       })
     }
   }
@@ -476,23 +514,24 @@ function App() {
   const finalArticle = state.generation.outputs.final_article
   const completedLaneCount = lanePackets.length
   const mergeMoment = !brief
-    ? 'Waiting for the coordinator to lock the shared thesis.'
+    ? '코디네이터가 공통 논지를 고정하기를 기다리는 중입니다.'
     : !completedLaneCount
-      ? 'Coordinator is done. Lanes still need to deliver their section packets.'
+      ? '코디네이터는 끝났지만 각 레인이 아직 자기 섹션 패킷을 넘겨야 합니다.'
       : !mergeReport
-        ? 'All lane packets are in. The merge desk is condensing duplication and transitions.'
+        ? '모든 레인 패킷이 도착했습니다. 이제 머지 데스크가 중복과 전환을 정리합니다.'
         : finalArticle
-          ? 'Merge is complete. Export is unlocked and the article is ready to hand off.'
-          : 'Merge review is complete. Final assembly is the last active move.'
+          ? '머지가 끝났습니다. 내보내기가 열렸고 글을 바로 전달할 수 있습니다.'
+          : '머지 리뷰는 끝났고, 이제 최종 조립만 남았습니다.'
   const nextAction = !brief
-    ? 'Generate the newsroom board to create the common frame.'
+    ? '보드를 생성해 공통 프레임을 먼저 만드세요.'
     : completedLaneCount < writerLanes.length
-      ? 'Wait for every lane to finish drafting before promoting the reader surface.'
+      ? '모든 레인이 초안을 마칠 때까지 기다린 뒤 독자용 화면을 올리세요.'
       : !mergeReport
-        ? 'Review the merge fixes and let the desk resolve overlap.'
-        : 'Review the merged article, then export the markdown.'
+        ? '머지 수정안을 검토하고, 겹침을 정리하도록 데스크를 밀어주세요.'
+        : '병합된 글을 검토한 뒤 마크다운을 내보내세요.'
 
   const currentReaderPanel = finalArticle ? activeReaderPanel ?? 'final' : 'review'
+  const liveStatusHook = state.generation.status === 'export-ready' ? 'export-ready' : null
   const markdownPreview = finalArticle
     ? finalArticle.markdown.split('\n').slice(0, 8).join('\n')
     : ''
@@ -501,10 +540,10 @@ function App() {
     screenshots: ['runs/desktop-verification.png', 'runs/mobile-verification.png'],
     final_urls: ['http://127.0.0.1:<dev-port>'],
     notes: [
-      'section ownership visible',
-      'merge fixes visible',
-      'reader-first final article verified',
-      'evaluation completed after verification',
+      '섹션 소유 범위 노출',
+      '머지 수정 포인트 노출',
+      '독자 우선 최종 글 검증',
+      '검증 뒤 평가 완료',
     ],
     deliverables: deliverables.map((item) => item.title),
   }
@@ -513,24 +552,27 @@ function App() {
     <main className="newsroom-shell">
       <section className="hero">
         <div className="hero-copy">
-          <p className="eyebrow">Parallel Sections Harness</p>
-          <h1>Tech Blog Post Generator</h1>
+          <p className="eyebrow">병렬 섹션 보드</p>
+          <h1>기술 블로그 포스트 생성 워크스페이스</h1>
           <p className="lead">
-            Coordinator fixes the brief, lanes draft in parallel, and the merge desk turns the
-            bundle into one article people can actually read end to end.
+            코디네이터가 공통 브리프를 먼저 고정하고, 세 개의 레인이 병렬로 초안을 만든 뒤,
+            머지 데스크가 하나의 읽기 좋은 글로 묶습니다.
           </p>
 
           <div className="hero-actions">
             <button
               type="button"
               className="primary"
+              aria-label="Generate post"
               onClick={handleGenerate}
               disabled={state.generation.status === 'loading'}
             >
-              {state.generation.status === 'loading' ? 'Generating...' : 'Generate post'}
+              <span className="action-copy">
+                {state.generation.status === 'loading' ? '생성 중...' : '글 생성'}
+              </span>
             </button>
-            <button type="button" className="secondary" onClick={copyMarkdown}>
-              Copy markdown
+            <button type="button" className="secondary" aria-label="Copy markdown" onClick={copyMarkdown}>
+              <span className="action-copy">마크다운 복사</span>
             </button>
           </div>
 
@@ -538,34 +580,35 @@ function App() {
             <span className={`status-pill status-${state.generation.status}`}>
               {statusLabel(state.generation.status)}
             </span>
+            {liveStatusHook ? <small className="live-hook">{liveStatusHook}</small> : null}
             <p>{state.generation.statusMessage}</p>
             {state.copyFeedback ? <small>{state.copyFeedback}</small> : null}
           </div>
 
           <div className="next-move-card">
-            <p className="block-label">Next move</p>
-            <h2>{finalArticle ? 'Review and export the merged article' : 'Keep the lane board moving'}</h2>
+            <p className="block-label">다음 행동</p>
+            <h2>{finalArticle ? '병합된 글을 검토하고 내보내세요' : '레인 보드가 멈추지 않게 이어가세요'}</h2>
             <p>{nextAction}</p>
             <div className="chip-row">
-              <span className="meta-chip">Research results + Outline</span>
-              <span className="meta-chip">Section drafts</span>
-              <span className="meta-chip">Review notes + Final post</span>
+              <span className="meta-chip">공통 리서치와 아웃라인</span>
+              <span className="meta-chip">병렬 섹션 초안</span>
+              <span className="meta-chip">리뷰와 최종 글</span>
             </div>
           </div>
 
           {state.generation.errorMessage ? (
             <div className="error-panel" role="alert">
-              <strong>Coordinator brief failed</strong>
+              <strong>코디네이터 브리프 생성 실패</strong>
               <p>{state.generation.errorMessage}</p>
             </div>
           ) : null}
         </div>
 
         <aside className="panel-surface input-rail">
-          <p className="panel-label">Input rail</p>
+          <p className="panel-label">입력 패널</p>
           <form className="input-grid">
             <label>
-              <span>Topic</span>
+              <span>주제</span>
               <textarea
                 aria-label="Topic"
                 name="topic"
@@ -575,56 +618,62 @@ function App() {
               />
             </label>
             <label>
-              <span>Audience</span>
+              <span>독자층</span>
               <select
                 aria-label="Audience"
                 name="audience"
                 value={state.inputs.audience}
                 onChange={(event) => updateField('audience', event.target.value as Audience)}
               >
-                <option value="beginner">Beginner</option>
-                <option value="practitioner">Practitioner</option>
-                <option value="advanced">Advanced</option>
+                {audienceOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </label>
             <label>
-              <span>Tone</span>
+              <span>톤</span>
               <select
                 aria-label="Tone"
                 name="tone"
                 value={state.inputs.tone}
                 onChange={(event) => updateField('tone', event.target.value as Tone)}
               >
-                <option value="clear">Clear</option>
-                <option value="pragmatic">Pragmatic</option>
-                <option value="opinionated">Opinionated</option>
+                {toneOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </label>
             <label>
-              <span>Length</span>
+              <span>분량</span>
               <select
                 aria-label="Length"
                 name="length"
                 value={state.inputs.length}
                 onChange={(event) => updateField('length', event.target.value as Length)}
               >
-                <option value="short">Short</option>
-                <option value="medium">Medium</option>
-                <option value="long">Long</option>
+                {lengthOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </label>
           </form>
           <p className="rail-note">
-            This harness stays frontend-only and uses deterministic local generation so the
-            orchestration pattern is what you are evaluating.
+            이 하네스는 프런트엔드만으로 동작하며, 결정론적 로컬 생성으로 오케스트레이션 패턴
+            자체를 평가할 수 있게 설계돼 있습니다.
           </p>
 
           <details className="quick-briefs">
             <summary className="quick-briefs-summary">
-              <span className="panel-label">Quick briefs</span>
+              <span className="panel-label">빠른 브리프</span>
               <div>
-                <strong>Load a preset only when you want a faster starting brief</strong>
-                <p>Presets are secondary to the board setup, so they stay collapsed by default.</p>
+                <strong>시작 속도를 높이고 싶을 때만 프리셋을 불러오세요</strong>
+                <p>프리셋은 보드 구성보다 뒤에 오는 보조 도구라 기본값으로 접혀 있습니다.</p>
               </div>
             </summary>
 
@@ -643,6 +692,35 @@ function App() {
             </div>
           </details>
         </aside>
+      </section>
+
+      <section className="panel-surface stage-panel">
+        <div className="section-head">
+          <p className="eyebrow">단계 스트립</p>
+          <h2>공통 프레임에서 병렬 작성, 머지, 최종 글까지 한 번에 추적합니다</h2>
+          <p>Stitch 기준에 맞춰 현재 단계와 다음 전환을 첫 화면에서 바로 읽을 수 있게 정리했습니다.</p>
+        </div>
+
+        <div className="stage-grid">
+          {workflowStages.map((stage) => {
+            const isCurrent = state.generation.currentStage === stage.id
+            const isComplete = state.generation.completedStages.includes(stage.id)
+
+            return (
+              <article
+                key={stage.id}
+                className={`stage-card ${isCurrent ? 'is-current' : ''} ${isComplete ? 'is-complete' : ''}`}
+              >
+                <div className="hook-row">
+                  <p className="block-label">{stage.label}</p>
+                  <span className="hook-chip">{stageHookLabels[stage.id]}</span>
+                </div>
+                <h3>{isCurrent ? '현재 진행 단계' : isComplete ? '완료된 단계' : '다음 대기 단계'}</h3>
+                <p>{stage.description}</p>
+              </article>
+            )
+          })}
+        </div>
       </section>
 
       <section className="board-priority">

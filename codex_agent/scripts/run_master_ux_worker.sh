@@ -97,7 +97,7 @@ if [[ -n "$LAST_GATE_WARNINGS" ]]; then
   QUALITY_GATE_WARNING_MEMORY="- Previous cycle warning for $ACTIVE_HARNESS: $LAST_GATE_WARNINGS"
 fi
 
-DESIGNER_VERIFIER_LINE='- Use the $benchmark-cycle skill as the operating procedure. For visible UI changes, follow designer-grade review using .codex/prompts/designer.md. Before bounded completion, run a verifier-grade pass using .codex/prompts/verifier.md against the active harness results.'
+DESIGNER_VERIFIER_LINE='- Use designer-grade review from .codex/prompts/designer.md and verifier-grade review from .codex/prompts/verifier.md when the harness reaches its edit/closure boundary.'
 
 update_state status running
 update_state project_status in_progress
@@ -127,8 +127,11 @@ Required outcomes for this cycle:
 5. Visible copy must be Korean-first. English is allowed only for stable test hooks in aria/live-region text.
 6. Keep state fresh with `python3 scripts/master_loop_state.py .omx/state/master-ux-loop.json <key> <value> ...`, including current_phase, current_harness, last_progress_at, last_progress_summary, remaining_harnesses.
 7. Use `$benchmark-cycle` as the baseline workflow shell for this cycle.
-8. For visible UI/UX changes, use designer-grade judgment from `.codex/prompts/designer.md`; before closure, use verifier-grade judgment from `.codex/prompts/verifier.md`.
-9. At the end, run `python3 scripts/master_loop_quality_gate.py --active-harness $ACTIVE_HARNESS --enforce`. If the project is not truly complete, write only the cycle-complete marker.
+8. Before finishing any edit phase, invoke `$ko-copy` discipline on the active harness so Korean-first visible copy passes the gate.
+9. For visible UI/UX changes, use a bounded trio: designer-grade proposal (`.codex/prompts/designer.md`) -> critic challenge (`.codex/prompts/critic.md`) -> final executor edit.
+10. During browser-review, use `$visual-verdict` if before/after screenshots or reference images are available.
+11. Before bounded completion, run verifier-grade judgment from `.codex/prompts/verifier.md` and then `$code-review` on the changed harness scope.
+12. Run `$harness-gate` semantics via `python3 scripts/master_loop_quality_gate.py --active-harness $ACTIVE_HARNESS --enforce`. If the project is not truly complete, write only the cycle-complete marker.
 
 Dynamic guards:
 $MUST_SHRINK_LINE
@@ -136,6 +139,7 @@ $REVIEW_ONLY_LINE
 $QUALITY_GATE_MEMORY
 $QUALITY_GATE_WARNING_MEMORY
 $DESIGNER_VERIFIER_LINE
+- If stagnant_cycle_count >= 3 or the same gate error repeats, invoke `$stagnant-breaker` semantics before deciding whether to continue or hard-block.
 PROMPT_EOF
 )
 
