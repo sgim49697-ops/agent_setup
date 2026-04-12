@@ -153,18 +153,18 @@ Required outcomes for this cycle:
 1. Work only on $ACTIVE_HARNESS until you either remove it from remaining_harnesses after real edit+verify+browser-review work, or declare a hard blocker.
 2. Use fine-grained phases only: $ACTIVE_HARNESS-edit, $ACTIVE_HARNESS-verify, $ACTIVE_HARNESS-browser-review, quality-gate, cycle-validation, cycle-resume.
 3. Before visible UI edits, read docs/stitch-ux-reference.md and use Stitch MCP first.
-4. For browser review, never use ad-hoc preview ports. Use: `python3 scripts/harness_preview.py ensure $ACTIVE_HARNESS` and record the returned stable URL in last_progress_summary.
+4. For browser review, never use ad-hoc preview ports. Use: python3 scripts/harness_preview.py ensure $ACTIVE_HARNESS and record the returned stable URL in last_progress_summary.
 5. Visible copy must be Korean-first. English is allowed only for stable test hooks in aria/live-region text.
-6. Keep state fresh with `python3 scripts/master_loop_state.py .omx/state/master-ux-loop.json <key> <value> ...`, including current_phase, current_harness, last_progress_at, last_progress_summary, remaining_harnesses.
-7. Use `\$benchmark-cycle` as the baseline workflow shell for this cycle.
-8. Before finishing any edit phase, invoke `\$ko-copy` discipline on the active harness so Korean-first visible copy passes the gate.
-9. At the start of each `$ACTIVE_HARNESS-edit` phase, explicitly use the `designer` agent to propose and execute the visible UI patch, grounded in Stitch references.
-10. Immediately after the edit draft, explicitly use the `critic` agent to challenge Korean-first copy, information density, a11y, and visual hierarchy; then apply the critic feedback before verify.
-11. Before finishing the edit phase, explicitly invoke `\$ko-copy` discipline on the changed harness and rerun `python3 scripts/master_loop_ui_language_gate.py --harness $ACTIVE_HARNESS`.
-12. During browser-review, use `\$visual-verdict` if before/after screenshots or reference images are available.
-13. Before bounded completion, run verifier-grade judgment from `.codex/prompts/verifier.md` and then `\$code-review` on the changed harness scope.
-14. Run `\$harness-gate` semantics via `python3 scripts/master_loop_quality_gate.py --active-harness $ACTIVE_HARNESS --enforce`.
-15. If harness-gate passes with ok=true AND artifact freshness is fresh, REMOVE the active harness from remaining_harnesses in the same cycle by running `python3 scripts/master_loop_complete_harness.py --harness $ACTIVE_HARNESS`. This removal is the harness completion signal.
+6. Keep state fresh with python3 scripts/master_loop_state.py .omx/state/master-ux-loop.json <key> <value> ..., including current_phase, current_harness, last_progress_at, last_progress_summary, remaining_harnesses.
+7. Use \$benchmark-cycle as the baseline workflow shell for this cycle.
+8. Before finishing any edit phase, invoke \$ko-copy discipline on the active harness so Korean-first visible copy passes the gate.
+9. At the start of each $ACTIVE_HARNESS-edit phase, explicitly use the designer agent to propose and execute the visible UI patch, grounded in Stitch references.
+10. Immediately after the edit draft, explicitly use the critic agent to challenge Korean-first copy, information density, a11y, and visual hierarchy; then apply the critic feedback before verify.
+11. Before finishing the edit phase, explicitly invoke \$ko-copy discipline on the changed harness and rerun python3 scripts/master_loop_ui_language_gate.py --harness $ACTIVE_HARNESS.
+12. During browser-review, use \$visual-verdict if before/after screenshots or reference images are available.
+13. Before bounded completion, run verifier-grade judgment from .codex/prompts/verifier.md and then \$code-review on the changed harness scope.
+14. Run \$harness-gate semantics via python3 scripts/master_loop_quality_gate.py --active-harness $ACTIVE_HARNESS --enforce.
+15. If harness-gate passes with ok=true AND artifact freshness is fresh, REMOVE the active harness from remaining_harnesses in the same cycle by running python3 scripts/master_loop_complete_harness.py --harness $ACTIVE_HARNESS. This removal is the harness completion signal.
 16. If the project is not truly complete, write only the cycle-complete marker.
 
 Dynamic guards:
@@ -176,7 +176,7 @@ $DESIGNER_VERIFIER_LINE
 $MEMORY_LINE
 $BUDGET_LINE
 $RETRY_MODE_LINE
-- If stagnant_cycle_count >= 3, invoke `\$stagnant-breaker` semantics to sharpen the plan, but keep the model retrying rather than escalating to a human blocker.
+- If stagnant_cycle_count >= 3, invoke \$stagnant-breaker semantics to sharpen the plan, but keep the model retrying rather than escalating to a human blocker.
 PROMPT_EOF
 )
 
