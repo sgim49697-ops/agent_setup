@@ -28,6 +28,7 @@ SYNC_SCRIPT = ROOT / 'scripts/openclaw_sync_codex_oauth.py'
 GIT_CHECKPOINT_SCRIPT = ROOT / 'scripts/git_state_checkpoint_watchdog.py'
 BASELINE_SCRIPT = ROOT / 'scripts/master_loop_baseline_metrics.py'
 QUALITY_GATE_SCRIPT = ROOT / 'scripts/master_loop_quality_gate.py'
+ALERT_SCRIPT = ROOT / 'scripts/openclaw_master_loop_alerts.py'
 STATUS_SCRIPT = ROOT / 'scripts/openclaw_master_loop_status.sh'
 VALIDATOR_REPORT_PATH = ROOT / '.omx/state/master-loop-validator.json'
 TRACE_REPORT_PATH = ROOT / '.omx/state/master-loop-trace-sanity.json'
@@ -254,6 +255,12 @@ def checkpoint_git() -> None:
         log(f'git checkpoint watchdog failed: {checkpoint.stderr.strip() or checkpoint.stdout.strip()}')
 
 
+def notify_if_needed() -> None:
+    proc = subprocess.run(['python3', str(ALERT_SCRIPT)], capture_output=True, text=True)
+    if proc.returncode != 0:
+        log(f'alert notifier failed: {proc.stderr.strip() or proc.stdout.strip()}')
+
+
 def active_harness_for_quality(state: dict[str, Any]) -> str:
     current = str(state.get('current_harness') or '').strip()
     if current and current not in {'benchmark_foundation', 'quality_gate', 'cycle-resume', 'cycle-validation'}:
@@ -360,6 +367,7 @@ def main() -> int:
 
     state, validator, trace, quality_gate = run_quality_reports(state)
     state = read_state()
+    notify_if_needed()
 
     if validator.get('false_completion_detected'):
         state = repair_false_completion(state)
