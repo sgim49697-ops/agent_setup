@@ -36,22 +36,15 @@ trace = json.loads((root / '.omx/state/master-loop-trace-sanity.json').read_text
 metrics = json.loads((root / '.omx/state/master-loop-baseline-metrics.json').read_text(encoding='utf-8')) if (root / '.omx/state/master-loop-baseline-metrics.json').exists() else {}
 quality = json.loads((root / '.omx/state/master-loop-quality-gate.json').read_text(encoding='utf-8')) if (root / '.omx/state/master-loop-quality-gate.json').exists() else {}
 safe = json.loads((root / '.omx/state/master-loop-safe-mode.json').read_text(encoding='utf-8')) if (root / '.omx/state/master-loop-safe-mode.json').exists() else {"enabled": False}
-patterns = {
-    'active_worker_count': 'bash /home/user/projects/agent_setup/codex_agent/scripts/run_master_ux_worker\\.sh',
-    'active_orchestrator_count': 'python3 /home/user/projects/agent_setup/codex_agent/scripts/master_loop_orchestrator\\.py',
-    'active_codex_exec_count': '/vendor/x86_64-unknown-linux-musl/codex/codex exec',
-    'active_stitch_mcp_count': 'node /home/user/.npm-global/bin/stitch-mcp proxy',
-    'active_playwright_mcp_count': 'playwright-mcp',
-}
+proc = subprocess.run(['ps', '-eo', 'args='], capture_output=True, text=True)
+lines = [line for line in proc.stdout.splitlines() if line.strip() and 'openclaw_master_loop_status.sh' not in line]
 runtime = {
-    key: 0 for key in patterns
+    'active_worker_count': sum('bash /home/user/projects/agent_setup/codex_agent/scripts/run_master_ux_worker.sh' in line for line in lines),
+    'active_orchestrator_count': sum('python3 /home/user/projects/agent_setup/codex_agent/scripts/master_loop_orchestrator.py' in line for line in lines),
+    'active_codex_exec_count': sum('/vendor/x86_64-unknown-linux-musl/codex/codex exec' in line for line in lines),
+    'active_stitch_mcp_count': sum('node /home/user/.npm-global/bin/stitch-mcp proxy' in line for line in lines),
+    'active_playwright_mcp_count': sum('node /home/user/.npm/_npx/' in line and 'playwright-mcp' in line for line in lines),
 }
-for key, pattern in patterns.items():
-    proc = subprocess.run(['pgrep', '-af', pattern], capture_output=True, text=True)
-    lines = [line for line in proc.stdout.splitlines() if line.strip() and 'openclaw_master_loop_status.sh' not in line]
-    if key == 'active_playwright_mcp_count':
-        lines = [line for line in lines if 'node /home/user/.npm/_npx/' in line]
-    runtime[key] = len(lines)
 runtime['active_automation_process_count'] = sum(runtime.values())
 print('=== state ===')
 print(f'worker_elapsed_sec: {os.environ.get("RUNNER_ELAPSED", "")}')
