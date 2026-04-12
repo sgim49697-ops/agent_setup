@@ -55,6 +55,47 @@ const initialGeneration: GenerationState = {
   errorMessage: null,
 }
 
+const stageCopy: Record<
+  GenerationStageId,
+  {
+    label: string
+    description: string
+    title: string
+    hook: string
+  }
+> = {
+  research: {
+    label: '리서치 정리',
+    description: '핵심 사실과 주장 방향을 먼저 모아 글의 중심을 고정합니다.',
+    title: '관점과 근거를 먼저 정리합니다',
+    hook: 'research results',
+  },
+  outline: {
+    label: '개요 설계',
+    description: '읽히는 순서와 섹션 구조를 정리해 다음 초안 작성으로 바로 이어집니다.',
+    title: '읽기 흐름에 맞는 개요를 잡습니다',
+    hook: 'outline',
+  },
+  drafts: {
+    label: '섹션 초안',
+    description: '섹션별 문장을 채우며 정보 밀도와 톤을 맞춥니다.',
+    title: '섹션별 초안을 차례로 채웁니다',
+    hook: 'section drafts',
+  },
+  review: {
+    label: '검토 메모',
+    description: '빠진 논점과 과장 표현을 훑어 최종 글 전환 전에 균형을 잡습니다.',
+    title: '검토 단계에서 빠진 논점을 다듬습니다',
+    hook: 'review notes',
+  },
+  final: {
+    label: '최종 글',
+    description: '공유 직전 상태의 Markdown을 읽고 복사하는 마지막 단계입니다.',
+    title: '내보내기 직전 최종 글을 확인합니다',
+    hook: 'final post',
+  },
+}
+
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case 'update-input':
@@ -180,24 +221,64 @@ function App() {
 
   const stageState = useMemo(() => {
     return workflowStages.map((stage) => {
+      const copy = stageCopy[stage.id]
       const isComplete = state.generation.completedStages.includes(stage.id)
       const isCurrent = state.generation.currentStage === stage.id && state.generation.status !== 'error'
       const isSelected = state.selectedStage === stage.id
       let status: 'complete' | 'current' | 'pending' = 'pending'
       if (isComplete) status = 'complete'
       else if (isCurrent) status = 'current'
-      return { ...stage, status, isSelected }
+      return {
+        ...stage,
+        label: copy.label,
+        description: copy.description,
+        status,
+        isSelected,
+      }
     })
   }, [state.generation.completedStages, state.generation.currentStage, state.generation.status, state.selectedStage])
 
   const nextStage = useMemo(() => {
-    return workflowStages.find((stage) => !state.generation.completedStages.includes(stage.id))
-  }, [state.generation.completedStages])
+    return stageState.find((stage) => !state.generation.completedStages.includes(stage.id))
+  }, [stageState, state.generation.completedStages])
 
   const selectedStageMeta = useMemo(
-    () => workflowStages.find((stage) => stage.id === state.selectedStage) ?? workflowStages[0],
-    [state.selectedStage],
+    () => stageState.find((stage) => stage.id === state.selectedStage) ?? stageState[0],
+    [stageState, state.selectedStage],
   )
+
+  const currentActionLabel = useMemo(() => {
+    if (state.generation.status === 'loading') {
+      return `${selectedStageMeta.label} 결과를 기다리기`
+    }
+    if (state.generation.status === 'export-ready') {
+      return '최종 원고를 검토하고 마크다운 복사'
+    }
+    if (state.generation.status === 'error') {
+      return '주제를 다듬고 다시 생성'
+    }
+    if (state.generation.completedStages.length === 0) {
+      return '브리프를 확인하고 글 생성 시작'
+    }
+    return `${selectedStageMeta.label} 결과를 읽고 다음 단계 준비`
+  }, [
+    selectedStageMeta.label,
+    state.generation.completedStages.length,
+    state.generation.status,
+  ])
+
+  const nextActionLabel = useMemo(() => {
+    if (state.generation.status === 'loading') {
+      return '현재 단계가 끝나면 다음 요약이 자동으로 이어집니다.'
+    }
+    if (nextStage) {
+      return `${nextStage.label} 단계로 이동`
+    }
+    if (state.generation.status === 'error') {
+      return '브리프를 손본 뒤 처음부터 다시 진행'
+    }
+    return '원고를 내보내고 공유 전 최종 확인'
+  }, [nextStage, state.generation.status])
 
   const statusLabel = useMemo(() => {
     const labels: Record<GenerationStatus, string> = {
@@ -210,6 +291,44 @@ function App() {
     }
     return labels[state.generation.status]
   }, [state.generation.status])
+
+  const primaryActionLabel = useMemo(() => {
+    if (state.generation.status === 'export-ready') {
+      return '마크다운 복사'
+    }
+    if (state.generation.status === 'loading') {
+      return '현재 단계 읽기'
+    }
+    if (state.generation.completedStages.length > 0) {
+      return nextStage ? `${nextStage.label} 이어서 보기` : '최종 글 검토'
+    }
+    return '글 생성 시작'
+  }, [nextStage, state.generation.completedStages.length, state.generation.status])
+
+  const primaryActionDetail = useMemo(() => {
+    if (state.generation.status === 'export-ready') {
+      return '완성된 Markdown을 복사해 에디터나 CMS 초안으로 바로 옮깁니다.'
+    }
+    if (state.generation.status === 'loading') {
+      return '지금 채워지는 단계의 출력만 읽고 다음 단계가 무엇인지 확인합니다.'
+    }
+    if (state.generation.completedStages.length > 0) {
+      return nextStage
+        ? `${nextStage.label} 단계가 곧 이어집니다. 현재 결과가 충분한지만 먼저 보면 됩니다.`
+        : '모든 단계가 끝났습니다. 최종 글을 읽고 공유 전 점검만 남았습니다.'
+    }
+    return '짧은 브리프를 정한 뒤 단일 에이전트 흐름을 시작합니다.'
+  }, [nextStage, state.generation.completedStages.length, state.generation.status])
+
+  const liveRegionHook = useMemo(() => {
+    if (state.generation.status === 'export-ready') {
+      return 'export-ready copy markdown'
+    }
+    if (state.generation.status === 'review-complete') {
+      return 'review-complete final post'
+    }
+    return stageCopy[selectedStageMeta.id].hook
+  }, [selectedStageMeta.id, state.generation.status])
 
   async function handleGenerate() {
     const topic = state.inputs.topic.trim()
@@ -345,10 +464,10 @@ function App() {
       ({
         harness: 'single_agent',
         run_id: 'single-agent-manual-preview',
-        started_at: 'generated after verification',
-        finished_at: 'generated after verification',
+        started_at: '검증 후 생성',
+        finished_at: '검증 후 생성',
         task_spec_version: 'tech-blog-benchmark-v1',
-        status: state.generation.status === 'error' ? 'failed' : 'completed',
+        status: state.generation.status === 'error' ? '실패' : '완료',
       }) satisfies Record<string, string>,
     [state.generation.status],
   )
@@ -356,9 +475,9 @@ function App() {
   const artifactPreview = useMemo(
     () =>
       ({
-        screenshots: ['desktop-verification.png', 'mobile-verification.png'],
+        screenshots: ['데스크톱 검증 캡처', '모바일 검증 캡처'],
         final_urls: ['http://127.0.0.1:4173'],
-        notes: ['집중형 작성 흐름이 기존 evidence-heavy 화면 대신 첫 행동과 다음 단계를 먼저 보여줍니다.'],
+        notes: ['집중형 작성 흐름이 기존 증거판 대신 첫 행동과 다음 단계를 먼저 보여줍니다.'],
         deliverables: deliverables.map((item) => item.title),
       }) satisfies ArtifactIndex,
     [],
@@ -396,13 +515,11 @@ function App() {
             </article>
             <article className="hero-highlight-card">
               <span>지금 할 일</span>
-              <strong>
-                {state.generation.status === 'export-ready' ? '마크다운 복사' : '글 생성 시작'}
-              </strong>
+              <strong>{currentActionLabel}</strong>
             </article>
             <article className="hero-highlight-card">
               <span>다음 단계</span>
-              <strong>{nextStage ? nextStage.label : '공유 전 최종 확인'}</strong>
+              <strong>{nextActionLabel}</strong>
             </article>
           </div>
           <div className="hero-actions">
@@ -502,7 +619,7 @@ function App() {
         </aside>
       </section>
 
-      <section className="preset-row" aria-label="Benchmark topic presets">
+      <section className="preset-row" aria-label="주제 프리셋">
         {topicPresets.map((preset) => (
           <button
             key={preset.title}
@@ -521,7 +638,7 @@ function App() {
           <p className="eyebrow">진행 단계</p>
           <h2>지금 필요한 단계만 또렷하게 따라갑니다</h2>
         </div>
-        <div className="stepper" aria-label="Generation progress">
+        <div className="stepper" aria-label="생성 진행 단계">
           {stageState.map((stage, index) => (
             <button
               key={stage.id}
@@ -563,12 +680,9 @@ function App() {
           <ul className="focus-list">
             <li>현재 단계: {selectedStageMeta.label}</li>
             <li>
-              지금 할 행동:{' '}
-              {state.generation.status === 'export-ready'
-                ? '마크다운 복사'
-                : '글 생성 이어가기'}
+              지금 할 행동: {currentActionLabel}
             </li>
-            <li>다음 단계: {nextStage ? nextStage.label : '내보내기 또는 다시 시작'}</li>
+            <li>다음 단계: {nextActionLabel}</li>
           </ul>
 
           <details className="evidence-drawer">
@@ -593,9 +707,21 @@ function App() {
                 </ul>
               </article>
 
-              <PreviewBlock title="실행 기록 미리보기" payload={runManifestPreview} />
-              <PreviewBlock title="산출물 목록 미리보기" payload={artifactPreview} />
-              <PreviewBlock title="점수 카드 미리보기" payload={scorePreview} />
+              <PreviewBlock
+                title="실행 기록 미리보기"
+                summary="실행 시작과 종료 시각, 현재 상태를 빠르게 확인합니다."
+                payload={runManifestPreview}
+              />
+              <PreviewBlock
+                title="산출물 목록 미리보기"
+                summary="스크린샷, 최종 URL, 결과 묶음을 한곳에서 살펴봅니다."
+                payload={artifactPreview}
+              />
+              <PreviewBlock
+                title="점수 카드 미리보기"
+                summary="기능, UX, 접근성 점수가 어떻게 기록되는지 확인합니다."
+                payload={scorePreview}
+              />
             </div>
           </details>
         </aside>
@@ -775,11 +901,19 @@ function EmptyState(props: {
   )
 }
 
-function PreviewBlock(props: { title: string; payload: Record<string, unknown> }) {
+function PreviewBlock(props: {
+  title: string
+  summary: string
+  payload: Record<string, unknown>
+}) {
   return (
     <article className="preview-block">
       <h3>{props.title}</h3>
-      <pre>{JSON.stringify(props.payload, null, 2)}</pre>
+      <p className="preview-summary">{props.summary}</p>
+      <details className="json-drawer">
+        <summary>원본 JSON 보기</summary>
+        <pre>{JSON.stringify(props.payload, null, 2)}</pre>
+      </details>
     </article>
   )
 }

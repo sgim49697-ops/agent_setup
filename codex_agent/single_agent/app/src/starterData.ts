@@ -29,7 +29,7 @@ export const workflowStages: WorkflowStage[] = [
   },
   {
     id: 'final',
-    label: '최종 글',
+    label: '최종 원고',
     output: 'final_post',
     description: '최종 마크다운과 내보내기 준비 상태를 확인한다.',
   },
@@ -38,22 +38,22 @@ export const workflowStages: WorkflowStage[] = [
 export const deliverables: DeliverableCard[] = [
   {
     id: 'manifest',
-    title: '실행 기록 · run_manifest.json',
+    title: '실행 기록',
     description: '실행 시작/종료 시각, harness 이름, 상태를 남긴다.',
   },
   {
     id: 'artifacts',
-    title: '산출물 목록 · artifact_index.json',
+    title: '산출물 목록',
     description: '스크린샷, final URL, 결과 파일 목록을 모은다.',
   },
   {
     id: 'review',
-    title: '리뷰 보고서 · review_report.md',
+    title: '리뷰 보고서',
     description: '구현 요약, 리스크, 남은 이슈, 자체 평가를 남긴다.',
   },
   {
     id: 'scorecard',
-    title: '점수 카드 · scorecard.json',
+    title: '점수 카드',
     description: '기능, UX, 시각 완성도, 접근성, 절차 점수를 저장한다.',
   },
 ]
