@@ -7,6 +7,8 @@ import json
 import re
 from pathlib import Path
 
+from master_loop_state import load_state, resolve_harness_token
+
 ROOT = Path('/home/user/projects/agent_setup/codex_agent')
 REPORT_PATH = ROOT / '.omx/state/master-loop-ui-language.json'
 STRING_RE = re.compile(r'(["\'\`])((?:\\.|(?!\1).)*)\1')
@@ -55,12 +57,14 @@ def is_english_hook(text: str, line: str) -> bool:
 
 
 def scan_harness(harness: str) -> dict:
+    state = load_state(ROOT / '.omx/state/master-ux-loop.json')
+    resolved_harness = resolve_harness_token(harness, state)
     files = []
     korean = 0
     english = 0
     exempt_english = 0
     samples = []
-    for root in active_file_roots(harness):
+    for root in active_file_roots(resolved_harness):
         for path in root.rglob('*'):
             if path.suffix not in {'.ts', '.tsx'} or not should_scan_file(path):
                 continue
@@ -89,6 +93,7 @@ def scan_harness(harness: str) -> dict:
     return {
         'ok': ok,
         'harness': harness,
+        'resolved_harness': resolved_harness,
         'korean_visible_strings': korean,
         'english_visible_strings': english,
         'exempt_english_hook_strings': exempt_english,

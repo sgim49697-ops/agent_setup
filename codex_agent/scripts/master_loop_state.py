@@ -8,6 +8,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+ROOT = Path("/home/user/projects/agent_setup/codex_agent")
+
 HARNESSES = [
     "single_agent",
     "sequential_pipeline",
@@ -79,6 +81,7 @@ SPECIAL_HARNESSES = {
     "next_cycle_pending",
     "validator-recovery",
 }
+QUALITY_GATE_ALIAS = "quality_gate"
 
 
 def utc_now() -> str:
@@ -136,6 +139,36 @@ def normalize_remaining_harnesses(value: Any) -> list[str]:
             return [str(item).strip() for item in parsed if str(item).strip()]
         return [item.strip() for item in text.split(",") if item.strip()]
     return [str(value).strip()] if str(value).strip() else []
+
+
+def resolve_quality_gate_target(state: dict[str, Any] | None = None) -> str:
+    if state:
+        current = str(state.get("current_harness") or "").strip()
+        if current in HARNESSES:
+            return current
+        remaining = normalize_remaining_harnesses(state.get("remaining_harnesses"))
+        for harness in remaining:
+            if harness in HARNESSES:
+                return harness
+
+    report_path = ROOT / ".omx/state/master-loop-quality-gate.json"
+    if report_path.exists():
+        try:
+            report = json.loads(report_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            report = {}
+        active = str(report.get("active_harness") or "").strip()
+        if active in HARNESSES:
+            return active
+
+    return HARNESSES[0]
+
+
+def resolve_harness_token(harness: str, state: dict[str, Any] | None = None) -> str:
+    token = str(harness or "").strip()
+    if token == QUALITY_GATE_ALIAS:
+        return resolve_quality_gate_target(state)
+    return token
 
 
 def normalize_json_list(value: Any) -> list[Any]:

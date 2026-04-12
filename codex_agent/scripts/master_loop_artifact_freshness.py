@@ -7,23 +7,24 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-from master_loop_state import load_state
+from master_loop_state import load_state, resolve_harness_token
 
 ROOT = Path('/home/user/projects/agent_setup/codex_agent')
 REPORT_PATH = ROOT / '.omx/state/master-loop-artifact-freshness.json'
 
 
 def latest_artifact_mtime(harness: str) -> float | None:
+    resolved_harness = resolve_harness_token(harness)
     candidates: list[Path] = []
     patterns = [
-        f'{harness}/reports/*.json',
-        f'{harness}/reports/*.md',
-        f'{harness}/runs/*.json',
-        f'{harness}/runs/*.md',
-        f'{harness}/runs/*.png',
-        f'benchmark/manual_ui_review/**/*{harness}*.png',
-        f'benchmark/manual_ui_review/**/*{harness}*.json',
-        f'benchmark/manual_ui_review/**/*{harness}*.md',
+        f'{resolved_harness}/reports/*.json',
+        f'{resolved_harness}/reports/*.md',
+        f'{resolved_harness}/runs/*.json',
+        f'{resolved_harness}/runs/*.md',
+        f'{resolved_harness}/runs/*.png',
+        f'benchmark/manual_ui_review/**/*{resolved_harness}*.png',
+        f'benchmark/manual_ui_review/**/*{resolved_harness}*.json',
+        f'benchmark/manual_ui_review/**/*{resolved_harness}*.md',
     ]
     for pattern in patterns:
         candidates.extend(ROOT.glob(pattern))
@@ -50,6 +51,7 @@ def main() -> int:
             break
 
     latest = latest_artifact_mtime(args.harness)
+    resolved_harness = resolve_harness_token(args.harness, state)
     latest_iso = datetime.fromtimestamp(latest, tz=timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ') if latest else None
     worker_start = state.get('last_worker_start_at')
     stale = False
@@ -69,6 +71,7 @@ def main() -> int:
     report = {
         'ok': not errors,
         'harness': args.harness,
+        'resolved_harness': resolved_harness,
         'same_harness_streak': same_harness_streak,
         'latest_artifact_mtime': latest_iso,
         'errors': errors,

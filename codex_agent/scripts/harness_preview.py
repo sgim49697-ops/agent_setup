@@ -10,6 +10,8 @@ import time
 from pathlib import Path
 from typing import Any
 
+from master_loop_state import QUALITY_GATE_ALIAS, HARNESSES, load_state, resolve_harness_token
+
 ROOT = Path('/home/user/projects/agent_setup/codex_agent')
 SESSION = 'ux-preview-bg'
 HOST = '127.0.0.1'
@@ -25,6 +27,7 @@ HARNESS_PORTS = {
     'evaluator_optimizer': 4278,
     'omx_evaluator_optimizer': 4279,
 }
+HARNESS_CHOICES = sorted([*HARNESSES, QUALITY_GATE_ALIAS])
 
 
 def run(cmd: list[str]) -> subprocess.CompletedProcess[str]:
@@ -106,30 +109,37 @@ def wait_for_port(port: int, timeout_s: float = 20.0) -> bool:
     return False
 
 
-def ensure_preview(harness: str) -> dict[str, Any]:
-    if harness not in HARNESS_PORTS:
+def resolve_requested_harness(harness: str) -> tuple[str, int]:
+    state = load_state(ROOT / '.omx/state/master-ux-loop.json')
+    resolved = resolve_harness_token(harness, state)
+    if resolved not in HARNESS_PORTS:
         raise SystemExit(f'unknown harness: {harness}')
-    port = HARNESS_PORTS[harness]
+    return resolved, HARNESS_PORTS[resolved]
+
+
+def ensure_preview(harness: str) -> dict[str, Any]:
+    resolved, port = resolve_requested_harness(harness)
     url = f'http://{HOST}:{port}/'
-    app = app_dir(harness)
+    app = app_dir(resolved)
     if not app.exists():
         raise SystemExit(f'app directory missing: {app}')
 
     state = read_state(harness)
     if socket_open(HOST, port):
-        state.update({'harness': harness, 'port': port, 'url': url, 'status': 'running'})
+        state.update({'harness': harness, 'resolved_harness': resolved, 'port': port, 'url': url, 'status': 'running'})
         write_state(harness, state)
         return state
 
-    launch_window(harness, port)
+    launch_window(resolved, port)
     ok = wait_for_port(port)
     state = {
         'harness': harness,
+        'resolved_harness': resolved,
         'port': port,
         'url': url,
         'status': 'running' if ok else 'failed',
-        'window': window_name(harness),
-        'log': str(log_path(harness)),
+        'window': window_name(resolved),
+        'log': str(log_path(resolved)),
     }
     write_state(harness, state)
     return state
@@ -137,11 +147,12 @@ def ensure_preview(harness: str) -> dict[str, Any]:
 
 def stop_preview(harness: str) -> dict[str, Any]:
     ensure_tmux_session()
-    name = window_name(harness)
+    resolved, port = resolve_requested_harness(harness)
+    name = window_name(resolved)
     if name in session_windows():
         run(['tmux', 'kill-window', '-t', f'{SESSION}:{name}'])
     state = read_state(harness)
-    state.update({'harness': harness, 'port': HARNESS_PORTS[harness], 'url': f'http://{HOST}:{HARNESS_PORTS[harness]}/', 'status': 'stopped'})
+    state.update({'harness': harness, 'resolved_harness': resolved, 'port': port, 'url': f'http://{HOST}:{port}/', 'status': 'stopped'})
     write_state(harness, state)
     return state
 
@@ -151,13 +162,13 @@ def main() -> int:
     sub = parser.add_subparsers(dest='cmd', required=True)
 
     ensure_p = sub.add_parser('ensure')
-    ensure_p.add_argument('harness', choices=sorted(HARNESS_PORTS))
+    ensure_p.add_argument('harness', choices=HARNESS_CHOICES)
 
     status_p = sub.add_parser('status')
-    status_p.add_argument('harness', choices=sorted(HARNESS_PORTS))
+    status_p.add_argument('harness', choices=HARNESS_CHOICES)
 
     stop_p = sub.add_parser('stop')
-    stop_p.add_argument('harness', choices=sorted(HARNESS_PORTS))
+    stop_p.add_argument('harness', choices=HARNESS_CHOICES)
 
     args = parser.parse_args()
 
@@ -168,10 +179,12 @@ def main() -> int:
     else:
         payload = read_state(args.harness)
         if not payload:
+            resolved, port = resolve_requested_harness(args.harness)
             payload = {
                 'harness': args.harness,
-                'port': HARNESS_PORTS[args.harness],
-                'url': f'http://{HOST}:{HARNESS_PORTS[args.harness]}/',
+                'resolved_harness': resolved,
+                'port': port,
+                'url': f'http://{HOST}:{port}/',
                 'status': 'unknown',
             }
     print(json.dumps(payload, indent=2, ensure_ascii=False))
