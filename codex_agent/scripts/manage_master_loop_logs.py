@@ -76,8 +76,11 @@ def compress_archives(archive_dir: Path, older_hours: int, over_mb: int) -> dict
     return result
 
 
-def prune_archives(archive_dir: Path, older_days: int) -> dict:
-    result = {'deleted': []}
+def prune_archives(archive_dir: Path, older_days: int | None) -> dict:
+    result = {'deleted': [], 'enabled': False}
+    if older_days is None:
+        return result
+    result['enabled'] = True
     if not archive_dir.exists():
         return result
     cutoff = time.time() - older_days * 86400
@@ -104,7 +107,7 @@ def main() -> int:
     parser.add_argument('--retain-lines', type=int, default=4000)
     parser.add_argument('--compress-older-hours', type=int, default=1)
     parser.add_argument('--compress-over-mb', type=int, default=50)
-    parser.add_argument('--delete-older-days', type=int, default=7)
+    parser.add_argument('--delete-older-days', type=int, default=None)
     parser.add_argument('--quiet', action='store_true')
     args = parser.parse_args()
 
