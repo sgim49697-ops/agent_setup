@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import fcntl
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -16,10 +17,22 @@ RESET = ROOT / 'scripts/openclaw_master_loop_reset.sh'
 WATCHDOG = ROOT / 'scripts/openclaw_master_loop_watchdog.py'
 FINAL = ROOT / '.omx/logs/master-ux-benchmark-v2-project-final.md'
 LEGACY_FINAL = ROOT / '.omx/logs/master-ux-benchmark-v2-final.md'
+LOCK_PATH = ROOT / '.omx/state/master-loop-watchdog.lock'
 
 
 def now():
     return datetime.now(timezone.utc)
+
+
+def acquire_lock():
+    LOCK_PATH.parent.mkdir(parents=True, exist_ok=True)
+    fh = LOCK_PATH.open('w', encoding='utf-8')
+    try:
+        fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        fh.close()
+        return None
+    return fh
 
 
 def log(msg: str):
@@ -55,6 +68,11 @@ def runner_alive() -> bool:
 
 
 def main() -> int:
+    lock_fh = acquire_lock()
+    if lock_fh is None:
+        log('watchdog/debug lock is already held; skip duplicate recovery pass')
+        return 0
+
     if not STATE.exists():
         log('state file missing; running watchdog')
         run(['python3', str(WATCHDOG)])

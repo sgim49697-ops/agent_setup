@@ -2,6 +2,7 @@
 """Watchdog for the detached UX benchmark master-loop tmux runner."""
 from __future__ import annotations
 
+import fcntl
 import json
 import shutil
 import socket
@@ -29,6 +30,7 @@ BASELINE_SCRIPT = ROOT / 'scripts/master_loop_baseline_metrics.py'
 STATUS_SCRIPT = ROOT / 'scripts/openclaw_master_loop_status.sh'
 VALIDATOR_REPORT_PATH = ROOT / '.omx/state/master-loop-validator.json'
 TRACE_REPORT_PATH = ROOT / '.omx/state/master-loop-trace-sanity.json'
+LOCK_PATH = ROOT / '.omx/state/master-loop-watchdog.lock'
 SESSION = 'ux-master-bg'
 RUNNER_WINDOW = 'runner'
 LOG_WINDOW = 'log'
@@ -51,6 +53,19 @@ TRANSIENT_BLOCKER_HINTS = (
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+
+
+def acquire_lock():
+    LOCK_PATH.parent.mkdir(parents=True, exist_ok=True)
+    fh = LOCK_PATH.open('w', encoding='utf-8')
+    try:
+        fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        fh.close()
+        return None
+    fh.write(f"pid={Path('/proc/self/stat').read_text().split()[0]} at={utc_now()}\n")
+    fh.flush()
+    return fh
 
 
 def log(msg: str) -> None:
@@ -288,6 +303,11 @@ def maybe_restart_for_regression(state: dict[str, Any], validator: dict[str, Any
 
 
 def main() -> int:
+    lock_fh = acquire_lock()
+    if lock_fh is None:
+        log('another watchdog invocation already holds the lock; skipping duplicate run')
+        return 0
+
     sync = subprocess.run(['python3', str(SYNC_SCRIPT), '--restart-gateway-if-needed', '--quiet'], capture_output=True, text=True)
     if sync.returncode != 0:
         log(f'auth sync failed: {sync.stderr.strip() or sync.stdout.strip()}')
