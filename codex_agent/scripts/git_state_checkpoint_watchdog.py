@@ -82,7 +82,7 @@ def main() -> int:
         f"status={state.get('cycle_status')}"
     )
     proc = subprocess.run(
-        [str(CHECKPOINT_SCRIPT), "--push", "--message", msg],
+        ["bash", str(CHECKPOINT_SCRIPT), "--push", "--message", msg],
         cwd=ROOT,
         capture_output=True,
         text=True,
