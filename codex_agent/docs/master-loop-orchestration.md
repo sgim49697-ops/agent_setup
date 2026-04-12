@@ -10,6 +10,9 @@ The UX benchmark automation no longer relies only on one giant prompt. A bounded
 4. `scripts/openclaw_master_loop_watchdog.py` — process freshness + recycle logic
 5. `scripts/master_loop_quality_gate.py` — outcome-focused quality gate
 
+When background runtime safety is more important than throughput, use
+`docs/master-loop-safe-mode.md` and run one orchestrator step at a time.
+
 ## Step flow inside one bounded cycle
 
 For an active harness, the orchestrator runs focused steps in order:
@@ -70,6 +73,7 @@ If the lock is already held, the orchestrator exits with a non-zero code instead
 
 Purpose:
 - prevent duplicate step pipelines from editing the same harness concurrently
+- support safe-mode manual steps without background duplicate runs
 
 ### Full regression rescan on `remaining_harnesses=[]`
 `master_loop_quality_gate.py` rescans **all harnesses** when the queue becomes empty.

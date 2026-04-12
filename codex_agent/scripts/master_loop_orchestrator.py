@@ -35,6 +35,8 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+from master_loop_state import safe_mode_enabled
+
 ROOT = Path("/home/user/projects/agent_setup/codex_agent")
 CODEX_BIN = "/home/user/.npm-global/bin/codex"
 STATE_PATH = ROOT / ".omx/state/master-ux-loop.json"
@@ -401,6 +403,36 @@ def step_complete_harness(harness: str) -> int:
     return rc
 
 
+def run_single_mode(mode: str, harness: str, cycle: int, ctx: str) -> int:
+    artifact_dir = cycle_dir(cycle, harness)
+    update_state("orchestrator_active", "true")
+    update_state("orchestrator_artifact_dir", str(artifact_dir))
+    update_state("current_harness", harness)
+    log(f"=== cycle {cycle} harness {harness} mode={mode} artifact={artifact_dir} ===")
+    try:
+        if mode == "design":
+            rc = step_design(harness, cycle, ctx, artifact_dir)
+        elif mode == "critique":
+            rc, approved = step_critique(harness, cycle, artifact_dir)
+            if rc == 0 and not approved:
+                rc = 23
+        elif mode == "ko-copy":
+            rc = 0 if step_ko_copy(harness, cycle, artifact_dir) == 0 else 21
+        elif mode == "verify":
+            rc = step_verify(harness, cycle, artifact_dir)
+        elif mode == "gates":
+            rc = step_python_gates(harness)
+        elif mode == "complete":
+            rc = step_complete_harness(harness)
+        else:
+            raise ValueError(f"unsupported mode: {mode}")
+        return rc
+    finally:
+        update_state("orchestrator_active", "false")
+        update_state("last_orchestrator_exit", str(locals().get("rc", 1)))
+        log(f"=== cycle {cycle} harness {harness} mode={mode} done rc={locals().get('rc', 1)} ===")
+
+
 # ----------------------------- ORCHESTRATE ----------------------------- #
 
 
@@ -459,13 +491,23 @@ def main() -> int:
     parser.add_argument("--active-harness", required=True)
     parser.add_argument("--cycle", required=True, type=int)
     parser.add_argument("--prompt-context", default="")
+    parser.add_argument(
+        "--mode",
+        default="full",
+        choices=["full", "design", "critique", "ko-copy", "verify", "gates", "complete"],
+    )
     args = parser.parse_args()
+    if os.environ.get("MASTER_LOOP_SAFE_MODE_BYPASS") != "1" and safe_mode_enabled():
+        log("safe mode is enabled; orchestrator refused to start without MASTER_LOOP_SAFE_MODE_BYPASS=1")
+        return 90
     lock_fh = acquire_lock()
     if lock_fh is None:
         log(f"another orchestrator instance holds {LOCK_PATH}; aborting (pid={os.getpid()})")
         return 75
     try:
-        return orchestrate(args.active_harness, args.cycle, args.prompt_context)
+        if args.mode == "full":
+            return orchestrate(args.active_harness, args.cycle, args.prompt_context)
+        return run_single_mode(args.mode, args.active_harness, args.cycle, args.prompt_context)
     finally:
         try:
             fcntl.flock(lock_fh.fileno(), fcntl.LOCK_UN)

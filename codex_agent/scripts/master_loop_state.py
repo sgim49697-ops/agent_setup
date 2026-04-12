@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path("/home/user/projects/agent_setup/codex_agent")
+SAFE_MODE_PATH = ROOT / ".omx/state/master-loop-safe-mode.json"
 
 HARNESSES = [
     "single_agent",
@@ -349,8 +350,51 @@ def update_histories(previous: dict[str, Any], current: dict[str, Any]) -> dict[
 
 def load_state(path: Path) -> dict[str, Any]:
     if path.exists():
-        return normalize_state(json.loads(path.read_text(encoding="utf-8")))
+        text = path.read_text(encoding="utf-8")
+        try:
+            payload = json.loads(text)
+        except json.JSONDecodeError:
+            decoder = json.JSONDecoder()
+            payload, _ = decoder.raw_decode(text.lstrip())
+        return normalize_state(payload)
     return normalize_state({})
+
+
+def read_safe_mode(path: Path = SAFE_MODE_PATH) -> dict[str, Any]:
+    if path.exists():
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            payload = {}
+    else:
+        payload = {}
+    return {
+        "enabled": parse_bool(payload.get("enabled")),
+        "reason": str(payload.get("reason") or ""),
+        "actor": str(payload.get("actor") or ""),
+        "updated_at": str(payload.get("updated_at") or ""),
+    }
+
+
+def safe_mode_enabled(path: Path = SAFE_MODE_PATH) -> bool:
+    return bool(read_safe_mode(path).get("enabled"))
+
+
+def write_safe_mode(
+    enabled: bool,
+    reason: str = "",
+    actor: str = "manual",
+    path: Path = SAFE_MODE_PATH,
+) -> dict[str, Any]:
+    payload = {
+        "enabled": bool(enabled),
+        "reason": str(reason or ""),
+        "actor": str(actor or "manual"),
+        "updated_at": utc_now(),
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    return payload
 
 
 def save_state(path: Path, state: dict[str, Any], previous: dict[str, Any] | None = None) -> None:

@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from master_loop_state import load_state, normalize_remaining_harnesses, save_state
+from master_loop_state import load_state, normalize_remaining_harnesses, read_safe_mode, save_state
 from master_loop_trace_sanity import analyze_trace, read_progress_events
 from master_loop_validator import build_report as build_validator_report
 
@@ -400,6 +400,11 @@ def main() -> int:
     lock_fh = acquire_lock()
     if lock_fh is None:
         log('another watchdog invocation already holds the lock; skipping duplicate run')
+        return 0
+
+    safe_mode = read_safe_mode()
+    if safe_mode.get('enabled'):
+        log(f"safe mode enabled by {safe_mode.get('actor') or 'unknown'}; skipping sync/relaunch ({safe_mode.get('reason') or 'no reason'})")
         return 0
 
     sync = subprocess.run(['python3', str(SYNC_SCRIPT), '--restart-gateway-if-needed', '--quiet'], capture_output=True, text=True)

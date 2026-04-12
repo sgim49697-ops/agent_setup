@@ -20,6 +20,16 @@ update_state() {
 }
 
 mkdir -p "$ROOT/.omx/logs" "$ROOT/.omx/state"
+if [[ "${MASTER_LOOP_SAFE_MODE_BYPASS:-0}" != "1" ]]; then
+  if python3 - <<'PY'
+from master_loop_state import safe_mode_enabled
+raise SystemExit(0 if safe_mode_enabled() else 1)
+PY
+  then
+    printf '[%s] Detached tmux worker refused to start because safe mode is enabled\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> "$LOG"
+    exit 90
+  fi
+fi
 python3 "$ROOT/scripts/openclaw_sync_codex_oauth.py" --restart-gateway-if-needed --quiet || true
 printf '[%s] Detached tmux worker starting codex exec master loop\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> "$LOG"
 
