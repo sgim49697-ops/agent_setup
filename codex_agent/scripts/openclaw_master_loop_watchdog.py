@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from master_loop_state import load_state, normalize_remaining_harnesses, save_state
-from master_loop_trace_sanity import analyze_trace, parse_events, read_tail
+from master_loop_trace_sanity import analyze_trace, read_progress_events
 from master_loop_validator import build_report as build_validator_report
 
 ROOT = Path('/home/user/projects/agent_setup/codex_agent')
@@ -255,7 +255,7 @@ def checkpoint_git() -> None:
 
 def run_quality_reports(state: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
     validator = build_validator_report(state)
-    trace = analyze_trace(parse_events(read_tail(LOG_PATH)), state)
+    trace = analyze_trace(read_progress_events(LOG_PATH, state), state)
     write_report(VALIDATOR_REPORT_PATH, validator)
     write_report(TRACE_REPORT_PATH, trace)
     baseline_proc = subprocess.run(['python3', str(BASELINE_SCRIPT), '--quiet'], capture_output=True, text=True)

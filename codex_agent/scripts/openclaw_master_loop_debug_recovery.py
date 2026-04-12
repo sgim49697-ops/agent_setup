@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from master_loop_state import load_state
-from master_loop_trace_sanity import analyze_trace, parse_events, read_tail
+from master_loop_trace_sanity import analyze_trace, read_progress_events
 from master_loop_validator import build_report as build_validator_report
 
 ROOT = Path('/home/user/projects/agent_setup/codex_agent')
@@ -80,7 +80,7 @@ def main() -> int:
 
     state = load_state(STATE)
     validator = build_validator_report(state)
-    trace = analyze_trace(parse_events(read_tail(LOG)), state)
+    trace = analyze_trace(read_progress_events(LOG, state), state)
     status = str(state.get('status', 'idle'))
     project_status = str(state.get('project_status', 'in_progress'))
     hard_blocker = bool(state.get('hard_blocker', False))

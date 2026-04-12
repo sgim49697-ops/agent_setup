@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 
 from master_loop_state import load_state
-from master_loop_trace_sanity import analyze_trace, parse_events, read_tail
+from master_loop_trace_sanity import analyze_trace, read_progress_events
 from master_loop_validator import build_report as build_validator_report
 
 ROOT = Path('/home/user/projects/agent_setup/codex_agent')
@@ -26,7 +26,7 @@ def main() -> int:
 
     state = load_state(Path(args.state))
     validator = build_validator_report(state)
-    trace = analyze_trace(parse_events(read_tail(Path(args.log))), state)
+    trace = analyze_trace(read_progress_events(Path(args.log), state), state)
 
     required = max(validator['required_count'], 1)
     completion_events = 1 if state.get('cycle_status') == 'completed' or state.get('project_status') == 'project_completed' else 0

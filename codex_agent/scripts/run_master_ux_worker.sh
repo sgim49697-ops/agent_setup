@@ -34,7 +34,7 @@ update_state project_status in_progress
 update_state cycle_status running
 update_state cycle "$CURRENT_CYCLE"
 update_state next_cycle_required __false__
-update_state current_phase benchmark-cycle
+update_state current_phase cycle-resume
 update_state current_harness benchmark_foundation
 update_state last_worker_start_at "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 update_state last_progress_at "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
@@ -56,9 +56,12 @@ Rules:
 - Use `python3 scripts/master_loop_state.py .omx/state/master-ux-loop.json <key> <value> ...` to keep these fields fresh during work: current_phase, current_harness, last_progress_at, last_progress_summary, remaining_harnesses, cycle_status, project_status, next_cycle_required, hard_blocker, blocker_reason.
 - `remaining_harnesses` must be kept as a JSON array string, not a CSV string.
 - `current_harness` is mandatory whenever project_status=in_progress. Update it whenever you switch harnesses.
-- After each substantial step, append concise progress to .omx/logs/master-ux-benchmark-v2.log and .omx/notepad.
+- Use fine-grained phase tokens instead of repeating generic `benchmark-cycle`: prefer `<harness>-edit`, `<harness>-verify`, `<harness>-browser-review`, `quality_gate`, `cycle-validation`, `cycle-resume`.
+- Before visible UI/UX edits, read `docs/stitch-ux-reference.md` and use Stitch MCP first. If the active harness has UX debt, consult the shared Stitch project/screen/design-system before editing code.
+- If the active harness is `orchestrator_worker`, use Stitch screen `projects/11015732894783859302/screens/a9c46f1393b341f8bb24da291814c1d2` and asset `assets/2271c2a16ec8460c91f7d85b87099fe9` as the default UI reference.
+- After each substantial step, append concise progress to .omx/logs/master-ux-benchmark-v2.log and .omx/notepad, including which Stitch asset or screen was referenced for UI work.
 - User-visible product copy and outputs should be Korean-first unless a stable English test hook is specifically needed.
-- Use browser-based review when each harness is ready.
+- Every Stitch-informed UI change must be followed by Playwright browser review plus benchmark smoke/journey validation.
 - Do not stop after writing a replan note. Replan-only completion is a failure.
 - Review-only completion is a failure. If you review, you must either patch, verify, or clearly record a hard blocker.
 - If remaining_harnesses does not shrink in a cycle, explain why in last_progress_summary.
