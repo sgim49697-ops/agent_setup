@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT=/home/user/projects/agent_setup/codex_agent
+export PYTHONPATH="$ROOT/scripts:${PYTHONPATH:-}"
 STATE="$ROOT/.omx/state/master-ux-loop.json"
 LOG="$ROOT/.omx/logs/master-ux-benchmark-v2.log"
 VALIDATOR_REPORT="$ROOT/.omx/state/master-loop-validator.json"
