@@ -233,6 +233,7 @@ function App() {
         label: copy.label,
         description: copy.description,
         status,
+        isCurrent,
         isSelected,
       }
     })
@@ -247,39 +248,6 @@ function App() {
     [stageState, state.selectedStage],
   )
 
-  const currentActionLabel = useMemo(() => {
-    if (state.generation.status === 'loading') {
-      return `${selectedStageMeta.label} 결과를 기다리기`
-    }
-    if (state.generation.status === 'export-ready') {
-      return '최종 원고를 검토하고 마크다운 복사'
-    }
-    if (state.generation.status === 'error') {
-      return '주제를 다듬고 다시 생성'
-    }
-    if (state.generation.completedStages.length === 0) {
-      return '브리프를 확인하고 글 생성 시작'
-    }
-    return `${selectedStageMeta.label} 결과를 읽고 다음 단계 준비`
-  }, [
-    selectedStageMeta.label,
-    state.generation.completedStages.length,
-    state.generation.status,
-  ])
-
-  const nextActionLabel = useMemo(() => {
-    if (state.generation.status === 'loading') {
-      return '현재 단계가 끝나면 다음 요약이 자동으로 이어집니다.'
-    }
-    if (nextStage) {
-      return `${nextStage.label} 단계로 이동`
-    }
-    if (state.generation.status === 'error') {
-      return '브리프를 손본 뒤 처음부터 다시 진행'
-    }
-    return '원고를 내보내고 공유 전 최종 확인'
-  }, [nextStage, state.generation.status])
-
   const statusLabel = useMemo(() => {
     const labels: Record<GenerationStatus, string> = {
       initial: '준비 완료',
@@ -291,6 +259,13 @@ function App() {
     }
     return labels[state.generation.status]
   }, [state.generation.status])
+
+  const liveStatusMessage = useMemo(() => {
+    if (state.generation.errorMessage) {
+      return `${statusLabel}. ${state.generation.errorMessage}`
+    }
+    return `${statusLabel}. ${state.generation.statusMessage}${state.copyFeedback ? ` ${state.copyFeedback}` : ''}`
+  }, [state.copyFeedback, state.generation.errorMessage, state.generation.statusMessage, statusLabel])
 
   const primaryActionLabel = useMemo(() => {
     if (state.generation.status === 'export-ready') {
@@ -319,6 +294,14 @@ function App() {
     }
     return '짧은 브리프를 정한 뒤 단일 에이전트 흐름을 시작합니다.'
   }, [nextStage, state.generation.completedStages.length, state.generation.status])
+
+  const activeStageMeta = useMemo(
+    () => stageState.find((stage) => stage.status === 'current') ?? selectedStageMeta,
+    [selectedStageMeta, stageState],
+  )
+
+  const completedStageCount = state.generation.completedStages.length
+  const progressRatio = Math.round((completedStageCount / workflowStages.length) * 100)
 
   const liveRegionHook = useMemo(() => {
     if (state.generation.status === 'export-ready') {
@@ -476,7 +459,7 @@ function App() {
     () =>
       ({
         screenshots: ['데스크톱 검증 캡처', '모바일 검증 캡처'],
-        final_urls: ['http://127.0.0.1:4173'],
+        final_urls: ['안정 URL은 harness_preview 스크립트에서 관리'],
         notes: ['집중형 작성 흐름이 기존 증거판 대신 첫 행동과 다음 단계를 먼저 보여줍니다.'],
         deliverables: deliverables.map((item) => item.title),
       }) satisfies ArtifactIndex,
@@ -502,43 +485,76 @@ function App() {
     <main className="wizard-shell">
       <section className="wizard-hero">
         <div className="hero-card">
-          <p className="eyebrow">단일 에이전트 작업대</p>
+          <div className="hero-topline">
+            <p className="eyebrow">단일 에이전트 작업대</p>
+            <span className="hero-note">현재 단계와 다음 행동이 먼저 보이는 집중형 작성면</span>
+          </div>
           <h1>한 번에 한 단계씩 쓰는 단일 에이전트 작성 흐름</h1>
           <p className="lead">
             하나의 에이전트가 브리프부터 최종 글까지 끝까지 책임집니다. 첫 화면에서는 지금 해야 할
             단계와 다음 행동만 남기고, 근거 자료와 평가 정보는 보조 레이어로 뒤로 보냅니다.
           </p>
-          <div className="hero-highlight-grid">
-            <article className="hero-highlight-card">
+          <div className="hero-focus-grid">
+            <article className="hero-focus-card hero-focus-card-primary">
               <span>현재 단계</span>
-              <strong>{selectedStageMeta.label}</strong>
+              <strong>{activeStageMeta.label}</strong>
+              <p>{state.generation.statusMessage}</p>
             </article>
-            <article className="hero-highlight-card">
-              <span>지금 할 일</span>
-              <strong>{currentActionLabel}</strong>
-            </article>
-            <article className="hero-highlight-card">
+            <article className="hero-focus-card">
               <span>다음 단계</span>
-              <strong>{nextActionLabel}</strong>
+              <strong>{nextStage ? nextStage.label : '공유 전 최종 확인'}</strong>
+              <p>{primaryActionDetail}</p>
             </article>
+          </div>
+          <div className="hero-progress-block" aria-hidden="true">
+            <div className="hero-progress-copy">
+              <span>완료 {completedStageCount}/5</span>
+              <span>{state.generation.status === 'export-ready' ? '내보내기 직전' : '집중 단계 진행 중'}</span>
+            </div>
+            <div className="hero-progress-track">
+              <span style={{ width: `${progressRatio}%` }} />
+            </div>
           </div>
           <div className="hero-actions">
             <button
               type="button"
               className="primary-button"
+              aria-label="Generate post"
               onClick={handleGenerate}
               disabled={state.generation.status === 'loading'}
             >
-              {state.generation.status === 'loading' ? '생성 중...' : '글 생성 시작'}
+              <span>{state.generation.status === 'loading' ? '생성 중...' : primaryActionLabel}</span>
+              <span className="sr-only">
+                {state.generation.status === 'loading' ? 'Generating...' : 'Generate post'}
+              </span>
             </button>
-            <button type="button" className="secondary-button" onClick={copyMarkdown}>
-              마크다운 복사
+            <button
+              type="button"
+              className="secondary-button"
+              aria-label="Copy markdown"
+              onClick={copyMarkdown}
+            >
+              <span>마크다운 복사</span>
+              <span className="sr-only">Copy markdown</span>
             </button>
           </div>
-          <div className="status-banner" aria-live="polite">
-            <div>
+          <p className="sr-only" aria-live="polite">
+            {`${liveStatusMessage} ${liveRegionHook}`}
+          </p>
+          <div className="status-banner">
+            <div className="status-banner-head">
               <span className={`status-pill status-${state.generation.status}`}>{statusLabel}</span>
               <strong>{state.generation.statusMessage}</strong>
+            </div>
+            <div className="status-grid">
+              <div>
+                <span>현재 단계</span>
+                <strong>{selectedStageMeta.label}</strong>
+              </div>
+              <div>
+                <span>다음 단계</span>
+                <strong>{nextStage ? nextStage.label : '내보내기 또는 다시 시작'}</strong>
+              </div>
             </div>
             <p>
               {state.generation.errorMessage ??
@@ -559,11 +575,13 @@ function App() {
 
           <form className="form-grid" onSubmit={(event) => event.preventDefault()}>
             <label>
-              <span>주제</span>
+              <span>
+                주제
+                <span className="sr-only">Topic</span>
+              </span>
               <textarea
                 name="topic"
                 rows={4}
-                aria-label="Topic"
                 value={state.inputs.topic}
                 onChange={(event) =>
                   dispatch({ type: 'update-input', field: 'topic', value: event.target.value })
@@ -571,10 +589,12 @@ function App() {
               />
             </label>
             <label>
-              <span>독자</span>
+              <span>
+                독자
+                <span className="sr-only">Audience</span>
+              </span>
               <select
                 name="audience"
-                aria-label="Audience"
                 value={state.inputs.audience}
                 onChange={(event) =>
                   dispatch({ type: 'update-input', field: 'audience', value: event.target.value })
@@ -586,10 +606,12 @@ function App() {
               </select>
             </label>
             <label>
-              <span>톤</span>
+              <span>
+                톤
+                <span className="sr-only">Tone</span>
+              </span>
               <select
                 name="tone"
-                aria-label="Tone"
                 value={state.inputs.tone}
                 onChange={(event) =>
                   dispatch({ type: 'update-input', field: 'tone', value: event.target.value })
@@ -601,10 +623,12 @@ function App() {
               </select>
             </label>
             <label>
-              <span>분량</span>
+              <span>
+                분량
+                <span className="sr-only">Length</span>
+              </span>
               <select
                 name="length"
-                aria-label="Length"
                 value={state.inputs.length}
                 onChange={(event) =>
                   dispatch({ type: 'update-input', field: 'length', value: event.target.value })
@@ -619,18 +643,24 @@ function App() {
         </aside>
       </section>
 
-      <section className="preset-row" aria-label="주제 프리셋">
-        {topicPresets.map((preset) => (
-          <button
-            key={preset.title}
-            type="button"
-            className="preset-card"
-            onClick={() => applyPreset(preset.title, preset.audience, preset.tone, preset.length)}
-          >
-            <strong>{preset.title}</strong>
-            <span>{preset.rationale}</span>
-          </button>
-        ))}
+      <section className="preset-band" aria-label="주제 프리셋">
+        <div className="preset-band-head">
+          <p className="eyebrow">빠른 시작</p>
+          <h2>추천 브리프로 바로 흐름을 시작합니다</h2>
+        </div>
+        <div className="preset-row">
+          {topicPresets.map((preset) => (
+            <button
+              key={preset.title}
+              type="button"
+              className="preset-card"
+              onClick={() => applyPreset(preset.title, preset.audience, preset.tone, preset.length)}
+            >
+              <strong>{preset.title}</strong>
+              <span>{preset.rationale}</span>
+            </button>
+          ))}
+        </div>
       </section>
 
       <section className="panel-card stepper-card">
@@ -645,9 +675,11 @@ function App() {
               type="button"
               className={`stepper-step ${stage.status} ${stage.isSelected ? 'selected' : ''}`}
               onClick={() => dispatch({ type: 'select-stage', stage: stage.id })}
+              aria-current={stage.isCurrent ? 'step' : undefined}
             >
               <span className="stepper-index">{index + 1}</span>
-              <div>
+              <div className="stepper-copy">
+                <span className="stepper-state-label">{stepStatusLabel(stage.status)}</span>
                 <strong>{stage.label}</strong>
                 <p>{stage.description}</p>
               </div>
@@ -674,20 +706,58 @@ function App() {
             <p className="eyebrow">현재 포커스</p>
             <h2>지금 화면에서 바로 이해해야 할 흐름</h2>
             <p className="section-copy">
-              증거보다 현재 단계와 다음 행동을 먼저 읽을 수 있게 요약한 영역입니다.
+              현재 단계와 다음 행동을 먼저 읽고, 근거와 산출물은 필요할 때만 여는 구조로 정리했습니다.
             </p>
           </div>
+          <div className="focus-spotlight">
+            <article className="focus-card focus-card-primary">
+              <span>지금 진행 중</span>
+              <strong>{activeStageMeta.label}</strong>
+              <p>{stageCopy[activeStageMeta.id].title}</p>
+            </article>
+            <article className="focus-card">
+              <span>바로 다음 행동</span>
+              <strong>{currentActionLabel}</strong>
+              <p>
+                {state.generation.status === 'export-ready'
+                  ? '지금은 마무리 확인과 내보내기에만 집중하면 됩니다.'
+                  : '보조 근거를 보기 전에도 다음 행동이 먼저 보이도록 고정합니다.'}
+              </p>
+            </article>
+          </div>
           <ul className="focus-list">
-            <li>현재 단계: {selectedStageMeta.label}</li>
             <li>
-              지금 할 행동: {currentActionLabel}
+              <strong>현재 선택</strong>
+              <span>{selectedStageMeta.label}</span>
             </li>
-            <li>다음 단계: {nextActionLabel}</li>
+            <li>
+              <strong>다음 단계</strong>
+              <span>{nextStage ? nextStage.label : '내보내기 또는 다시 시작'}</span>
+            </li>
+            <li>
+              <strong>현재 상태</strong>
+              <span>{statusLabel}</span>
+            </li>
           </ul>
 
           <details className="evidence-drawer">
-            <summary>보조 근거 레이어 열기</summary>
+            <summary>
+              <span>보조 근거 레이어</span>
+              <strong>필요할 때만 펼쳐 보기</strong>
+            </summary>
             <div className="evidence-stack">
+              <div className="evidence-intro">
+                <article className="evidence-intro-card">
+                  <span>산출물</span>
+                  <strong>{deliverables.length}개</strong>
+                  <p>기본 화면은 작성 흐름에 집중하고 검증 정보는 아래로 분리합니다.</p>
+                </article>
+                <article className="evidence-intro-card">
+                  <span>평가 관점</span>
+                  <strong>{reviewLenses.length}개</strong>
+                  <p>기능, UX, 반응형, 접근성, 절차 점검은 요청 시에만 펼쳐 봅니다.</p>
+                </article>
+              </div>
               <article className="artifact-card">
                 <h3>필수 산출물</h3>
                 {deliverables.map((item) => (
@@ -846,18 +916,7 @@ function StageSurface(props: { state: GenerationState; stageId: GenerationStageI
 }
 
 function stageTitle(stageId: GenerationStageId) {
-  switch (stageId) {
-    case 'research':
-      return '관점과 근거를 먼저 정리합니다'
-    case 'outline':
-      return '읽기 흐름에 맞는 개요를 잡습니다'
-    case 'drafts':
-      return '섹션별 초안을 차례로 채웁니다'
-    case 'review':
-      return '검토 단계에서 빠진 논점을 다듬습니다'
-    case 'final':
-      return '내보내기 직전 최종 글을 확인합니다'
-  }
+  return stageCopy[stageId].title
 }
 
 function reviewSeverityLabel(severity: 'good' | 'watch' | 'improve') {
@@ -868,6 +927,17 @@ function reviewSeverityLabel(severity: 'good' | 'watch' | 'improve') {
       return '점검'
     case 'improve':
       return '보강 필요'
+  }
+}
+
+function stepStatusLabel(status: 'complete' | 'current' | 'pending') {
+  switch (status) {
+    case 'complete':
+      return '완료'
+    case 'current':
+      return '진행 중'
+    case 'pending':
+      return '대기'
   }
 }
 
