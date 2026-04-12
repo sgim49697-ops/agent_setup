@@ -1,691 +1,622 @@
-import { useEffect, useReducer, useRef, useState } from 'react'
+// App.tsx - single_agent focused wizard UI for the blog post generator harness
+
+import { useEffect, useRef, useState } from 'react'
 import './App.css'
 import type {
-  ArtifactIndex,
-  Audience,
   BlogGeneratorInputs,
   GenerationStageId,
   GenerationState,
-  GenerationStatus,
-  Length,
   PipelineOutputs,
-  RunManifest,
-  Scorecard,
-  Tone,
+  ReviewNote,
+  TopicPreset,
 } from './contracts'
 import { generatePipelineOutputs } from './generator'
-import { deliverables, reviewLenses, topicPresets, workflowStages } from './starterData'
+import { evidenceDrawerItems, reviewLenses, topicPresets, workflowStages } from './starterData'
 
-type AppState = {
-  inputs: BlogGeneratorInputs
-  generation: GenerationState
-  copyFeedback: string
-}
+const audienceOptions = [
+  { value: 'beginner', label: '입문자' },
+  { value: 'practitioner', label: '실무자' },
+  { value: 'advanced', label: '고급 사용자' },
+] as const
 
-type Action =
-  | {
-      type: 'update-input'
-      field: keyof BlogGeneratorInputs
-      value: BlogGeneratorInputs[keyof BlogGeneratorInputs]
-    }
-  | { type: 'apply-preset'; payload: BlogGeneratorInputs }
-  | { type: 'start-run'; message: string }
-  | {
-      type: 'set-stage-output'
-      stage: GenerationStageId
-      nextStage: GenerationStageId | null
-      key: keyof PipelineOutputs
-      value: PipelineOutputs[keyof PipelineOutputs]
-      status: GenerationStatus
-      message: string
-    }
-  | { type: 'finalize-run'; finalPost: string; message: string }
-  | { type: 'set-copy-feedback'; message: string }
-  | { type: 'set-error'; stage: GenerationStageId; message: string }
+const toneOptions = [
+  { value: 'clear', label: '명료하게' },
+  { value: 'pragmatic', label: '실무 중심' },
+  { value: 'opinionated', label: '의견을 분명하게' },
+] as const
 
-const stageOrder = workflowStages.map((stage) => stage.id)
+const lengthOptions = [
+  { value: 'short', label: '짧게' },
+  { value: 'medium', label: '중간 길이' },
+  { value: 'long', label: '깊게 길게' },
+] as const
 
 const initialInputs: BlogGeneratorInputs = {
-  topic: topicPresets[0].title,
-  audience: 'practitioner',
-  tone: 'pragmatic',
-  length: 'medium',
+  topic: topicPresets[0]?.title ?? '',
+  audience: topicPresets[0]?.audience ?? 'practitioner',
+  tone: topicPresets[0]?.tone ?? 'pragmatic',
+  length: topicPresets[0]?.length ?? 'medium',
 }
 
 const initialGeneration: GenerationState = {
   status: 'initial',
-  currentStage: 'research',
+  currentStage: null,
   completedStages: [],
   outputs: {},
-  statusMessage:
-    'initial | 브리프가 준비되었습니다. Generate post로 리서치부터 최종 원고까지 한 번에 진행하세요.',
+  statusMessage: '주제를 정하면 리서치부터 최종 원고까지 한 흐름으로 이어집니다.',
   errorMessage: null,
 }
 
-const audienceOptions: { value: Audience; label: string }[] = [
-  { value: 'beginner', label: '입문자' },
-  { value: 'practitioner', label: '실무자' },
-  { value: 'advanced', label: '고급 사용자' },
-]
+function getPartialOutputs(
+  outputs: PipelineOutputs,
+  activeStage: GenerationStageId,
+): Partial<PipelineOutputs> {
+  const partial: Partial<PipelineOutputs> = {}
 
-const toneOptions: { value: Tone; label: string }[] = [
-  { value: 'clear', label: '명료한 설명' },
-  { value: 'pragmatic', label: '실무 중심' },
-  { value: 'opinionated', label: '선명한 관점' },
-]
+  for (const stage of workflowStages) {
+    switch (stage.output) {
+      case 'research_summary':
+        partial.research_summary = outputs.research_summary
+        break
+      case 'outline':
+        partial.outline = outputs.outline
+        break
+      case 'section_drafts':
+        partial.section_drafts = outputs.section_drafts
+        break
+      case 'review_notes':
+        partial.review_notes = outputs.review_notes
+        break
+      case 'final_post':
+        partial.final_post = outputs.final_post
+        break
+    }
 
-const lengthOptions: { value: Length; label: string }[] = [
-  { value: 'short', label: '짧게' },
-  { value: 'medium', label: '중간' },
-  { value: 'long', label: '길게' },
-]
+    if (stage.id === activeStage) {
+      break
+    }
+  }
 
-const statusLabels: Record<GenerationStatus, string> = {
-  initial: '대기',
-  loading: '생성 중',
-  populated: '초안 준비',
-  'review-complete': '검토 완료',
-  'export-ready': '내보내기 준비',
-  error: '오류',
+  return partial
 }
 
-const stageFocusCopy: Record<GenerationStageId, string> = {
-  research: '핵심 사실과 독자 관점을 좁혀 첫 문단의 논지를 고정합니다.',
-  outline: '문단 순서와 논리 흐름을 한 번에 이해되도록 정리합니다.',
-  drafts: '섹션별 초안을 채워 읽기 리듬과 밀도를 맞춥니다.',
-  review: '과장, 누락, 모호성을 빠르게 걷어내는 검토 구간입니다.',
-  final: '최종 마크다운을 짧은 리더 표면에서 확인하고 바로 복사합니다.',
-}
-
-const emptyCopy: Record<GenerationStageId, { title: string; body: string }> = {
-  research: {
-    title: '리서치 결과를 아직 만들지 않았습니다.',
-    body: '브리프를 확인한 뒤 생성 버튼을 누르면 핵심 사실, 검색어, 참고 근거가 먼저 채워집니다.',
-  },
-  outline: {
-    title: '개요가 아직 비어 있습니다.',
-    body: '리서치가 끝나면 문단 순서와 독자 흐름이 자동으로 정리됩니다.',
-  },
-  drafts: {
-    title: '섹션 초안이 아직 없습니다.',
-    body: '초안 단계에서는 각 문단의 핵심 문장과 takeaway가 순서대로 나타납니다.',
-  },
-  review: {
-    title: '검토 메모가 아직 없습니다.',
-    body: '검토 단계에서는 흐름, 깊이, 실행 가능성, 문장 다듬기 메모가 생성됩니다.',
-  },
-  final: {
-    title: '최종 원고가 아직 없습니다.',
-    body: '최종 단계에 도달하면 마크다운이 잠금 해제되고 Copy markdown 액션이 활성화됩니다.',
-  },
-}
-
-const previewManifest: RunManifest = {
-  harness: 'single_agent',
-  run_id: 'single-agent-local-preview',
-  started_at: '브라우저에서 Generate post를 누른 시점',
-  finished_at: 'Final post가 준비된 직후',
-  task_spec_version: 'v2',
-  status: 'completed',
-}
-
-const previewArtifacts: ArtifactIndex = {
-  screenshots: ['runs/desktop-verification.png', 'runs/mobile-verification.png'],
-  final_urls: ['http://127.0.0.1:4273/'],
-  notes: [
-    '기본 표면은 focused wizard를 유지하고 evidence는 drawer에 둡니다.',
-    '영문 훅은 테스트/라이브 리전용으로만 유지합니다.',
-  ],
-  deliverables: ['reports/review_report.md', 'reports/scorecard.json'],
-}
-
-const previewScorecard: Scorecard = {
-  task_success: 9,
-  ux_score: 8,
-  flow_clarity: 9,
-  visual_quality: 8,
-  responsiveness: 8,
-  a11y_score: 8,
-  process_adherence: 9,
-  overall_score: 8.4,
-}
-
-function unique<T>(items: T[]) {
-  return Array.from(new Set(items))
-}
-
-function reducer(state: AppState, action: Action): AppState {
-  switch (action.type) {
-    case 'update-input':
-      return {
-        ...state,
-        inputs: {
-          ...state.inputs,
-          [action.field]: action.value,
-        },
-        generation:
-          state.generation.status === 'error'
-            ? {
-                ...initialGeneration,
-                statusMessage:
-                  'initial | 브리프를 수정했습니다. Generate post로 집중형 단계를 다시 시작하세요.',
-              }
-            : state.generation,
-        copyFeedback: '',
-      }
-    case 'apply-preset':
-      return {
-        ...state,
-        inputs: action.payload,
-        generation: {
-          ...state.generation,
-          errorMessage: null,
-          statusMessage:
-            'initial | 프리셋을 불러왔습니다. Generate post로 단일 작성 흐름을 바로 시작할 수 있습니다.',
-        },
-        copyFeedback: '',
-      }
-    case 'start-run':
-      return {
-        ...state,
-        generation: {
-          status: 'loading',
-          currentStage: 'research',
-          completedStages: [],
-          outputs: {},
-          statusMessage: action.message,
-          errorMessage: null,
-        },
-        copyFeedback: '',
-      }
-    case 'set-stage-output':
-      return {
-        ...state,
-        generation: {
-          ...state.generation,
-          status: action.status,
-          currentStage: action.nextStage ?? action.stage,
-          completedStages: unique([...state.generation.completedStages, action.stage]),
-          outputs: {
-            ...state.generation.outputs,
-            [action.key]: action.value,
-          },
-          statusMessage: action.message,
-          errorMessage: null,
-        },
-      }
-    case 'finalize-run':
-      return {
-        ...state,
-        generation: {
-          ...state.generation,
-          status: 'export-ready',
-          currentStage: 'final',
-          completedStages: unique([...state.generation.completedStages, 'final']),
-          outputs: {
-            ...state.generation.outputs,
-            final_post: action.finalPost,
-          },
-          statusMessage: action.message,
-          errorMessage: null,
-        },
-      }
-    case 'set-copy-feedback':
-      return {
-        ...state,
-        copyFeedback: action.message,
-      }
-    case 'set-error':
-      return {
-        ...state,
-        generation: {
-          status: 'error',
-          currentStage: action.stage,
-          completedStages: [],
-          outputs: {},
-          statusMessage: 'error | 생성이 멈췄습니다. 브리프를 수정한 뒤 다시 시도하세요.',
-          errorMessage: action.message,
-        },
-        copyFeedback: '',
-      }
-    default:
-      return state
+function getStatusLabel(status: GenerationState['status']) {
+  switch (status) {
+    case 'initial':
+      return '준비됨'
+    case 'loading':
+      return '생성 중'
+    case 'populated':
+      return '초안 완료'
+    case 'review-complete':
+      return '검토 완료'
+    case 'export-ready':
+      return '내보내기 가능'
+    case 'error':
+      return '확인 필요'
   }
 }
 
-function nextStageFor(stage: GenerationStageId | null, completedStages: GenerationStageId[]) {
-  if (stage === null) {
-    return workflowStages[0]
+function getStepMessage(stageId: GenerationStageId, complete: boolean) {
+  if (complete && stageId === 'final') {
+    return '최종 원고와 복사 준비를 마쳤습니다.'
   }
 
-  const currentIndex = stageOrder.indexOf(stage)
-  const nextId = stageOrder[currentIndex + 1]
-  if (!nextId) {
-    return null
+  switch (stageId) {
+    case 'research':
+      return '핵심 각도와 참고 근거를 먼저 정리하고 있습니다.'
+    case 'outline':
+      return '읽는 흐름이 끊기지 않도록 개요를 설계하고 있습니다.'
+    case 'drafts':
+      return '섹션별 초안을 채우며 문장 밀도와 톤을 맞추고 있습니다.'
+    case 'review':
+      return '빠진 논점과 어색한 문장을 검토하고 있습니다.'
+    case 'final':
+      return '최종 마크다운을 확정하고 바로 복사할 수 있게 준비합니다.'
   }
-  if (completedStages.includes(nextId) && nextId !== 'final') {
-    const unfinished = workflowStages.find((item) => !completedStages.includes(item.id))
-    return unfinished ?? null
-  }
-  return workflowStages.find((item) => item.id === nextId) ?? null
 }
 
-function stageTone(stageId: GenerationStageId, generation: GenerationState, selectedStage: GenerationStageId) {
-  const isCurrent = generation.currentStage === stageId
-  const isComplete = generation.completedStages.includes(stageId)
-  const classes = ['stage-chip']
-  if (isCurrent || (generation.status === 'initial' && stageId === 'research')) {
-    classes.push('current')
+function getNextActionLabel(state: GenerationState) {
+  if (state.status === 'error') {
+    return '주제를 정리한 뒤 다시 생성'
   }
-  if (isComplete) {
-    classes.push('complete')
+
+  if (state.status === 'export-ready') {
+    return '마크다운 복사 후 게시 준비'
   }
-  if (selectedStage === stageId) {
-    classes.push('is-selected')
+
+  if (!state.currentStage) {
+    return '리서치부터 생성 시작'
   }
-  return classes.join(' ')
+
+  const stageIndex = workflowStages.findIndex((stage) => stage.id === state.currentStage)
+  const nextStage = workflowStages[Math.min(stageIndex + 1, workflowStages.length - 1)]
+
+  if (stageIndex === workflowStages.length - 1) {
+    return '최종 원고 확인'
+  }
+
+  return `${nextStage.label} 이어서 진행`
 }
 
-function stageStateLabel(stageId: GenerationStageId, generation: GenerationState) {
-  if (generation.status === 'error' && generation.currentStage === stageId) {
-    return '재입력 필요'
-  }
-  if (generation.completedStages.includes(stageId) || (generation.status === 'export-ready' && stageId === 'final')) {
+function getStageStateLabel(stageId: GenerationStageId, state: GenerationState) {
+  if (state.completedStages.includes(stageId)) {
     return '완료'
   }
-  if (generation.currentStage === stageId) {
-    return generation.status === 'loading' ? '진행 중' : '현재 단계'
+
+  if (state.currentStage === stageId) {
+    return state.status === 'export-ready' && stageId === 'final' ? '완료' : '진행 중'
   }
-  if (generation.status === 'initial' && stageId === 'research') {
-    return '시작 준비'
+
+  const currentIndex = state.currentStage
+    ? workflowStages.findIndex((stage) => stage.id === state.currentStage)
+    : -1
+  const stageIndex = workflowStages.findIndex((stage) => stage.id === stageId)
+
+  if (stageIndex === currentIndex + 1) {
+    return '다음'
   }
+
   return '대기'
 }
 
+function reviewToneClass(note: ReviewNote) {
+  switch (note.severity) {
+    case 'good':
+      return 'review-good'
+    case 'watch':
+      return 'review-watch'
+    case 'improve':
+      return 'review-improve'
+  }
+}
+
+function shouldTriggerFailure(topic: string) {
+  return topic.toLowerCase().includes('fail this topic intentionally')
+}
+
+async function copyMarkdown(value: string) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(value)
+    return
+  }
+
+  const textarea = document.createElement('textarea')
+  textarea.value = value
+  textarea.setAttribute('readonly', 'true')
+  textarea.style.position = 'absolute'
+  textarea.style.left = '-9999px'
+  document.body.appendChild(textarea)
+  textarea.select()
+  document.execCommand('copy')
+  document.body.removeChild(textarea)
+}
+
 function App() {
-  const [state, dispatch] = useReducer(reducer, {
-    inputs: initialInputs,
-    generation: initialGeneration,
-    copyFeedback: '',
-  })
+  const [inputs, setInputs] = useState<BlogGeneratorInputs>(initialInputs)
+  const [generation, setGeneration] = useState<GenerationState>(initialGeneration)
   const [selectedStage, setSelectedStage] = useState<GenerationStageId>('research')
-  const timeoutRefs = useRef<number[]>([])
+  const [copyFeedback, setCopyFeedback] = useState('')
+  const timersRef = useRef<number[]>([])
 
   useEffect(() => {
     return () => {
-      timeoutRefs.current.forEach((timerId) => window.clearTimeout(timerId))
+      for (const timer of timersRef.current) {
+        window.clearTimeout(timer)
+      }
     }
   }, [])
 
-  const selectedStageMeta =
-    workflowStages.find((stage) => stage.id === selectedStage) ?? workflowStages[0]
-  const nextStageMeta = nextStageFor(state.generation.currentStage, state.generation.completedStages)
-  const finalPost = state.generation.outputs.final_post
-  const finalCharacterCount = finalPost?.length ?? 0
-  const completedCount = state.generation.completedStages.length
-  const progressRatio = Math.max(completedCount, state.generation.status === 'initial' ? 0 : 1) / workflowStages.length
-  const nextActionLabel =
-    state.generation.status === 'loading'
-      ? '현재 단계를 생성 중입니다.'
-      : state.generation.status === 'export-ready'
-        ? '최종 원고를 복사하고 공유 전 검토를 마무리합니다.'
-        : state.generation.status === 'error'
-          ? '토픽을 수정하고 다시 생성해 첫 단계부터 복구합니다.'
-          : nextStageMeta
-            ? `${nextStageMeta.label}로 자연스럽게 이어집니다.`
-            : '브리프를 점검하고 생성 버튼으로 다시 시작합니다.'
+  useEffect(() => {
+    if (generation.currentStage) {
+      setSelectedStage(generation.currentStage)
+    }
+  }, [generation.currentStage])
 
-  const liveRegionMessage = `${state.generation.status} | ${state.generation.statusMessage}${
-    state.copyFeedback ? ` | ${state.copyFeedback}` : ''
-  }`
+  const clearTimers = () => {
+    for (const timer of timersRef.current) {
+      window.clearTimeout(timer)
+    }
+    timersRef.current = []
+  }
 
-  function schedulePause(ms: number) {
-    return new Promise<void>((resolve) => {
-      const timerId = window.setTimeout(() => {
-        timeoutRefs.current = timeoutRefs.current.filter((item) => item !== timerId)
-        resolve()
-      }, ms)
-      timeoutRefs.current.push(timerId)
+  const scheduleGeneration = (nextInputs: BlogGeneratorInputs) => {
+    const outputs = generatePipelineOutputs(nextInputs)
+    const forcedFailure = shouldTriggerFailure(nextInputs.topic)
+
+    clearTimers()
+    setCopyFeedback('')
+    setGeneration({
+      status: 'loading',
+      currentStage: 'research',
+      completedStages: [],
+      outputs: {},
+      statusMessage: getStepMessage('research', false),
+      errorMessage: null,
+    })
+
+    workflowStages.forEach((stage, index) => {
+      const timer = window.setTimeout(() => {
+        if (forcedFailure && stage.id === 'review') {
+          setGeneration({
+            status: 'error',
+            currentStage: 'review',
+            completedStages: workflowStages
+              .filter((item) => item.id !== 'review' && item.id !== 'final')
+              .map((item) => item.id),
+            outputs: getPartialOutputs(outputs, 'drafts'),
+            statusMessage: '검토 단계에서 의도된 오류를 표시했습니다. 주제를 수정한 뒤 다시 생성해 주세요.',
+            errorMessage:
+              '"fail this topic intentionally" 문구가 감지되어 테스트용 오류 상태를 표시했습니다.',
+          })
+          return
+        }
+
+        const isFinal = stage.id === 'final'
+        const completedStages = isFinal
+          ? workflowStages.map((item) => item.id)
+          : workflowStages.slice(0, index).map((item) => item.id)
+
+        setGeneration({
+          status:
+            stage.id === 'drafts'
+              ? 'populated'
+              : stage.id === 'review'
+                ? 'review-complete'
+                : isFinal
+                  ? 'export-ready'
+                  : 'loading',
+          currentStage: stage.id,
+          completedStages,
+          outputs: getPartialOutputs(outputs, stage.id),
+          statusMessage: getStepMessage(stage.id, isFinal),
+          errorMessage: null,
+        })
+      }, 280 + index * 280)
+
+      timersRef.current.push(timer)
     })
   }
 
-  async function handleGenerate() {
-    if (state.generation.status === 'loading') {
-      return
-    }
+  const handleGenerate = () => {
+    const nextTopic = inputs.topic.trim()
 
-    const trimmedTopic = state.inputs.topic.trim()
-    if (/^(fail|error)\b/i.test(trimmedTopic)) {
-      dispatch({
-        type: 'set-error',
-        stage: 'research',
-        message: '토픽이 fail 또는 error로 시작해 의도된 복구 경로를 실행했습니다. 주제를 수정하고 다시 시도하세요.',
+    if (!nextTopic) {
+      clearTimers()
+      setGeneration({
+        status: 'error',
+        currentStage: null,
+        completedStages: [],
+        outputs: {},
+        statusMessage: '주제를 먼저 적어야 생성 흐름을 시작할 수 있습니다.',
+        errorMessage: '주제를 입력해 주세요. Topic 필드는 비워 둘 수 없습니다.',
       })
-      setSelectedStage('research')
       return
     }
 
-    const outputs = generatePipelineOutputs({
-      ...state.inputs,
-      topic: trimmedTopic || initialInputs.topic,
-    })
-
-    dispatch({
-      type: 'start-run',
-      message: 'loading | Research results를 준비하는 중입니다. 핵심 사실과 독자 관점을 먼저 고정합니다.',
-    })
-    setSelectedStage('research')
-    await schedulePause(220)
-
-    dispatch({
-      type: 'set-stage-output',
-      stage: 'research',
-      nextStage: 'outline',
-      key: 'research_summary',
-      value: outputs.research_summary,
-      status: 'loading',
-      message: 'loading | Research results가 정리되었습니다. 이제 Outline으로 구조를 고정합니다.',
-    })
-    setSelectedStage('outline')
-    await schedulePause(220)
-
-    dispatch({
-      type: 'set-stage-output',
-      stage: 'outline',
-      nextStage: 'drafts',
-      key: 'outline',
-      value: outputs.outline,
-      status: 'loading',
-      message: 'loading | Outline이 확정되었습니다. 이제 Section drafts를 채웁니다.',
-    })
-    setSelectedStage('drafts')
-    await schedulePause(220)
-
-    dispatch({
-      type: 'set-stage-output',
-      stage: 'drafts',
-      nextStage: 'review',
-      key: 'section_drafts',
-      value: outputs.section_drafts,
-      status: 'loading',
-      message: 'loading | Section drafts가 채워졌습니다. 이제 Review notes로 밀도를 정리합니다.',
-    })
-    setSelectedStage('review')
-    await schedulePause(220)
-
-    dispatch({
-      type: 'set-stage-output',
-      stage: 'review',
-      nextStage: 'final',
-      key: 'review_notes',
-      value: outputs.review_notes,
-      status: 'review-complete',
-      message: 'review-complete | Review notes를 반영했습니다. 최종 원고를 열어 export-ready 상태로 마무리합니다.',
-    })
-    setSelectedStage('final')
-    await schedulePause(220)
-
-    dispatch({
-      type: 'finalize-run',
-      finalPost: outputs.final_post,
-      message: 'export-ready | Final post가 준비되었습니다. Copy markdown로 바로 전달 가능한 상태입니다.',
+    scheduleGeneration({
+      ...inputs,
+      topic: nextTopic,
     })
   }
 
-  async function handleCopyMarkdown() {
-    if (!state.generation.outputs.final_post) {
-      dispatch({
-        type: 'set-copy-feedback',
-        message: 'copy markdown locked | 먼저 최종 원고를 생성해야 복사할 수 있습니다.',
-      })
+  const handlePreset = (preset: TopicPreset) => {
+    clearTimers()
+    setCopyFeedback('')
+    setInputs({
+      topic: preset.title,
+      audience: preset.audience,
+      tone: preset.tone,
+      length: preset.length,
+    })
+    setGeneration((current) => ({
+      ...current,
+      errorMessage: null,
+      statusMessage: '프리셋을 적용했습니다. 입력을 확인한 뒤 바로 생성할 수 있습니다.',
+    }))
+  }
+
+  const handleCopy = async () => {
+    const finalPost = generation.outputs.final_post
+
+    if (!finalPost) {
       return
     }
 
     try {
-      await navigator.clipboard.writeText(state.generation.outputs.final_post)
-      dispatch({
-        type: 'set-copy-feedback',
-        message: 'copy markdown ready | 마크다운을 클립보드에 복사했습니다.',
-      })
+      await copyMarkdown(finalPost)
+      setCopyFeedback('마크다운을 클립보드에 복사했습니다.')
     } catch {
-      dispatch({
-        type: 'set-copy-feedback',
-        message: 'copy markdown fallback | 브라우저 권한 때문에 자동 복사가 실패했습니다. 아래 원고를 직접 복사하세요.',
-      })
+      setCopyFeedback('복사에 실패했습니다. 브라우저 권한을 확인해 주세요.')
     }
   }
 
-  function updateInput(
-    field: keyof BlogGeneratorInputs,
-    value: BlogGeneratorInputs[keyof BlogGeneratorInputs],
-  ) {
-    dispatch({ type: 'update-input', field, value })
+  const completedCount = generation.completedStages.length
+  const progress =
+    generation.status === 'initial' ? 6 : Math.max(12, (completedCount / workflowStages.length) * 100)
+  const selectedStageMeta = workflowStages.find((stage) => stage.id === selectedStage) ?? workflowStages[0]
+  const statusHook =
+    generation.status === 'export-ready'
+      ? 'export-ready'
+      : generation.status === 'error'
+        ? 'generation-error'
+        : generation.currentStage
+          ? `${generation.currentStage}-in-progress`
+          : 'waiting-for-input'
+
+  const renderResearch = () => {
+    const research = generation.outputs.research_summary
+
+    if (!research) {
+      return (
+        <div className="empty-block">
+          <div>
+            <strong>리서치가 아직 비어 있습니다.</strong>
+            <p>주제를 정하면 핵심 각도와 참고 근거부터 조용히 채워 넣습니다.</p>
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <>
+        <div className="tag-row">
+          {research.searchTerms.map((term) => (
+            <span className="soft-tag" key={term}>
+              {term}
+            </span>
+          ))}
+        </div>
+        <p>{research.angle}</p>
+        <p>{research.thesis}</p>
+        <ul className="stack-list">
+          {research.findings.map((finding) => (
+            <li key={finding}>{finding}</li>
+          ))}
+        </ul>
+        <p>
+          <strong>참고 범위</strong>
+        </p>
+        <ul className="stack-list">
+          {research.references.map((reference) => (
+            <li key={reference}>{reference}</li>
+          ))}
+        </ul>
+      </>
+    )
   }
 
-  function renderStageContent() {
-    switch (selectedStage) {
-      case 'research': {
-        const research = state.generation.outputs.research_summary
-        if (!research) {
-          return <EmptyStage stageId="research" />
-        }
+  const renderOutline = () => {
+    const outline = generation.outputs.outline
 
-        return (
-          <>
-            <article className="content-card">
-              <p className="card-eyebrow">research focus</p>
-              <h3>리서치 결과 요약</h3>
-              <p>{research.angle}</p>
-              <p>{research.thesis}</p>
-              <p>{research.audienceFit}</p>
-            </article>
-            <article className="content-card">
-              <p className="card-eyebrow">search plan</p>
-              <h3>확인한 검색 포인트</h3>
-              <ul className="stack-list">
-                {research.searchTerms.map((term) => (
-                  <li key={term}>{term}</li>
-                ))}
-              </ul>
-              <div className="tag-row">
-                {research.references.map((reference) => (
-                  <span key={reference} className="soft-tag">
-                    {reference}
-                  </span>
-                ))}
-              </div>
-            </article>
-          </>
-        )
-      }
-      case 'outline': {
-        const outline = state.generation.outputs.outline
-        if (!outline) {
-          return <EmptyStage stageId="outline" />
-        }
+    if (!outline) {
+      return (
+        <div className="empty-block">
+          <div>
+            <strong>개요가 아직 준비되지 않았습니다.</strong>
+            <p>섹션 순서와 독자 흐름은 리서치가 끝난 뒤 자동으로 정리됩니다.</p>
+          </div>
+        </div>
+      )
+    }
 
-        return (
-          <article className="content-card">
-            <p className="card-eyebrow">outline map</p>
-            <h3>문단 흐름</h3>
-            <ol className="outline-stack">
-              {outline.map((section) => (
-                <li key={section.id} className="content-card">
-                  <h3>{section.title}</h3>
-                  <p>{section.summary}</p>
-                </li>
-              ))}
-            </ol>
-          </article>
-        )
-      }
-      case 'drafts': {
-        const drafts = state.generation.outputs.section_drafts
-        if (!drafts) {
-          return <EmptyStage stageId="drafts" />
-        }
+    return (
+      <ol className="outline-stack">
+        {outline.map((section, index) => (
+          <li className="content-card" key={section.id}>
+            <p className="card-eyebrow">구간 {index + 1}</p>
+            <h3>{section.title}</h3>
+            <p>{section.summary}</p>
+          </li>
+        ))}
+      </ol>
+    )
+  }
 
-        return drafts.map((draft) => (
-          <article key={draft.id} className="content-card">
-            <p className="card-eyebrow">draft block</p>
+  const renderDrafts = () => {
+    const drafts = generation.outputs.section_drafts
+
+    if (!drafts) {
+      return (
+        <div className="empty-block">
+          <div>
+            <strong>섹션 초안이 아직 없습니다.</strong>
+            <p>핵심 섹션이 채워지면 여기서 바로 문장 밀도를 확인할 수 있습니다.</p>
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <div className="stage-stack">
+        {drafts.map((draft) => (
+          <article className="content-card" key={draft.id}>
+            <p className="card-eyebrow">Section drafts</p>
             <h3>{draft.title}</h3>
-            {draft.body.map((paragraph, index) => (
-              <p key={`${draft.id}-${index}`}>{paragraph}</p>
+            {draft.body.map((paragraph) => (
+              <p key={paragraph}>{paragraph}</p>
             ))}
-            <p className="takeaway-line">{draft.takeaway}</p>
+            <div className="takeaway-line">{draft.takeaway}</div>
           </article>
-        ))
-      }
-      case 'review': {
-        const reviewNotes = state.generation.outputs.review_notes
-        if (!reviewNotes) {
-          return <EmptyStage stageId="review" />
-        }
+        ))}
+      </div>
+    )
+  }
 
-        return reviewNotes.map((note) => (
-          <article key={note.label} className={`content-card review-${note.severity}`}>
-            <div className="review-head">
+  const renderReview = () => {
+    const reviewNotes = generation.outputs.review_notes
+
+    if (!reviewNotes) {
+      return (
+        <div className="empty-block">
+          <div>
+            <strong>검토 메모가 아직 없습니다.</strong>
+            <p>리뷰 단계에서는 빠진 논점과 과한 문장을 짧게 표시합니다.</p>
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <div className="stage-stack">
+        {reviewNotes.map((note) => (
+          <article className="content-card" key={note.label}>
+            <div className={`review-head ${reviewToneClass(note)}`}>
               <h3>{note.label}</h3>
               <span>{note.severity}</span>
             </div>
             <p>{note.detail}</p>
           </article>
-        ))
-      }
-      case 'final': {
-        if (!finalPost) {
-          return <EmptyStage stageId="final" />
-        }
+        ))}
+      </div>
+    )
+  }
 
-        return (
-          <>
-            <article className="content-card final-summary-card">
-              <p className="card-eyebrow">final summary</p>
-              <h3>최종 원고 점검</h3>
-              <div className="tag-row">
-                <span className="soft-tag">문자 수 {finalCharacterCount.toLocaleString()}</span>
-                <span className="soft-tag">완료 단계 {completedCount} / 5</span>
-                <span className="soft-tag">최종 단계 Final post</span>
-              </div>
-              <p>
-                첫 폴드에서는 지금 바로 전달해야 할 최종 원고만 남기고, scorecard와 artifact는 아래
-                evidence drawer로 격리했습니다.
-              </p>
-            </article>
-            <article className="content-card final-panel">
-              <p className="card-eyebrow">reader surface</p>
-              <h3>최종 마크다운</h3>
-              <pre className="markdown-preview">{finalPost}</pre>
-            </article>
-          </>
-        )
-      }
-      default:
-        return null
+  const renderFinal = () => {
+    const finalPost = generation.outputs.final_post
+
+    if (!finalPost) {
+      return (
+        <div className="empty-block">
+          <div>
+            <strong>최종 원고가 아직 확정되지 않았습니다.</strong>
+            <p>리뷰가 끝나면 게시 가능한 마크다운과 복사 상태가 여기에서 정리됩니다.</p>
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <>
+        <div className="tag-row">
+          <span className="soft-tag">내보내기 준비</span>
+          <span className="soft-tag">최종 점검 완료</span>
+        </div>
+        <pre className="markdown-preview">{finalPost}</pre>
+      </>
+    )
+  }
+
+  const renderStageBody = (stageId: GenerationStageId) => {
+    switch (stageId) {
+      case 'research':
+        return renderResearch()
+      case 'outline':
+        return renderOutline()
+      case 'drafts':
+        return renderDrafts()
+      case 'review':
+        return renderReview()
+      case 'final':
+        return renderFinal()
     }
   }
 
   return (
     <main className="app-shell">
       <div className="assistive-live" aria-live="polite">
-        {liveRegionMessage}
+        {statusHook} {copyFeedback || generation.statusMessage}
       </div>
 
       <section className="workspace-hero">
         <div className="hero-copy">
-          <p className="section-kicker">focused wizard</p>
-          <h1>집중형 단일 작성 워크스페이스</h1>
+          <p className="section-kicker">단일 작성 위저드</p>
+          <h1>한 사람의 초안 작업을 끝까지 밀어 주는 슬레이트 워크스페이스</h1>
           <p className="hero-lead">
-            브리프, 현재 단계, 다음 행동만 첫 화면에 남기고 긴 원고와 평가 자료는 뒤로 밀어 둔
-            single-owner writing flow입니다.
+            한 번에 한 단계만 또렷하게 보여 주고, 증거와 디버그 정보는 뒤로 물려 둔 제품 중심
+            작성 화면입니다. 입력, 현재 단계, 최종 내보내기만 먼저 잡아 빠르게 완성 흐름에
+            들어가게 합니다.
           </p>
         </div>
         <div className="hero-actions">
           <button
-            type="button"
-            className="primary-action"
             aria-label="Generate post"
+            className="primary-action"
             onClick={handleGenerate}
-            disabled={state.generation.status === 'loading'}
+            type="button"
           >
-            <span className="button-copy-kr">원고 생성 시작</span>
-            <span className="button-copy-hook">
-              {state.generation.status === 'loading' ? 'Generating...' : 'Generate post'}
-            </span>
+            <span className="button-copy-kr">포스트 생성 시작</span>
+            <span className="button-copy-hook">Generate post</span>
           </button>
           <button
-            type="button"
-            className="secondary-action"
             aria-label="Copy markdown"
-            onClick={handleCopyMarkdown}
-            disabled={state.generation.status === 'loading'}
+            className="secondary-action"
+            disabled={!generation.outputs.final_post}
+            onClick={() => {
+              void handleCopy()
+            }}
+            type="button"
           >
-            <span className="button-copy-kr">최종 원고 복사</span>
+            <span className="button-copy-kr">마크다운 복사</span>
             <span className="button-copy-hook">Copy markdown</span>
           </button>
         </div>
       </section>
 
-      <section className="workspace-frame">
+      <div className="workspace-frame">
         <aside className="brief-rail">
           <section className="rail-card rail-card-dark">
             <div className="status-row">
-              <span className={`status-badge status-${state.generation.status}`}>
-                {statusLabels[state.generation.status]}
-              </span>
-              {state.generation.status === 'loading' ? (
-                <span className="loading-pulse" aria-hidden="true" />
-              ) : (
-                <span className="active-dot" aria-hidden="true" />
-              )}
+              <div>
+                <p className="rail-hook">현재 흐름</p>
+                <h2>지금 해야 할 일과 다음 행동</h2>
+              </div>
+              <span className={`status-badge status-${generation.status}`}>{getStatusLabel(generation.status)}</span>
             </div>
-            <p className="rail-label">current step</p>
-            <h2>{selectedStageMeta.label}</h2>
-            <p className="rail-hook">{selectedStageMeta.testHook}</p>
-            <p className="rail-description">{stageFocusCopy[selectedStageMeta.id]}</p>
+            <p className="rail-description">{generation.statusMessage}</p>
             <p className="status-detail">
-              다음 행동: {nextActionLabel}
+              현재 단계: {generation.currentStage ? selectedStageMeta.label : '브리프 준비'}
             </p>
-            {state.generation.errorMessage ? (
-              <p className="status-detail status-detail-soft">{state.generation.errorMessage}</p>
-            ) : null}
-            {state.copyFeedback ? <p className="status-detail status-detail-soft">{state.copyFeedback}</p> : null}
+            <p className="status-detail status-detail-soft">다음 행동: {getNextActionLabel(generation)}</p>
             <div className="progress-meta">
-              <span>완료 단계 {completedCount} / 5</span>
-              <span>{nextStageMeta ? `다음 ${nextStageMeta.label}` : '내보내기 또는 재시작'}</span>
+              <span>{completedCount} / 5 단계 완료</span>
+              <span>{Math.round(progress)}%</span>
             </div>
             <div className="progress-track" aria-hidden="true">
-              <span style={{ width: `${Math.max(progressRatio, 0.08) * 100}%` }} />
+              <span style={{ width: `${progress}%` }} />
             </div>
           </section>
 
           <section className="rail-card">
             <div className="rail-section-head">
               <div>
-                <p className="section-kicker">brief input</p>
-                <h3>글 요청 설정</h3>
+                <p className="card-eyebrow">브리프 입력</p>
+                <h3>생성 브리프</h3>
               </div>
-              <p className="brief-inline">현재 브리프를 짧게 정리해 한 번에 끝까지 생성합니다.</p>
+              <p className="brief-inline">입력은 짧게, 프리셋과 보조 정보는 접힌 서랍 안에 둡니다.</p>
             </div>
 
-            <form className="brief-form" onSubmit={(event) => event.preventDefault()}>
+            <div className="brief-form">
               <label>
-                <span>주제</span>
+                <span>
+                  주제 <em>Topic</em>
+                </span>
                 <textarea
                   aria-label="Topic"
-                  name="topic"
-                  value={state.inputs.topic}
-                  onChange={(event) => updateInput('topic', event.target.value)}
+                  onChange={(event) => {
+                    setInputs((current) => ({
+                      ...current,
+                      topic: event.target.value,
+                    }))
+                  }}
+                  placeholder="예: LangGraph 1.0에서 supervisor 패턴 설계하기"
+                  value={inputs.topic}
                 />
               </label>
 
               <label>
-                <span>독자 수준</span>
+                <span>
+                  대상 독자 <em>Audience</em>
+                </span>
                 <select
                   aria-label="Audience"
-                  name="audience"
-                  value={state.inputs.audience}
-                  onChange={(event) => updateInput('audience', event.target.value as Audience)}
+                  onChange={(event) => {
+                    setInputs((current) => ({
+                      ...current,
+                      audience: event.target.value as BlogGeneratorInputs['audience'],
+                    }))
+                  }}
+                  value={inputs.audience}
                 >
                   {audienceOptions.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -696,12 +627,18 @@ function App() {
               </label>
 
               <label>
-                <span>문체 톤</span>
+                <span>
+                  문체 톤 <em>Tone</em>
+                </span>
                 <select
                   aria-label="Tone"
-                  name="tone"
-                  value={state.inputs.tone}
-                  onChange={(event) => updateInput('tone', event.target.value as Tone)}
+                  onChange={(event) => {
+                    setInputs((current) => ({
+                      ...current,
+                      tone: event.target.value as BlogGeneratorInputs['tone'],
+                    }))
+                  }}
+                  value={inputs.tone}
                 >
                   {toneOptions.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -712,12 +649,18 @@ function App() {
               </label>
 
               <label>
-                <span>분량</span>
+                <span>
+                  글 길이 <em>Length</em>
+                </span>
                 <select
                   aria-label="Length"
-                  name="length"
-                  value={state.inputs.length}
-                  onChange={(event) => updateInput('length', event.target.value as Length)}
+                  onChange={(event) => {
+                    setInputs((current) => ({
+                      ...current,
+                      length: event.target.value as BlogGeneratorInputs['length'],
+                    }))
+                  }}
+                  value={inputs.length}
                 >
                   {lengthOptions.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -726,23 +669,22 @@ function App() {
                   ))}
                 </select>
               </label>
-            </form>
+            </div>
 
             <details className="support-drawer">
               <summary>
-                <strong>프리셋 제안</strong>
-                <span>빠르게 브리프를 교체해 single-agent 흐름을 확인합니다.</span>
+                <strong>프리셋 불러오기</strong>
+                <span>빠르게 시작하는 주제 템플릿</span>
               </summary>
               <div className="preset-list">
                 {topicPresets.map((preset) => (
                   <button
-                    key={preset.title}
-                    type="button"
                     className="preset-tile"
+                    key={preset.title}
                     onClick={() => {
-                      dispatch({ type: 'apply-preset', payload: preset })
-                      setSelectedStage('research')
+                      handlePreset(preset)
                     }}
+                    type="button"
                   >
                     <strong>{preset.title}</strong>
                     <span>{preset.rationale}</span>
@@ -756,177 +698,174 @@ function App() {
         <section className="workspace-main">
           <div className="spotlight-row">
             <article className="spotlight-card spotlight-card-primary">
-              <p className="spotlight-label">now</p>
-              <strong>{selectedStageMeta.label}</strong>
-              <span className="spotlight-hook">{selectedStageMeta.testHook}</span>
-              <p>{stageFocusCopy[selectedStageMeta.id]}</p>
+              <p className="spotlight-label">현재 단계</p>
+              <strong>{generation.currentStage ? selectedStageMeta.label : '브리프 준비'}</strong>
+              <span className="spotlight-hook">
+                {generation.currentStage ? selectedStageMeta.testHook : 'Generate post'}
+              </span>
+              <p>{generation.statusMessage}</p>
             </article>
             <article className="spotlight-card">
-              <p className="spotlight-label">next action</p>
-              <strong>{nextStageMeta ? nextStageMeta.label : '복사 또는 재시작'}</strong>
-              <p>{nextActionLabel}</p>
+              <p className="spotlight-label">다음 행동</p>
+              <strong>{getNextActionLabel(generation)}</strong>
+              <span className="spotlight-hook">한 단계씩 집중</span>
+              <p>현재 단계가 끝나면 다음 산출물만 바로 이어서 열리도록 설계했습니다.</p>
             </article>
             <article className="spotlight-card">
-              <p className="spotlight-label">reader gate</p>
-              <strong>{finalCharacterCount > 0 ? `${finalCharacterCount.toLocaleString()}자 준비` : '리더 표면 잠금'}</strong>
+              <p className="spotlight-label">작성 범위</p>
+              <strong>{inputs.topic || '주제를 입력해 주세요'}</strong>
+              <div className="tag-row">
+                <span className="soft-tag">
+                  {audienceOptions.find((item) => item.value === inputs.audience)?.label}
+                </span>
+                <span className="soft-tag">
+                  {toneOptions.find((item) => item.value === inputs.tone)?.label}
+                </span>
+                <span className="soft-tag">
+                  {lengthOptions.find((item) => item.value === inputs.length)?.label}
+                </span>
+              </div>
+            </article>
+          </div>
+
+          <section className="stage-stack">
+            <div className="stage-rail" aria-label="workflow stages">
+              {workflowStages.map((stage, index) => {
+                const stageStateLabel = getStageStateLabel(stage.id, generation)
+
+                return (
+                  <button
+                    aria-label={stage.testHook}
+                    className={[
+                      'stage-chip',
+                      generation.completedStages.includes(stage.id) ? 'complete' : '',
+                      generation.currentStage === stage.id ? 'current' : '',
+                      selectedStage === stage.id ? 'is-selected' : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                    key={stage.id}
+                    onClick={() => {
+                      setSelectedStage(stage.id)
+                    }}
+                    type="button"
+                  >
+                    <span className="stage-chip-index">{index + 1}</span>
+                    <span className="stage-chip-copy">
+                      <strong>{stage.label}</strong>
+                      <em>{stage.testHook}</em>
+                    </span>
+                    <span className="stage-chip-state">{stageStateLabel}</span>
+                  </button>
+                )
+              })}
+            </div>
+
+            <section className="workspace-panel">
+              <div className="workspace-panel-head">
+                <div>
+                  <p className="panel-hook">{selectedStageMeta.testHook}</p>
+                  <h2>{selectedStageMeta.label}</h2>
+                </div>
+                {generation.status === 'loading' ? (
+                  <span className="loading-pulse" aria-hidden="true" />
+                ) : (
+                  <span className="active-dot" aria-hidden="true" />
+                )}
+              </div>
+              <div className="workspace-panel-copy">
+                <p>{selectedStageMeta.description}</p>
+                {generation.errorMessage ? <p>{generation.errorMessage}</p> : null}
+              </div>
+              {generation.status === 'error' ? (
+                <div className="empty-block error-block" role="alert">
+                  <div>
+                    <strong>입력을 확인해 주세요.</strong>
+                    <p>{generation.errorMessage}</p>
+                  </div>
+                </div>
+              ) : (
+                renderStageBody(selectedStage)
+              )}
+            </section>
+          </section>
+
+          <div className="spotlight-row">
+            <article className="content-card final-summary-card">
+              <p className="panel-hook">Final post</p>
+              <h3>내보내기 준비 상태</h3>
               <p>
-                {finalCharacterCount > 0
-                  ? '최종 원고는 짧은 reader surface에만 노출하고 자세한 trace는 드로어로 분리했습니다.'
-                  : 'Generate post 이후 Final post 단계가 열리면 reader surface가 자동으로 채워집니다.'}
+                {generation.outputs.final_post
+                  ? '최종 원고가 준비되었습니다. 복사 버튼으로 바로 게시 흐름에 넘길 수 있습니다.'
+                  : '최종 원고는 마지막 단계가 끝나면 이 카드에서 준비 상태를 알려 줍니다.'}
+              </p>
+              <div className="evidence-row">
+                <strong>Copy markdown</strong>
+                <p>{copyFeedback || '최종 원고가 준비되면 버튼 한 번으로 복사할 수 있습니다.'}</p>
+              </div>
+            </article>
+            <article className="content-card">
+              <p className="panel-hook">Review notes</p>
+              <h3>검토 기준</h3>
+              <ul className="lens-list">
+                {reviewLenses.map((lens) => (
+                  <li key={lens}>{lens}</li>
+                ))}
+              </ul>
+            </article>
+            <article className="content-card">
+              <p className="panel-hook">Research results</p>
+              <h3>빈 상태 힌트</h3>
+              <p>
+                처음에는 주제와 독자, 톤, 길이만 넣고 시작하세요. 나머지 리서치, 개요, 초안,
+                검토, 최종 원고는 단계별로 자동 채워집니다.
               </p>
             </article>
           </div>
 
-          <div className="stage-rail">
-            {workflowStages.map((stage, index) => (
-              <button
-                key={stage.id}
-                type="button"
-                className={stageTone(stage.id, state.generation, selectedStage)}
-                onClick={() => setSelectedStage(stage.id)}
-              >
-                <span className="stage-chip-index">{index + 1}</span>
-                <span className="stage-chip-copy">
-                  <strong>{stage.label}</strong>
-                  <em>{stage.description}</em>
-                </span>
-                <span className="stage-chip-state">{stage.testHook}</span>
-                <span className="stage-chip-state">{stageStateLabel(stage.id, state.generation)}</span>
-              </button>
-            ))}
-          </div>
-
-          <section className="workspace-panel">
-            <div className="workspace-panel-head">
-              <div>
-                <p className="section-kicker">active panel</p>
-                <h2>{selectedStageMeta.label}</h2>
-              </div>
-              <div className="panel-actions">
-                <button
-                  type="button"
-                  className="inline-action"
-                  aria-label="Generate post"
-                  onClick={handleGenerate}
-                  disabled={state.generation.status === 'loading'}
-                >
-                  생성 다시 실행
-                </button>
-                <button
-                  type="button"
-                  className="inline-action inline-action-ghost"
-                  aria-label="Copy markdown"
-                  onClick={handleCopyMarkdown}
-                  disabled={state.generation.status === 'loading'}
-                >
-                  최종 원고 복사
-                </button>
-              </div>
-            </div>
-            <div className="workspace-panel-copy">
-              <p>{stageFocusCopy[selectedStageMeta.id]}</p>
-              <p>{nextActionLabel}</p>
-            </div>
-            <div className="stage-stack">{renderStageContent()}</div>
-          </section>
-
           <details className="support-drawer evidence-drawer">
             <summary>
-              <strong>지원 레이어 열기</strong>
-              <span>run manifest, artifact, scorecard, review lens는 필요할 때만 펼칩니다.</span>
+              <strong>근거와 지원 패널</strong>
+              <span>보조 산출물과 디버그 메모</span>
             </summary>
             <div className="evidence-grid">
+              {evidenceDrawerItems.map((item) => (
+                <article className="evidence-card" key={item.id}>
+                  <p className="panel-hook">{item.id}</p>
+                  <h3>{item.title}</h3>
+                  <p>{item.description}</p>
+                </article>
+              ))}
               <article className="evidence-card">
-                <p className="card-eyebrow">deliverables</p>
-                <h3>필수 산출물</h3>
-                {deliverables.map((item) => (
-                  <div key={item.id} className="evidence-row">
-                    <strong>{item.title}</strong>
-                    <p>{item.description}</p>
-                  </div>
-                ))}
+                <p className="panel-hook">workflow</p>
+                <h3>완료된 단계</h3>
+                <p>
+                  {generation.completedStages.length > 0
+                    ? generation.completedStages
+                        .map((stageId) => workflowStages.find((stage) => stage.id === stageId)?.label)
+                        .filter(Boolean)
+                        .join(', ')
+                    : '아직 완료된 단계가 없습니다.'}
+                </p>
               </article>
-
               <article className="evidence-card">
-                <p className="card-eyebrow">run manifest</p>
-                <h3>실행 메타데이터</h3>
+                <p className="panel-hook">status</p>
+                <h3>현재 상태</h3>
                 <div className="evidence-row">
-                  <strong>run_id</strong>
-                  <p>{previewManifest.run_id}</p>
+                  <strong>상태 라벨</strong>
+                  <p>{getStatusLabel(generation.status)}</p>
                 </div>
                 <div className="evidence-row">
-                  <strong>status</strong>
-                  <p>{previewManifest.status}</p>
+                  <strong>다음 행동</strong>
+                  <p>{getNextActionLabel(generation)}</p>
                 </div>
-                <div className="evidence-row">
-                  <strong>version</strong>
-                  <p>{previewManifest.task_spec_version}</p>
-                </div>
-              </article>
-
-              <article className="evidence-card">
-                <p className="card-eyebrow">artifact index</p>
-                <h3>검증 경로</h3>
-                <div className="evidence-row">
-                  <strong>screenshots</strong>
-                  <p>{previewArtifacts.screenshots.join(' · ')}</p>
-                </div>
-                <div className="evidence-row">
-                  <strong>final_urls</strong>
-                  <p>{previewArtifacts.final_urls.join(' · ')}</p>
-                </div>
-                <div className="evidence-row">
-                  <strong>notes</strong>
-                  <p>{previewArtifacts.notes.join(' ')}</p>
-                </div>
-              </article>
-
-              <article className="evidence-card">
-                <p className="card-eyebrow">scorecard</p>
-                <h3>현재 품질 시그널</h3>
-                <div className="evidence-row">
-                  <strong>overall_score</strong>
-                  <p>{previewScorecard.overall_score}</p>
-                </div>
-                <div className="evidence-row">
-                  <strong>flow_clarity</strong>
-                  <p>{previewScorecard.flow_clarity}</p>
-                </div>
-                <div className="evidence-row">
-                  <strong>a11y_score</strong>
-                  <p>{previewScorecard.a11y_score}</p>
-                </div>
-              </article>
-
-              <article className="evidence-card">
-                <p className="card-eyebrow">review lens</p>
-                <h3>빠른 검토 체크</h3>
-                <ul className="lens-list">
-                  {reviewLenses.map((lens) => (
-                    <li key={lens}>{lens}</li>
-                  ))}
-                </ul>
               </article>
             </div>
           </details>
         </section>
-      </section>
+      </div>
     </main>
   )
-
-  function EmptyStage({ stageId }: { stageId: GenerationStageId }) {
-    return (
-      <article
-        className={`empty-block ${state.generation.status === 'error' && stageId === 'research' ? 'error-block' : ''}`}
-        role={state.generation.status === 'error' && stageId === 'research' ? 'alert' : undefined}
-      >
-        <div>
-          <strong>{emptyCopy[stageId].title}</strong>
-          <p>{emptyCopy[stageId].body}</p>
-        </div>
-      </article>
-    )
-  }
 }
 
 export default App
