@@ -54,7 +54,24 @@ function getPartialOutputs(
   const partial: Partial<PipelineOutputs> = {}
 
   for (const stage of workflowStages) {
-    partial[stage.output] = outputs[stage.output]
+    switch (stage.id) {
+      case 'research':
+        partial.research_summary = outputs.research_summary
+        break
+      case 'outline':
+        partial.outline = outputs.outline
+        break
+      case 'drafts':
+        partial.section_drafts = outputs.section_drafts
+        break
+      case 'review':
+        partial.review_notes = outputs.review_notes
+        break
+      case 'final':
+        partial.final_post = outputs.final_post
+        break
+    }
+
     if (stage.id === activeStage) {
       break
     }
@@ -376,7 +393,7 @@ function App() {
       <div className="stage-stack">
         {drafts.map((draft) => (
           <article className="content-card" key={draft.id}>
-            <p className="card-eyebrow">{selectedStageMeta.testHook}</p>
+            <p className="card-eyebrow">Section drafts</p>
             <h3>{draft.title}</h3>
             {draft.body.map((paragraph) => (
               <p key={paragraph}>{paragraph}</p>
