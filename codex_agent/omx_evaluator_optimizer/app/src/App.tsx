@@ -184,6 +184,7 @@ function App() {
     latestVisibleIteration
   const finalArticle =
     state.outputs && state.revealedIterations >= requiredLoops ? state.outputs.final_article : null
+  const releasePreview = finalArticle ? finalArticle.markdown.split('\n').slice(0, 6).join('\n') : ''
   const repairRows = selectedIteration?.verdictRows.filter((row) => row.verdict !== 'PASS') ?? []
   const visibleVerificationCycles =
     state.outputs?.verification_cycles.slice(
@@ -736,6 +737,10 @@ function App() {
                   </li>
                 ))}
               </ul>
+              <div className="release-preview">
+                <p className="panel-label">승인안 미리보기 Release preview</p>
+                <pre className="markdown-preview">{releasePreview}</pre>
+              </div>
             </div>
             <details className="drawer detail-drawer article-drawer">
               <summary className="drawer-summary">
