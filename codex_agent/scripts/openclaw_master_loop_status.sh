@@ -8,6 +8,7 @@ VALIDATOR_REPORT="$ROOT/.omx/state/master-loop-validator.json"
 TRACE_REPORT="$ROOT/.omx/state/master-loop-trace-sanity.json"
 BASELINE_REPORT="$ROOT/.omx/state/master-loop-baseline-metrics.json"
 QUALITY_REPORT="$ROOT/.omx/state/master-loop-quality-gate.json"
+export RUNNER_ELAPSED=$(ps -eo etimes,cmd | grep -E "run_master_ux_worker\.sh" | grep -v grep | head -n1 | awk "{print \$1}" || true)
 
 python3 "$ROOT/scripts/master_loop_validator.py" --quiet >/dev/null || true
 python3 "$ROOT/scripts/master_loop_trace_sanity.py" --quiet >/dev/null || true
@@ -26,7 +27,7 @@ INNER
 )" --quiet >/dev/null || true
 
 python3 - <<'PY'
-import json
+import json, os
 from pathlib import Path
 root = Path('/home/user/projects/agent_setup/codex_agent')
 state = json.loads((root / '.omx/state/master-ux-loop.json').read_text(encoding='utf-8')) if (root / '.omx/state/master-ux-loop.json').exists() else {}
@@ -35,6 +36,7 @@ trace = json.loads((root / '.omx/state/master-loop-trace-sanity.json').read_text
 metrics = json.loads((root / '.omx/state/master-loop-baseline-metrics.json').read_text(encoding='utf-8')) if (root / '.omx/state/master-loop-baseline-metrics.json').exists() else {}
 quality = json.loads((root / '.omx/state/master-loop-quality-gate.json').read_text(encoding='utf-8')) if (root / '.omx/state/master-loop-quality-gate.json').exists() else {}
 print('=== state ===')
+print(f'worker_elapsed_sec: {os.environ.get("RUNNER_ELAPSED", "")}')
 for key in ['status','project_status','cycle_status','cycle','current_phase','current_harness','remaining_harnesses','last_progress_at','last_progress_summary','next_cycle_required','hard_blocker','relaunch_count','regression_count','quality_gate_failure_streak','current_harness_cycle_streak']:
     print(f'{key}: {state.get(key)}')
 print('\n=== validator ===')
