@@ -732,6 +732,10 @@
   white-space: pre-wrap;
 }
 
+.markdown-drawer .markdown-export {
+  margin-top: 0;
+}
+
 .target-list {
   margin-top: 18px;
 }

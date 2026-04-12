@@ -764,7 +764,19 @@ function App() {
                 </div>
               </div>
             </details>
-            <pre className="markdown-export">{finalArticle.markdown}</pre>
+            <details className="drawer detail-drawer markdown-drawer">
+              <summary className="drawer-summary">
+                <div>
+                  <p className="panel-label">마크다운 원문 Markdown export</p>
+                  <h3>복사용 원문 열기</h3>
+                  <p>복사 실패나 포맷 점검이 필요할 때만 raw markdown을 펼칩니다.</p>
+                </div>
+                <span className="meta-pill">raw export</span>
+              </summary>
+              <div className="drawer-body">
+                <pre className="markdown-export">{finalArticle.markdown}</pre>
+              </div>
+            </details>
           </>
         ) : (
           <div className="empty-state">
