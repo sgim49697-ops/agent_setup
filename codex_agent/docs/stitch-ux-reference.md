@@ -39,9 +39,19 @@
   - final preview는 reader-ready article 중심
   - benchmark/evidence 정보는 아래 drawer에 격리
 
+
+### router
+- Screen: `projects/11015732894783859302/screens/c006565d81214e89b6d9f52928b4003f`
+- 의도: router 워크스페이스의 데스크톱 기준 화면
+- 핵심 해석:
+  - compact brief + routing decision card를 첫 표면에 둔다
+  - specialist board로 선택된 route를 설명한다
+  - strategy panel은 왜 이 route가 topic에 맞는지 보여준다
+  - evidence는 secondary drawer로 숨긴다
+
 ## 자동화 루프에서의 사용 규칙
 1. active harness에 visible UX debt가 있으면, 코드 수정 전에 Stitch 자산을 먼저 참조한다.
-2. `orchestrator_worker`는 위 orchestrator screen을, `parallel_sections`는 위 parallel screen을 직접 기준으로 삼는다.
+2. `orchestrator_worker`, `parallel_sections`, `router`는 각자 대응되는 Stitch screen을 직접 기준으로 삼는다.
 3. 다른 harness면 공통 디자인 시스템을 먼저 적용하고, 필요 시 같은 Stitch 프로젝트에 harness별 screen을 추가 생성한다.
 4. Stitch를 참고해 수정했다면 `.omx/logs/master-ux-benchmark-v2.log`와 `.omx/notepad.md`에 다음을 기록한다.
    - 참조한 Stitch project/screen/asset id

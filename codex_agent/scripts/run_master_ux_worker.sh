@@ -75,12 +75,26 @@ QUALITY_GATE_STREAK="${CONTEXT[9]}"
 LAST_GATE_SIGNATURE="${CONTEXT[10]}"
 HARNESS_STREAK="${CONTEXT[11]}"
 
-STITCH_REF='shared asset assets/2271c2a16ec8460c91f7d85b87099fe9'
-if [[ "$ACTIVE_HARNESS" == "orchestrator_worker" ]]; then
-  STITCH_REF='screen projects/11015732894783859302/screens/a9c46f1393b341f8bb24da291814c1d2 + asset assets/2271c2a16ec8460c91f7d85b87099fe9'
-elif [[ "$ACTIVE_HARNESS" == "parallel_sections" ]]; then
-  STITCH_REF='screen projects/11015732894783859302/screens/d8a6e9d589d7433181abc1a96b8c6108 + asset assets/2271c2a16ec8460c91f7d85b87099fe9'
-fi
+STITCH_REF=$(ACTIVE_HARNESS="$ACTIVE_HARNESS" python3 - <<'PY'
+import json, os
+from pathlib import Path
+root=Path('/home/user/projects/agent_setup/codex_agent')
+refs_path=root/'.omx/config/stitch-refs.json'
+active=os.environ.get('ACTIVE_HARNESS','')
+try:
+    refs=json.loads(refs_path.read_text(encoding='utf-8'))
+except Exception:
+    refs={}
+shared=refs.get('shared_asset','assets/2271c2a16ec8460c91f7d85b87099fe9')
+entry=(refs.get('harnesses') or {}).get(active, {})
+screen=entry.get('screen')
+asset=entry.get('asset', shared)
+if screen:
+    print(f'screen {screen} + asset {asset}')
+else:
+    print(f'shared asset {asset}')
+PY
+)
 
 MUST_SHRINK_LINE="- If the cycle truly cannot shrink remaining_harnesses, declare a hard blocker with evidence."
 if [[ "$STAGNANT_COUNT" -ge 3 || "$REGRESSION_COUNT" -gt 0 ]]; then
@@ -113,7 +127,7 @@ if [[ "$HARNESS_STREAK" -ge 8 ]]; then
   BUDGET_LINE="- Harness cycle budget exceeded for $ACTIVE_HARNESS (streak=$HARNESS_STREAK, budget=8). Invoke \$stagnant-breaker immediately and either remove the harness this cycle or produce a sharper plan with a fresh artifact."
 fi
 
-MEMORY_LINE='- Use omx_memory MCP to read project/notepad memory at cycle start and append one harness-specific learning after verify or gate completion.'
+MEMORY_LINE='- At cycle start, use omx_memory MCP (`project_memory_read` and `notepad_read`) to recover harness-specific lessons. After verify/gate completion, use `notepad_write_working` to persist one concrete learning for this harness.'
 
 update_state status running
 update_state project_status in_progress
