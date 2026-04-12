@@ -1,6 +1,6 @@
 {
   "harness": "router",
-  "evaluated_at": "2026-04-12T07:59:32Z",
+  "evaluated_at": "2026-04-12T08:06:11Z",
   "l1_playwright": {
     "smoke_total": 28,
     "smoke_passed": 28,
@@ -11,10 +11,10 @@
   "l2_quantitative": {
     "harness": "router",
     "source_files": 7,
-    "source_lines": 2186,
+    "source_lines": 2196,
     "build_success": true,
-    "build_seconds": 1.44,
-    "bundle_bytes": 248736,
+    "build_seconds": 1.46,
+    "bundle_bytes": 248887,
     "smoke_total": 28,
     "smoke_passed": 28,
     "smoke_failed": 0,

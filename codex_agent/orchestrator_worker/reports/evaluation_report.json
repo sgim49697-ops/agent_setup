@@ -1,6 +1,6 @@
 {
   "harness": "orchestrator_worker",
-  "evaluated_at": "2026-04-11T13:42:50Z",
+  "evaluated_at": "2026-04-12T08:08:44Z",
   "l1_playwright": {
     "smoke_total": 28,
     "smoke_passed": 28,
@@ -11,10 +11,10 @@
   "l2_quantitative": {
     "harness": "orchestrator_worker",
     "source_files": 7,
-    "source_lines": 2139,
+    "source_lines": 2461,
     "build_success": true,
-    "build_seconds": 1.61,
-    "bundle_bytes": 244051,
+    "build_seconds": 1.42,
+    "bundle_bytes": 251597,
     "smoke_total": 28,
     "smoke_passed": 28,
     "smoke_failed": 0,
