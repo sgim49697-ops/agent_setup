@@ -35,19 +35,19 @@ const laneVoices: Record<
   { lead: string; lens: string; handoff: string }
 > = {
   writer_a: {
-    lead: 'opening desk',
+    lead: '도입 데스크',
     lens: '문제 정의와 독자 프레이밍',
-    handoff: 'Merge desk should compress repeated topic framing into a single opening paragraph.',
+    handoff: '머지 데스크는 반복되는 주제 프레이밍을 하나의 도입 문단으로 압축해야 한다.',
   },
   writer_b: {
-    lead: 'structure desk',
+    lead: '구조 데스크',
     lens: '핵심 구조와 선택 기준',
-    handoff: 'Merge desk should add bridge sentences so mid-article structure feels continuous.',
+    handoff: '머지 데스크는 중간 구간이 끊기지 않도록 연결 문장을 추가해야 한다.',
   },
   writer_c: {
-    lead: 'closing desk',
+    lead: '마무리 데스크',
     lens: '실전 적용과 최종 판단 압축',
-    handoff: 'Merge desk should align checklist tone with the earlier analytical sections.',
+    handoff: '머지 데스크는 체크리스트 톤을 앞선 분석 섹션과 맞춰야 한다.',
   },
 }
 
@@ -80,15 +80,15 @@ function slugify(value: string) {
 function buildMergeCriteria(inputs: BlogGeneratorInputs): MergeCriterion[] {
   return [
     {
-      label: 'Duplication cleanup',
+      label: '중복 정리',
       detail: `${inputs.topic}의 배경 설명은 opening lane 한 곳에만 남기고, 나머지 lane에서는 자기 decision point부터 시작한다.`,
     },
     {
-      label: 'Transition bridges',
+      label: '전환 연결',
       detail: 'lane 경계마다 짧은 연결 문장을 넣어 독자가 기사처럼 한 흐름으로 읽게 만든다.',
     },
     {
-      label: 'Tone alignment',
+      label: '톤 정렬',
       detail: `${toneLens[inputs.tone]}을 유지하면서 lane마다 다른 문장 밀도를 하나의 기사 톤으로 맞춘다.`,
     },
   ]
@@ -128,7 +128,11 @@ function buildAssignments(outline: OutlineSection[]): SectionAssignment[] {
 }
 
 function writerLabel(writerId: WriterLaneId) {
-  return writerId.replace('writer_', 'Writer ').toUpperCase()
+  return writerId === 'writer_a'
+    ? '라이터 A'
+    : writerId === 'writer_b'
+      ? '라이터 B'
+      : '라이터 C'
 }
 
 export function createCoordinatorBrief(inputs: BlogGeneratorInputs): {
@@ -153,7 +157,7 @@ export function createCoordinatorBrief(inputs: BlogGeneratorInputs): {
     const owner = assignments.find((assignment) => assignment.sectionIds.includes(section.id))
     return {
       ...section,
-      writerHint: owner ? `${writerLabel(owner.writerId)} ownership` : 'Coordinator ownership',
+      writerHint: owner ? `${writerLabel(owner.writerId)} 담당` : '코디네이터 담당',
     }
   })
 
@@ -216,30 +220,30 @@ export function createMergeReport(
 
   return {
     reviewNotes: [
-      `All three lanes stayed inside owned sections and left merge work to the review desk.`,
+      '세 개의 레인이 모두 자기 담당 섹션 안에 머물렀고, 통합 정리는 리뷰 데스크로 넘겼다.',
       `${brief.title}의 opening 설명은 Writer A 쪽으로 압축하고, middle/closing lanes는 자기 판단 포인트부터 시작하도록 정리한다.`,
       `${toneLens[inputs.tone]}을 유지하면서 lane마다 다른 문장 길이를 reader-first article 톤으로 맞춘다.`,
     ],
     dedupeFix: {
-      label: 'Duplication cleanup',
+      label: '중복 정리',
       before: '각 lane이 왜 이 주제가 중요한지 다시 소개하면서 opening context가 반복된다.',
       after: 'opening context는 intro와 첫 섹션에만 남기고, 나머지 lane은 자기 section goal부터 바로 시작한다.',
       rationale: `${ownershipLabels}가 만든 초안의 속도는 살리고, reader가 같은 framing을 세 번 읽지 않게 만든다.`,
     },
     transitionFix: {
-      label: 'Transition bridge',
+      label: '전환 연결',
       before: 'Writer A/B/C 결과가 카드 단위로는 분명하지만, 기사로 읽을 때 섹션 경계가 갑자기 튄다.',
       after: '각 섹션 끝에 다음 decision point로 넘어가는 연결 문장을 추가해 기사 흐름을 회복한다.',
       rationale: 'parallel board의 흔적은 유지하되 final article은 단일 저자 글처럼 읽혀야 한다.',
     },
     toneFix: {
-      label: 'Tone alignment',
+      label: '톤 정렬',
       before: 'opening lane은 설명형, middle lane은 비교형, closing lane은 체크리스트형이라 문장 밀도가 들쭉날쭉하다.',
       after: `${toneLens[inputs.tone]}을 기준으로 문장 길이와 takeaway 어조를 재정렬한다.`,
       rationale: 'merge reviewer는 정보 손실보다 기사 톤의 일관성을 먼저 복구한다.',
     },
     finalizationNote:
-      'Merge desk now ships one reader-ready article: shared framing is shorter, section edges are bridged, and checklist language matches the rest of the piece.',
+      '머지 데스크는 이제 하나의 reader-ready article을 출고한다. 공통 프레이밍은 짧아졌고, 섹션 경계는 연결됐으며, 체크리스트 톤도 본문과 맞춰졌다.',
   }
 }
 
@@ -288,14 +292,14 @@ export function createFinalArticle(
   )
 
   const intro = `${brief.thesis} ${brief.commonFrame} ${mergeReport.dedupeFix.after}`
-  const closing = `Final note: ${brief.title}는 병렬 작성으로 속도를 얻을 수 있지만, release quality는 ${mergeReport.transitionFix.label.toLowerCase()}와 ${mergeReport.toneFix.label.toLowerCase()}를 거친 뒤에야 확보된다.`
+  const closing = `${brief.title}는 병렬 작성으로 속도를 얻을 수 있지만, 실제 공개 품질은 ${mergeReport.transitionFix.label}과 ${mergeReport.toneFix.label}을 거친 뒤에야 확보된다.`
 
   const markdown = [
     `# ${brief.title}`,
     '',
-    `> Audience: ${titleCase(inputs.audience)} | Tone: ${titleCase(inputs.tone)} | Length: ${titleCase(inputs.length)}`,
+    `> 독자층: ${titleCase(inputs.audience)} | 톤: ${titleCase(inputs.tone)} | 분량: ${titleCase(inputs.length)}`,
     '',
-    '## Intro',
+    '## 도입',
     intro,
     '',
     ...mergedSections.flatMap((section, index) => [
@@ -305,13 +309,13 @@ export function createFinalArticle(
       '',
       ...section.paragraphs,
       '',
-      `- Takeaway: ${section.takeaway}`,
+      `- 핵심 takeaway: ${section.takeaway}`,
       index < mergedSections.length - 1
-        ? `Transition: 이제 ${section.title}에서 정리한 판단 기준을 다음 섹션의 decision point로 자연스럽게 이어간다.`
+        ? `전환: 이제 ${section.title}에서 정리한 판단 기준을 다음 섹션의 decision point로 자연스럽게 이어간다.`
         : '',
       '',
     ]),
-    '## Closing checklist',
+    '## 마무리 체크리스트',
     '',
     closing,
   ].join('\n')
