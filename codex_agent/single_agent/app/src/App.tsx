@@ -238,10 +238,13 @@ function App() {
   const sectionDrafts = state.generation.outputs.section_drafts
   const reviewNotes = state.generation.outputs.review_notes
   const finalPost = state.generation.outputs.final_post
+  const liveRegionMessage = `${state.generation.status}${
+    state.generation.currentStage ? ` | ${currentStage.hook ?? currentStage.testHook}` : ''
+  } | ${state.copyFeedback || state.generation.statusMessage}`
 
   const manifest: RunManifest = {
     harness: 'single_agent',
-    run_id: state.generation.status === 'initial' ? '대기 중' : `single-agent-run-${runRef.current || 1}`,
+    run_id: state.generation.status === 'initial' ? '대기 중' : 'single-agent/latest-run',
     started_at: 'runs/run_manifest.json',
     finished_at: state.generation.status === 'export-ready' ? '최종 원고 생성 완료' : '진행 중',
     task_spec_version: 'benchmark-v2',
@@ -553,12 +556,12 @@ function App() {
   return (
     <main className="app-shell">
       <div className="assistive-live" aria-live="polite">
-        {state.copyFeedback || state.generation.statusMessage}
+        {liveRegionMessage}
       </div>
 
       <section className="workspace-hero">
         <div className="hero-copy">
-          <p className="section-kicker">Single-owner writing workspace</p>
+          <p className="section-kicker">단일 소유자 작성 워크스페이스</p>
           <h1>한 명의 작성자가 끝까지 밀고 가는 기술 블로그 워크벤치</h1>
           <p className="hero-lead">
             첫 화면에는 현재 단계와 다음 행동만 남기고, 리서치·개요·초안·검토·최종 원고는 한 번에
@@ -569,11 +572,16 @@ function App() {
           <button
             aria-label="Generate post"
             className="primary-action"
+            disabled={state.generation.status === 'loading'}
             onClick={() => void handleGenerate()}
             type="button"
           >
-            <span className="button-copy-kr">포스트 생성</span>
-            <span className="assistive-live">Generate post</span>
+            <span className="button-copy-kr">
+              {state.generation.status === 'loading' ? '포스트 생성 중' : '포스트 생성'}
+            </span>
+            <span className="assistive-live">
+              {state.generation.status === 'loading' ? 'Generating...' : 'Generate post'}
+            </span>
           </button>
           <button
             aria-label="Copy markdown"
@@ -617,7 +625,7 @@ function App() {
           <article className="rail-card">
             <div className="rail-section-head">
               <div>
-                <p className="section-kicker">Brief input</p>
+                <p className="section-kicker">브리프 입력</p>
                 <h3>브리프 입력</h3>
               </div>
               <p className="brief-inline">작성 흐름을 바꾸는 핵심 입력만 남겨 한 번에 읽히게 정리했습니다.</p>
@@ -641,6 +649,7 @@ function App() {
               <label>
                 <span>독자</span>
                 <select
+                  aria-label="Audience"
                   onChange={(event) =>
                     dispatch({
                       type: 'update-input',
@@ -660,6 +669,7 @@ function App() {
               <label>
                 <span>톤</span>
                 <select
+                  aria-label="Tone"
                   onChange={(event) =>
                     dispatch({
                       type: 'update-input',
@@ -679,6 +689,7 @@ function App() {
               <label>
                 <span>길이</span>
                 <select
+                  aria-label="Length"
                   onChange={(event) =>
                     dispatch({
                       type: 'update-input',
@@ -732,27 +743,17 @@ function App() {
         <section className="workspace-main">
           <div className="spotlight-row">
             <article className="spotlight-card spotlight-card-primary">
-              <p className="spotlight-label">Current step</p>
+              <p className="spotlight-label">현재 단계</p>
               <strong>{currentStage.label}</strong>
-              <span className="spotlight-hook">{currentStage.hook ?? currentStage.testHook}</span>
               <p>{stageMessages[currentStage.id]}</p>
             </article>
             <article className="spotlight-card">
-              <p className="spotlight-label">Next action</p>
+              <p className="spotlight-label">다음 행동</p>
               <strong>{nextStage ? nextStage.label : '내보내기 또는 새 브리프'}</strong>
               <p>
                 {nextStage
                   ? nextStage.description
                   : '최종 원고가 열렸습니다. 복사한 뒤 다음 주제로 새 흐름을 시작할 수 있습니다.'}
-              </p>
-            </article>
-            <article className="spotlight-card">
-              <p className="spotlight-label">Export gate</p>
-              <strong>{finalPost ? '내보내기 열림' : '최종 단계 잠금'}</strong>
-              <p>
-                {finalPost
-                  ? '최종 원고가 준비되어 복사 버튼이 활성화되었습니다.'
-                  : 'Copy markdown 버튼은 유지되지만, 최종 원고가 만들어지기 전까지는 비활성 상태로 남습니다.'}
               </p>
             </article>
           </div>
@@ -784,13 +785,8 @@ function App() {
           <article className="workspace-panel">
             <div className="workspace-panel-head">
               <div>
-                <p className="panel-hook">Focused reader</p>
+                <p className="panel-hook">집중 판독면</p>
                 <h2>{workflowStages.find((stage) => stage.id === selectedStage)?.label}</h2>
-              </div>
-              <div className="panel-actions">
-                <button className="inline-action inline-action-ghost" onClick={() => setSelectedStage(currentStage.id)} type="button">
-                  <span className="button-copy-kr">현재 단계로 이동</span>
-                </button>
               </div>
             </div>
             <div className="workspace-panel-copy">
@@ -803,7 +799,7 @@ function App() {
           <details className="support-drawer evidence-drawer">
             <summary>
               <span>지원 자료 열기</span>
-              <span>evidence / artifacts</span>
+              <span>증거와 기록</span>
             </summary>
             <div className="evidence-grid">
               <article className="evidence-card">
@@ -826,11 +822,11 @@ function App() {
                 <p className="card-eyebrow">점수 스냅샷</p>
                 <h3>현재 상태</h3>
                 <div className="evidence-row">
-                  <strong>overall_score</strong>
+                  <strong>종합 점수</strong>
                   <p>{finalPost ? scorecard.overall_score.toFixed(1) : '생성 후 계산'}</p>
                 </div>
                 <div className="evidence-row">
-                  <strong>Deliverables</strong>
+                  <strong>전달물</strong>
                   <ul className="stack-list">
                     {deliverables.map((item) => (
                       <li key={item.id}>
