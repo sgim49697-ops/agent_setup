@@ -50,9 +50,16 @@ def parse_events(log_text: str) -> list[dict[str, Any]]:
         remaining_match = REMAINING_RE.search(raw_line)
         if not (phase_match or summary_match or harness_match or remaining_match):
             continue
+        phase = phase_match.group(1) if phase_match else ''
+        current_harness = harness_match.group(1) if harness_match else ''
+        if not current_harness:
+            for harness in HARNESSES:
+                if harness == phase or harness in phase:
+                    current_harness = harness
+                    break
         events.append({
-            'phase': phase_match.group(1) if phase_match else '',
-            'current_harness': harness_match.group(1) if harness_match else '',
+            'phase': phase,
+            'current_harness': current_harness,
             'summary': summary_match.group(1) if summary_match else '',
             'remaining_harnesses': normalize_remaining_harnesses(remaining_match.group(1) if remaining_match else []),
         })
@@ -87,7 +94,7 @@ def analyze_trace(events: list[dict[str, Any]], state: dict[str, Any]) -> dict[s
     tail_replan_only = bool(tail_events) and any(hint in tail_text for hint in REPLAN_HINTS) and not any(hint in tail_text for hint in ACTION_HINTS)
 
     current_harness_missing_events = sum(1 for event in tail_events if not event['current_harness'])
-    if current_harness_missing_events:
+    if current_harness_missing_events > 1 or (tail_events and not tail_events[-1]['current_harness']):
         warnings.append(f'최근 tail 이벤트 {current_harness_missing_events}개에서 current_harness가 비어 있었습니다')
 
     if max_same_phase_streak >= 8:
