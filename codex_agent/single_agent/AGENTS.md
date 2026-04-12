@@ -84,4 +84,3 @@ UI가 Playwright 테스트를 통과하려면 `benchmark/evaluation_guide.md`의
 - 기본 사용자 화면을 한 페이지 evidence board처럼 만들기
 - scorecard/run artifact/review trace를 hero 근처에 모두 전면 노출하기
 - 현재 단계와 다음 행동이 모호한 상태로 구현하기
-
