@@ -1,6 +1,6 @@
 {
   "harness": "single_agent",
-  "evaluated_at": "2026-04-12T06:42:21Z",
+  "evaluated_at": "2026-04-12T13:54:40Z",
   "l1_playwright": {
     "smoke_total": 28,
     "smoke_passed": 28,
@@ -11,10 +11,10 @@
   "l2_quantitative": {
     "harness": "single_agent",
     "source_files": 7,
-    "source_lines": 1785,
+    "source_lines": 2419,
     "build_success": true,
-    "build_seconds": 1.35,
-    "bundle_bytes": 234872,
+    "build_seconds": 1.6,
+    "bundle_bytes": 252184,
     "smoke_total": 28,
     "smoke_passed": 28,
     "smoke_failed": 0,
