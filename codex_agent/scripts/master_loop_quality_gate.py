@@ -50,6 +50,40 @@ def active_harness(state: dict, arg: str | None) -> str:
     return 'single_agent'
 
 
+
+
+def full_project_rescan(state: dict) -> tuple[list[str], dict]:
+    failing: list[str] = []
+    scan_results: dict[str, dict] = {}
+    for harness in HARNESSES:
+        result = scan_harness(harness)
+        scan_results[harness] = {
+            'ok': result.get('ok', False),
+            'korean_ratio': result.get('korean_ratio'),
+            'errors': result.get('errors', []),
+            'warnings': result.get('warnings', []),
+        }
+        if not result.get('ok', False):
+            failing.append(harness)
+    return failing, scan_results
+
+
+def apply_regressed_harnesses(state: dict, failing: list[str]) -> dict:
+    remaining = normalize_remaining_harnesses(state.get('remaining_harnesses'))
+    completed = normalize_remaining_harnesses(state.get('completed_harnesses'))
+    for harness in failing:
+        if harness not in remaining:
+            remaining.append(harness)
+        if harness in completed:
+            completed.remove(harness)
+    state['remaining_harnesses'] = remaining
+    state['completed_harnesses'] = completed
+    if failing:
+        state['current_harness'] = failing[0]
+        state['current_phase'] = f'{failing[0]}-edit'
+        state['last_progress_summary'] = f'quality-gate detected regression in {failing[0]}; re-queueing it for repair.'
+    return state
+
 def compute_outcome_checks(state: dict, harness: str, validator: dict, trace: dict) -> tuple[list[str], list[str], dict]:
     errors: list[str] = []
     warnings: list[str] = []
@@ -101,6 +135,16 @@ def compute_outcome_checks(state: dict, harness: str, validator: dict, trace: di
     if state.get('quality_gate_status') == '0' and harness in normalize_remaining_harnesses(state.get('remaining_harnesses')) and trace.get('ok') and validator.get('ok'):
         warnings.append('Harness gate passed but active harness still remains in remaining_harnesses. Use master_loop_complete_harness.py in the same cycle.')
 
+    if not normalize_remaining_harnesses(state.get('remaining_harnesses')):
+        failing, scan_results = full_project_rescan(state)
+        details['full_project_rescan'] = scan_results
+        if failing:
+            for offender in failing:
+                offender_errors = scan_results[offender].get('errors', [])
+                joined = ' | '.join(offender_errors) if offender_errors else 'unknown regression'
+                errors.append(f'{offender} regressed: {joined}')
+            details['regressed_harnesses'] = failing
+
     return errors, warnings, details
 
 
@@ -123,6 +167,11 @@ def main() -> int:
 
     errors = list(validator.get('errors', [])) + list(trace.get('errors', [])) + list(ui_gate.get('errors', [])) + outcome_errors
     warnings = list(validator.get('warnings', [])) + list(trace.get('warnings', [])) + list(ui_gate.get('warnings', [])) + outcome_warnings
+
+    regressed = details.get('regressed_harnesses', [])
+    if regressed:
+        state = apply_regressed_harnesses(state, regressed)
+        harness = active_harness(state, regressed[0])
 
     report = {
         'ok': not errors,

@@ -26,12 +26,13 @@ printf '[%s] Detached tmux worker starting codex exec master loop\n' "$(date -u 
 readarray -t CONTEXT < <(python3 - <<'PY'
 import json
 from pathlib import Path
-from master_loop_state import load_state, normalize_remaining_harnesses
+from master_loop_state import load_state, normalize_remaining_harnesses, resolve_harness_token
 root=Path('/home/user/projects/agent_setup/codex_agent')
 state=load_state(root / '.omx/state/master-ux-loop.json')
 cycle = int(state.get('cycle', 0)) + 1
 remaining = normalize_remaining_harnesses(state.get('remaining_harnesses'))
 current = str(state.get('current_harness') or '').strip()
+current = resolve_harness_token(current, state) if current else ''
 if not current or current == 'benchmark_foundation':
     current = remaining[0] if remaining else 'benchmark_foundation'
 phase = str(state.get('current_phase') or 'cycle-resume')

@@ -186,7 +186,8 @@ def normalize_json_list(value: Any) -> list[Any]:
 def infer_current_harness(state: dict[str, Any]) -> str:
     current = str(state.get("current_harness") or "").strip()
     if current:
-        return current
+        resolved = resolve_harness_token(current, state)
+        return resolved if resolved else current
 
     phase = str(state.get("current_phase") or "").strip()
     for harness in HARNESSES:
