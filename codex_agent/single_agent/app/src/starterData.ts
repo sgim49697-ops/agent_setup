@@ -44,12 +44,12 @@ export const evidenceDrawerItems: DeliverableCard[] = [
   {
     id: 'manifest',
     title: '실행 기록',
-    description: '실행 시작/종료 시각, harness 이름, 상태를 남긴다.',
+    description: '실행 시작/종료 시각, 하네스 이름, 상태를 남긴다.',
   },
   {
     id: 'artifacts',
     title: '산출물 목록',
-    description: '스크린샷, final URL, 결과 파일 목록을 모은다.',
+    description: '스크린샷, 최종 미리보기 주소, 결과 파일 목록을 모은다.',
   },
   {
     id: 'review',
@@ -59,7 +59,7 @@ export const evidenceDrawerItems: DeliverableCard[] = [
   {
     id: 'scorecard',
     title: '점수 카드',
-    description: '기능, UX, 시각 완성도, 접근성, 절차 점수를 저장한다.',
+    description: '기능, 사용 경험, 시각 완성도, 접근성, 절차 점수를 저장한다.',
   },
 ]
 
@@ -67,21 +67,21 @@ export const deliverables = evidenceDrawerItems
 
 export const topicPresets: TopicPreset[] = [
   {
-    title: 'LangGraph 1.0에서 Supervisor 패턴 설계하기',
+    title: '랭그래프 1.0에서 감독자 패턴 설계하기',
     audience: 'practitioner',
     tone: 'pragmatic',
     length: 'medium',
     rationale: '역할 분리와 상태 경계를 설명하기 좋은 주제',
   },
   {
-    title: 'React Compiler 시대의 memoization 전략',
+    title: '리액트 컴파일러 시대의 메모이제이션 전략',
     audience: 'advanced',
     tone: 'opinionated',
     length: 'short',
     rationale: '논지 일관성과 요약력이 중요한 주제',
   },
   {
-    title: 'RAG에서 Vector DB 선택 기준과 트레이드오프',
+    title: '검색 증강 생성에서 벡터 데이터베이스 선택 기준과 트레이드오프',
     audience: 'practitioner',
     tone: 'clear',
     length: 'long',

@@ -36,15 +36,19 @@ trace = json.loads((root / '.omx/state/master-loop-trace-sanity.json').read_text
 metrics = json.loads((root / '.omx/state/master-loop-baseline-metrics.json').read_text(encoding='utf-8')) if (root / '.omx/state/master-loop-baseline-metrics.json').exists() else {}
 quality = json.loads((root / '.omx/state/master-loop-quality-gate.json').read_text(encoding='utf-8')) if (root / '.omx/state/master-loop-quality-gate.json').exists() else {}
 safe = json.loads((root / '.omx/state/master-loop-safe-mode.json').read_text(encoding='utf-8')) if (root / '.omx/state/master-loop-safe-mode.json').exists() else {"enabled": False}
-proc = subprocess.run(['ps', '-eo', 'args='], capture_output=True, text=True)
-lines = [line for line in proc.stdout.splitlines() if line.strip()]
-runtime = {
-    'active_worker_count': sum('run_master_ux_worker.sh' in line for line in lines),
-    'active_orchestrator_count': sum('master_loop_orchestrator.py' in line for line in lines),
-    'active_codex_exec_count': sum('codex exec' in line for line in lines),
-    'active_stitch_mcp_count': sum('stitch-mcp' in line for line in lines),
-    'active_playwright_mcp_count': sum('playwright-mcp' in line for line in lines),
+patterns = {
+    'active_worker_count': 'run_master_ux_worker\\.sh',
+    'active_orchestrator_count': 'master_loop_orchestrator\\.py',
+    'active_codex_exec_count': 'codex exec',
+    'active_stitch_mcp_count': 'stitch-mcp',
+    'active_playwright_mcp_count': 'playwright-mcp',
 }
+runtime = {
+    key: 0 for key in patterns
+}
+for key, pattern in patterns.items():
+    proc = subprocess.run(['pgrep', '-af', pattern], capture_output=True, text=True)
+    runtime[key] = len([line for line in proc.stdout.splitlines() if line.strip() and 'openclaw_master_loop_status.sh' not in line])
 runtime['active_automation_process_count'] = sum(runtime.values())
 print('=== state ===')
 print(f'worker_elapsed_sec: {os.environ.get("RUNNER_ELAPSED", "")}')

@@ -1,33 +1,36 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Sora:wght@500;600;700;800&display=swap');
+
 :root {
+  --font-ui: 'IBM Plex Sans KR', 'Apple SD Gothic Neo', sans-serif;
+  --font-copy: 'IBM Plex Sans KR', 'Apple SD Gothic Neo', sans-serif;
+  --font-display: 'Sora', 'IBM Plex Sans KR', sans-serif;
   --paper: #faf8ff;
   --panel: rgba(255, 255, 255, 0.94);
-  --panel-soft: rgba(242, 243, 255, 0.9);
-  --panel-elevated: rgba(226, 231, 255, 0.82);
-  --line: rgba(115, 118, 136, 0.12);
-  --ghost-line: rgba(195, 197, 217, 0.28);
+  --panel-soft: rgba(242, 243, 255, 0.94);
+  --panel-elevated: rgba(226, 231, 255, 0.86);
+  --line: rgba(115, 118, 136, 0.14);
+  --ghost-line: rgba(195, 197, 217, 0.44);
   --ink: #131b2e;
-  --muted: #58657a;
-  --muted-strong: #434656;
+  --muted: #57657a;
+  --muted-strong: #3a485b;
   --accent: #0052ff;
   --accent-strong: #003ec7;
-  --accent-cool: #256c5a;
-  --danger: #a32937;
+  --accent-cool: #0038b6;
+  --accent-warm: #952200;
+  --danger: #ba1a1a;
   --shadow-soft:
     0 28px 48px rgba(19, 27, 46, 0.08),
     0 10px 22px rgba(19, 27, 46, 0.05);
-  --shadow-glow: 0 24px 48px rgba(0, 82, 255, 0.12);
-  font-family:
-    'Noto Sans KR',
-    'Manrope',
-    'Segoe UI',
-    sans-serif;
-  line-height: 1.5;
+  --shadow-glow: 0 32px 64px rgba(0, 82, 255, 0.18);
+  font-family: var(--font-copy);
+  line-height: 1.6;
   font-weight: 400;
   color: var(--ink);
   background:
-    radial-gradient(circle at top left, rgba(0, 82, 255, 0.12), transparent 24%),
-    radial-gradient(circle at top right, rgba(83, 98, 140, 0.08), transparent 22%),
-    linear-gradient(180deg, #fbf9ff, #eef2ff 62%, #e7edff);
+    radial-gradient(circle at 12% 18%, rgba(0, 82, 255, 0.14), transparent 22%),
+    radial-gradient(circle at 84% 10%, rgba(191, 48, 3, 0.07), transparent 16%),
+    radial-gradient(circle at 72% 86%, rgba(81, 95, 116, 0.08), transparent 18%),
+    linear-gradient(180deg, #faf8ff, #eef2ff 52%, #e2e7ff);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -46,6 +49,11 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  background:
+    radial-gradient(circle at 12% 16%, rgba(0, 82, 255, 0.12), transparent 24%),
+    radial-gradient(circle at 84% 10%, rgba(191, 48, 3, 0.06), transparent 18%),
+    radial-gradient(circle at 72% 86%, rgba(81, 95, 116, 0.08), transparent 18%),
+    linear-gradient(180deg, #faf8ff, #eef2ff 48%, #e2e7ff);
 }
 
 body,
@@ -53,11 +61,7 @@ button,
 input,
 select,
 textarea {
-  font-family:
-    'Noto Sans KR',
-    'Manrope',
-    'Segoe UI',
-    sans-serif;
+  font-family: var(--font-copy);
 }
 
 button,
@@ -71,25 +75,23 @@ button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 3px solid rgba(0, 82, 255, 0.2);
+  outline: 3px solid rgba(0, 82, 255, 0.22);
   outline-offset: 2px;
 }
 
-h1,
-h2,
-h3 {
-  font-family:
-    'Manrope',
-    'Noto Sans KR',
-    'Segoe UI',
-    sans-serif;
+h1 {
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 6vw, 5.2rem);
+  letter-spacing: -0.045em;
   line-height: 1.05;
   color: var(--ink);
 }
 
-h1 {
-  font-size: clamp(3rem, 6vw, 5.2rem);
-  letter-spacing: -0.05em;
+h2,
+h3 {
+  font-family: var(--font-ui);
+  line-height: 1.08;
+  color: var(--ink);
 }
 
 h2 {
@@ -99,6 +101,10 @@ h2 {
 
 a {
   color: inherit;
+}
+
+::selection {
+  background: rgba(0, 82, 255, 0.14);
 }
 
 #root {
