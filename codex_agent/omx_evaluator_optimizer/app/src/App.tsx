@@ -507,12 +507,30 @@ function App() {
         </article>
       </section>
 
+      <section className="journey-strip" aria-label="Required stages">
+        {stagedWorkflow.map((stage, index) => (
+          <article key={stage.id} className={`journey-step is-${stage.stateClass}`}>
+            <p className="workflow-step">0{index + 1}</p>
+            <div>
+              <strong>{stage.label}</strong>
+              <span>
+                {stage.stateClass === 'active'
+                  ? 'Current gate'
+                  : stage.stateClass === 'complete'
+                    ? 'Passed'
+                    : 'Queued'}
+              </span>
+            </div>
+          </article>
+        ))}
+      </section>
+
       <details className="drawer stage-drawer">
         <summary className="drawer-summary">
           <div>
             <p className="panel-label">단계 흐름 Required stages</p>
-            <h3>필수 단계 지도는 접어 둡니다</h3>
-            <p>기본 화면에서는 현재 gate만 읽고, 전체 단계 맵은 필요할 때 펼칩니다.</p>
+            <h3>상세 단계 지도 열기</h3>
+            <p>기본 화면의 compact strip만으로 부족할 때, 상태 설명이 붙은 전체 단계 맵을 펼칩니다.</p>
           </div>
           <span className="meta-pill">
             {completedStageCount}/{workflowStages.length} passed · {activeStageLabel}

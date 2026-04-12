@@ -1,25 +1,35 @@
 {
   "harness": "omx_evaluator_optimizer",
-  "evaluated_at": "2026-04-11T17:02:04Z",
+  "evaluated_at": "2026-04-12T06:01:38Z",
   "l1_playwright": {
-    "smoke_total": 28,
-    "smoke_passed": 28,
-    "smoke_failed": 0,
-    "smoke_pass_rate": 1.0,
-    "smoke_failed_tests": []
+    "smoke_total": 34,
+    "smoke_passed": 26,
+    "smoke_failed": 8,
+    "smoke_pass_rate": 0.7647,
+    "smoke_failed_tests": [
+      "journey: brief -> research -> outline -> draft/review -> final progression is visible",
+      "journey: final/export state exposes copy action after progression",
+      "journey: error path remains recoverable",
+      "journey: brief -> research -> outline -> draft/review -> final progression is visible",
+      "journey: final/export state exposes copy action after progression",
+      "journey: error path remains recoverable",
+      "플로우: Generate → 5단계 산출물이 모두 나타난다",
+      "플로우: Generate → 5단계 산출물이 모두 나타난다"
+    ]
   },
   "l2_quantitative": {
     "harness": "omx_evaluator_optimizer",
     "source_files": 7,
-    "source_lines": 2174,
+    "source_lines": 2483,
     "build_success": true,
-    "build_seconds": 1.45,
-    "bundle_bytes": 234054,
-    "smoke_total": 28,
-    "smoke_passed": 28,
-    "smoke_failed": 0,
-    "smoke_pass_rate": 1.0,
-    "run_status": "not_started"
+    "build_seconds": 1.54,
+    "bundle_bytes": 242267,
+    "smoke_total": 34,
+    "smoke_passed": 26,
+    "smoke_failed": 8,
+    "smoke_pass_rate": 0.7647,
+    "run_status": "completed",
+    "run_duration_seconds": 196.0
   },
   "l3_scorecard": {
     "task_success": 9.7,
@@ -32,7 +42,7 @@
     "overall_score": 9.6
   },
   "final": {
-    "l1_smoke_score": 10.0,
+    "l1_smoke_score": 7.65,
     "l2_build_score": 10.0,
     "l3_subjective_score": 9.6,
     "l3_missing": false,
@@ -41,6 +51,6 @@
       "l2": 0.2,
       "l3": 0.5
     },
-    "final_score": 9.8
+    "final_score": 9.09
   }
 }
