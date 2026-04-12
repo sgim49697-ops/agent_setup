@@ -1,23 +1,24 @@
 :root {
-  --paper: #faf8ff;
+  --paper: #f7f8ff;
   --panel: rgba(255, 255, 255, 0.94);
-  --panel-soft: rgba(242, 243, 255, 0.9);
-  --panel-elevated: rgba(226, 231, 255, 0.82);
-  --line: rgba(115, 118, 136, 0.12);
-  --ghost-line: rgba(195, 197, 217, 0.28);
+  --panel-soft: rgba(242, 243, 255, 0.92);
+  --panel-elevated: rgba(226, 231, 255, 0.84);
+  --line: rgba(115, 118, 136, 0.1);
+  --ghost-line: rgba(195, 197, 217, 0.22);
   --ink: #131b2e;
-  --muted: #58657a;
+  --muted: #57667c;
   --muted-strong: #434656;
   --accent: #0052ff;
   --accent-strong: #003ec7;
   --accent-cool: #256c5a;
   --danger: #a32937;
   --shadow-soft:
-    0 28px 48px rgba(19, 27, 46, 0.08),
-    0 10px 22px rgba(19, 27, 46, 0.05);
-  --shadow-glow: 0 24px 48px rgba(0, 82, 255, 0.12);
+    0 28px 56px rgba(19, 27, 46, 0.08),
+    0 12px 24px rgba(19, 27, 46, 0.05);
+  --shadow-glow: 0 22px 44px rgba(0, 82, 255, 0.16);
   font-family:
     'Noto Sans KR',
+    'Inter',
     'Manrope',
     'Segoe UI',
     sans-serif;
@@ -25,9 +26,9 @@
   font-weight: 400;
   color: var(--ink);
   background:
-    radial-gradient(circle at top left, rgba(0, 82, 255, 0.12), transparent 24%),
-    radial-gradient(circle at top right, rgba(83, 98, 140, 0.08), transparent 22%),
-    linear-gradient(180deg, #fbf9ff, #eef2ff 62%, #e7edff);
+    radial-gradient(circle at top left, rgba(0, 82, 255, 0.14), transparent 24%),
+    radial-gradient(circle at 85% 12%, rgba(81, 95, 116, 0.1), transparent 18%),
+    linear-gradient(180deg, #fafbff, #eef2ff 58%, #e7ecfb);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -55,6 +56,7 @@ select,
 textarea {
   font-family:
     'Noto Sans KR',
+    'Inter',
     'Manrope',
     'Segoe UI',
     sans-serif;
