@@ -58,6 +58,31 @@ def utc_now() -> str:
     return datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
 
 
+def mark_runner_kill(reason: str) -> None:
+    """Write finish_at + interrupt markers to state BEFORE force-killing runner window.
+    Ensures last_worker_finish_at stays fresh even when tmux kill-window bypasses the
+    wrapper's EXIT trap (race-safe double write alongside scripts/run_master_ux_worker.sh)."""
+    try:
+        state = load_state(STATE_PATH)
+    except Exception:
+        state = {}
+    ts = utc_now()
+    state['last_worker_finish_at'] = ts
+    state['last_worker_interrupt_at'] = ts
+    state['last_worker_interrupt_reason'] = reason
+    state['last_worker_finish_reason'] = f'watchdog-kill:{reason}'
+    state['last_worker_exit_status'] = 'killed-by-watchdog'
+    try:
+        save_state(STATE_PATH, state)
+    except Exception:
+        pass
+
+
+def kill_runner_window(reason: str) -> None:
+    mark_runner_kill(reason)
+    run(['tmux', 'kill-window', '-t', f'{SESSION}:{RUNNER_WINDOW}'])
+
+
 def acquire_lock():
     LOCK_PATH.parent.mkdir(parents=True, exist_ok=True)
     fh = LOCK_PATH.open('w', encoding='utf-8')
@@ -237,7 +262,7 @@ def is_completed() -> bool:
 def launch_runner(state: dict[str, Any], reason: str) -> dict[str, Any]:
     windows = run(['tmux', 'list-windows', '-t', SESSION, '-F', '#W']).stdout.splitlines()
     if RUNNER_WINDOW in windows:
-        run(['tmux', 'kill-window', '-t', f'{SESSION}:{RUNNER_WINDOW}'])
+        kill_runner_window(f'relaunch:{reason}')
     run(['tmux', 'new-window', '-t', SESSION, '-n', RUNNER_WINDOW, '-c', str(ROOT), str(RUNNER_SCRIPT)])
     state['status'] = 'running'
     state['last_launch_reason'] = reason
@@ -335,7 +360,7 @@ def maybe_restart_for_regression(state: dict[str, Any], validator: dict[str, Any
     if int(state.get('regression_count', 0)) < TRACE_RESTART_THRESHOLD:
         return False
     log('quality sanity checks crossed restart threshold; recycling runner for another model retry')
-    run(['tmux', 'kill-window', '-t', f'{SESSION}:{RUNNER_WINDOW}'])
+    kill_runner_window('quality-regression')
     state['status'] = 'stalled'
     state['cycle_status'] = 'stalled'
     state['last_progress_summary'] = 'watchdog recycled runner after repeated validator/trace regressions'
@@ -410,7 +435,7 @@ def main() -> int:
         progress_age = last_progress_age_minutes(state)
         if progress_age is not None and progress_age > STALL_TIMEOUT_MINUTES:
             log(f'runner appears stalled (progress age {progress_age:.1f}m); recycling runner')
-            run(['tmux', 'kill-window', '-t', f'{SESSION}:{RUNNER_WINDOW}'])
+            kill_runner_window('stalled-progress')
             state['cycle_status'] = 'stalled'
             state['status'] = 'stalled'
             state['last_progress_summary'] = f'watchdog stalled-progress recycle after {progress_age:.1f}m without fresh heartbeat'

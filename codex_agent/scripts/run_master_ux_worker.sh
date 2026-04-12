@@ -23,6 +23,21 @@ mkdir -p "$ROOT/.omx/logs" "$ROOT/.omx/state"
 python3 "$ROOT/scripts/openclaw_sync_codex_oauth.py" --restart-gateway-if-needed --quiet || true
 printf '[%s] Detached tmux worker starting codex exec master loop\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> "$LOG"
 
+FINISH_REASON="unknown"
+FINAL_STATUS="unknown"
+on_exit() {
+  local ts
+  ts="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+  python3 "$STATE_HELPER" "$STATE" last_worker_finish_at "$ts" 2>/dev/null || true
+  python3 "$STATE_HELPER" "$STATE" last_worker_exit_status "$FINAL_STATUS" 2>/dev/null || true
+  python3 "$STATE_HELPER" "$STATE" last_worker_finish_reason "$FINISH_REASON" 2>/dev/null || true
+  printf '[%s] Wrapper EXIT trap fired (status=%s reason=%s)\n' "$ts" "$FINAL_STATUS" "$FINISH_REASON" >> "$LOG"
+}
+trap 'FINISH_REASON=signal-term; FINAL_STATUS=143; exit 143' TERM
+trap 'FINISH_REASON=signal-hup;  FINAL_STATUS=129; exit 129' HUP
+trap 'FINISH_REASON=signal-int;  FINAL_STATUS=130; exit 130' INT
+trap on_exit EXIT
+
 readarray -t CONTEXT < <(python3 - <<'PY'
 import json
 from pathlib import Path
@@ -188,15 +203,26 @@ PROMPT_EOF
 )
 
 cd "$ROOT"
+ORCHESTRATOR="$ROOT/scripts/master_loop_orchestrator.py"
 set +e
-"$CODEX_BIN" exec \
-  --dangerously-bypass-approvals-and-sandbox \
-  --color never \
-  -C "$ROOT" \
-  -o "$LAST" \
-  "$PROMPT" >> "$LOG" 2>&1
-STATUS=$?
+if [ -x "$ORCHESTRATOR" ] || [ -f "$ORCHESTRATOR" ]; then
+  python3 "$ORCHESTRATOR" \
+    --active-harness "$ACTIVE_HARNESS" \
+    --cycle "$CURRENT_CYCLE" \
+    --prompt-context "$PROMPT" >> "$LOG" 2>&1
+  STATUS=$?
+else
+  "$CODEX_BIN" exec \
+    --dangerously-bypass-approvals-and-sandbox \
+    --color never \
+    -C "$ROOT" \
+    -o "$LAST" \
+    "$PROMPT" >> "$LOG" 2>&1
+  STATUS=$?
+fi
 set -e
+FINAL_STATUS="$STATUS"
+FINISH_REASON="natural-exit"
 printf '[%s] Detached tmux worker exited with status %s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$STATUS" >> "$LOG"
 python3 "$VALIDATOR" --rewrite --quiet || true
 python3 "$TRACE_SANITY" --quiet || true
