@@ -1,0 +1,16 @@
+[
+  {
+    "harness": "single_agent",
+    "source_files": 7,
+    "source_lines": 2191,
+    "build_success": true,
+    "build_seconds": 2.2,
+    "bundle_bytes": 242669,
+    "smoke_total": 28,
+    "smoke_passed": 28,
+    "smoke_failed": 0,
+    "smoke_pass_rate": 1.0,
+    "run_status": "completed",
+    "run_duration_seconds": 685.0
+  }
+]
