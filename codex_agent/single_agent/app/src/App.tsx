@@ -204,8 +204,8 @@ function App() {
       initial: '준비 완료',
       loading: '진행 중',
       populated: '단계 완료',
-      'review-complete': '검토 완료 · Review complete',
-      'export-ready': '내보내기 준비 · Export ready',
+      'review-complete': '검토 완료',
+      'export-ready': '내보내기 준비',
       error: '오류',
     }
     return labels[state.generation.status]
@@ -389,6 +389,22 @@ function App() {
             하나의 에이전트가 브리프부터 최종 글까지 끝까지 책임집니다. 첫 화면에서는 지금 해야 할
             단계와 다음 행동만 남기고, 근거 자료와 평가 정보는 보조 레이어로 뒤로 보냅니다.
           </p>
+          <div className="hero-highlight-grid">
+            <article className="hero-highlight-card">
+              <span>현재 단계</span>
+              <strong>{selectedStageMeta.label}</strong>
+            </article>
+            <article className="hero-highlight-card">
+              <span>지금 할 일</span>
+              <strong>
+                {state.generation.status === 'export-ready' ? '마크다운 복사' : '글 생성 시작'}
+              </strong>
+            </article>
+            <article className="hero-highlight-card">
+              <span>다음 단계</span>
+              <strong>{nextStage ? nextStage.label : '공유 전 최종 확인'}</strong>
+            </article>
+          </div>
           <div className="hero-actions">
             <button
               type="button"
@@ -396,12 +412,10 @@ function App() {
               onClick={handleGenerate}
               disabled={state.generation.status === 'loading'}
             >
-              {state.generation.status === 'loading'
-                ? '생성 중 · Generating...'
-                : '글 생성 시작 · Generate post'}
+              {state.generation.status === 'loading' ? '생성 중...' : '글 생성 시작'}
             </button>
             <button type="button" className="secondary-button" onClick={copyMarkdown}>
-              마크다운 복사 · Copy markdown
+              마크다운 복사
             </button>
           </div>
           <div className="status-banner" aria-live="polite">
@@ -539,23 +553,26 @@ function App() {
         </article>
 
         <aside className="panel-card guide-panel">
-          <div className="section-head">
+          <div className="section-head guide-head">
             <p className="eyebrow">현재 포커스</p>
             <h2>지금 화면에서 바로 이해해야 할 흐름</h2>
+            <p className="section-copy">
+              증거보다 현재 단계와 다음 행동을 먼저 읽을 수 있게 요약한 영역입니다.
+            </p>
           </div>
           <ul className="focus-list">
             <li>현재 단계: {selectedStageMeta.label}</li>
             <li>
               지금 할 행동:{' '}
               {state.generation.status === 'export-ready'
-                ? '마크다운 복사 · Copy markdown'
-                : '글 생성 이어가기 · Generate post'}
+                ? '마크다운 복사'
+                : '글 생성 이어가기'}
             </li>
             <li>다음 단계: {nextStage ? nextStage.label : '내보내기 또는 다시 시작'}</li>
           </ul>
 
           <details className="evidence-drawer">
-            <summary>검토 근거 열기</summary>
+            <summary>보조 근거 레이어 열기</summary>
             <div className="evidence-stack">
               <article className="artifact-card">
                 <h3>필수 산출물</h3>
@@ -576,9 +593,9 @@ function App() {
                 </ul>
               </article>
 
-              <PreviewBlock title="실행 기록 · run_manifest.json" payload={runManifestPreview} />
-              <PreviewBlock title="산출물 목록 · artifact_index.json" payload={artifactPreview} />
-              <PreviewBlock title="점수 카드 · scorecard.json" payload={scorePreview} />
+              <PreviewBlock title="실행 기록 미리보기" payload={runManifestPreview} />
+              <PreviewBlock title="산출물 목록 미리보기" payload={artifactPreview} />
+              <PreviewBlock title="점수 카드 미리보기" payload={scorePreview} />
             </div>
           </details>
         </aside>
@@ -674,7 +691,7 @@ function StageSurface(props: { state: GenerationState; stageId: GenerationStageI
             <article key={note.label} className={`review-note review-${note.severity}`}>
               <div>
                 <strong>{note.label}</strong>
-                <span>{note.severity}</span>
+                <span>{reviewSeverityLabel(note.severity)}</span>
               </div>
               <p>{note.detail}</p>
             </article>
@@ -714,6 +731,17 @@ function stageTitle(stageId: GenerationStageId) {
       return '검토 단계에서 빠진 논점을 다듬습니다'
     case 'final':
       return '내보내기 직전 최종 글을 확인합니다'
+  }
+}
+
+function reviewSeverityLabel(severity: 'good' | 'watch' | 'improve') {
+  switch (severity) {
+    case 'good':
+      return '안정'
+    case 'watch':
+      return '점검'
+    case 'improve':
+      return '보강 필요'
   }
 }
 

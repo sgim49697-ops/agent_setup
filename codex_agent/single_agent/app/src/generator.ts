@@ -47,7 +47,7 @@ const lengthDescriptors: Record<Length, string[]> = {
   medium: ['문제 정의와 맥락', '권장 접근 방식', '구현 예시와 함정', '팀 적용 체크리스트'],
   long: [
     '문제 정의와 배경',
-    '핵심 개념과 mental model',
+    '핵심 개념과 판단 프레임',
     '선택지 비교와 트레이드오프',
     '실무 적용 패턴',
     '운영 체크리스트와 결론',
