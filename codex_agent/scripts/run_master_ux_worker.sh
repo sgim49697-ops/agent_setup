@@ -57,6 +57,7 @@ print(review_only)
 print(remaining_json)
 print(' | '.join(last_gate_errors))
 print(' | '.join(last_gate_warnings))
+print(int(state.get('quality_gate_failure_streak', 0)))
 PY
 )
 CURRENT_CYCLE="${CONTEXT[0]}"
@@ -68,6 +69,7 @@ REVIEW_ONLY_FAILURES="${CONTEXT[5]}"
 REMAINING_JSON="${CONTEXT[6]}"
 LAST_GATE_ERRORS="${CONTEXT[7]}"
 LAST_GATE_WARNINGS="${CONTEXT[8]}"
+QUALITY_GATE_STREAK="${CONTEXT[9]}"
 
 STITCH_REF='shared asset assets/2271c2a16ec8460c91f7d85b87099fe9'
 if [[ "$ACTIVE_HARNESS" == "orchestrator_worker" ]]; then
@@ -94,6 +96,8 @@ QUALITY_GATE_WARNING_MEMORY=""
 if [[ -n "$LAST_GATE_WARNINGS" ]]; then
   QUALITY_GATE_WARNING_MEMORY="- Previous cycle warning for $ACTIVE_HARNESS: $LAST_GATE_WARNINGS"
 fi
+
+DESIGNER_VERIFIER_LINE='- Use the $benchmark-cycle skill as the operating procedure. For visible UI changes, follow designer-grade review using .codex/prompts/designer.md. Before bounded completion, run a verifier-grade pass using .codex/prompts/verifier.md against the active harness results.'
 
 update_state status running
 update_state project_status in_progress
@@ -122,13 +126,16 @@ Required outcomes for this cycle:
 4. For browser review, never use ad-hoc preview ports. Use: `python3 scripts/harness_preview.py ensure $ACTIVE_HARNESS` and record the returned stable URL in last_progress_summary.
 5. Visible copy must be Korean-first. English is allowed only for stable test hooks in aria/live-region text.
 6. Keep state fresh with `python3 scripts/master_loop_state.py .omx/state/master-ux-loop.json <key> <value> ...`, including current_phase, current_harness, last_progress_at, last_progress_summary, remaining_harnesses.
-7. At the end, run `python3 scripts/master_loop_quality_gate.py --active-harness $ACTIVE_HARNESS --enforce`. If the project is not truly complete, write only the cycle-complete marker.
+7. Use `$benchmark-cycle` as the baseline workflow shell for this cycle.
+8. For visible UI/UX changes, use designer-grade judgment from `.codex/prompts/designer.md`; before closure, use verifier-grade judgment from `.codex/prompts/verifier.md`.
+9. At the end, run `python3 scripts/master_loop_quality_gate.py --active-harness $ACTIVE_HARNESS --enforce`. If the project is not truly complete, write only the cycle-complete marker.
 
 Dynamic guards:
 $MUST_SHRINK_LINE
 $REVIEW_ONLY_LINE
 $QUALITY_GATE_MEMORY
 $QUALITY_GATE_WARNING_MEMORY
+$DESIGNER_VERIFIER_LINE
 PROMPT_EOF
 )
 

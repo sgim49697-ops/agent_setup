@@ -310,6 +310,19 @@ def repair_false_completion(state: dict[str, Any]) -> dict[str, Any]:
     return state
 
 
+
+
+def escalate_quality_gate_blocker(state: dict[str, Any], quality_gate: dict[str, Any]) -> dict[str, Any]:
+    reason = 'Repeated quality gate failures require human intervention: ' + ' | '.join(quality_gate.get('errors', [])[:3])
+    BLOCK_MARKER.write_text(reason + '\n', encoding='utf-8')
+    state['hard_blocker'] = True
+    state['blocker_reason'] = reason
+    state['status'] = 'blocked'
+    state['cycle_status'] = 'blocked'
+    state['last_progress_summary'] = reason
+    log('escalated repeated quality gate failures to hard blocker')
+    return state
+
 def maybe_restart_for_regression(state: dict[str, Any], validator: dict[str, Any], trace: dict[str, Any], quality_gate: dict[str, Any]) -> bool:
     severe = bool(trace['errors']) or bool(quality_gate.get('errors')) or any('required state fields' in error for error in validator['errors'])
     if not severe:
@@ -352,6 +365,12 @@ def main() -> int:
         write_state(state)
         checkpoint_git()
         validator = build_validator_report(read_state())
+
+    if int(state.get('quality_gate_failure_streak', 0)) >= 3 and quality_gate.get('errors'):
+        state = escalate_quality_gate_blocker(state, quality_gate)
+        write_state(state)
+        checkpoint_git()
+        return 0
 
     if BLOCK_MARKER.exists() or state.get('hard_blocker'):
         state['status'] = 'blocked'

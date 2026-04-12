@@ -29,7 +29,9 @@ INT_FIELDS = {
     "stagnant_cycle_count",
     "review_only_failures",
     "quality_gate_error_count",
+    "quality_gate_failure_streak",
 }
+
 LIST_FIELDS = {
     "remaining_harnesses",
     "completed_harnesses",
@@ -48,7 +50,9 @@ STRING_FIELDS = {
     "blocker_reason",
     "last_launch_reason",
     "quality_gate_status",
+    "last_quality_gate_signature",
 }
+
 REQUIRED_STATE_FIELDS = [
     "status",
     "project_status",
@@ -205,6 +209,7 @@ def normalize_state(state: dict[str, Any]) -> dict[str, Any]:
     normalized.setdefault("stagnant_cycle_count", 0)
     normalized.setdefault("review_only_failures", 0)
     normalized.setdefault("quality_gate_error_count", 0)
+    normalized.setdefault("quality_gate_failure_streak", 0)
     normalized.setdefault("remaining_cycle_history", [])
     normalized.setdefault("phase_history", [])
     normalized["remaining_harnesses"] = normalize_remaining_harnesses(normalized.get("remaining_harnesses"))

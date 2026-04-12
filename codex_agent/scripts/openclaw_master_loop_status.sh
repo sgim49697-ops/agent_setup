@@ -35,7 +35,7 @@ trace = json.loads((root / '.omx/state/master-loop-trace-sanity.json').read_text
 metrics = json.loads((root / '.omx/state/master-loop-baseline-metrics.json').read_text(encoding='utf-8')) if (root / '.omx/state/master-loop-baseline-metrics.json').exists() else {}
 quality = json.loads((root / '.omx/state/master-loop-quality-gate.json').read_text(encoding='utf-8')) if (root / '.omx/state/master-loop-quality-gate.json').exists() else {}
 print('=== state ===')
-for key in ['status','project_status','cycle_status','cycle','current_phase','current_harness','remaining_harnesses','last_progress_at','last_progress_summary','next_cycle_required','hard_blocker','relaunch_count','regression_count']:
+for key in ['status','project_status','cycle_status','cycle','current_phase','current_harness','remaining_harnesses','last_progress_at','last_progress_summary','next_cycle_required','hard_blocker','relaunch_count','regression_count','quality_gate_failure_streak']:
     print(f'{key}: {state.get(key)}')
 print('\n=== validator ===')
 print(f"ok: {validator.get('ok')} | errors: {len(validator.get('errors', []))} | warnings: {len(validator.get('warnings', []))}")

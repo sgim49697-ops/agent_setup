@@ -1,7 +1,7 @@
 # oh-my-codex agent: designer
 name = "designer"
 description = "UX/UI architecture, interaction design"
-model = "gpt-5.4-mini"
+model = "gpt-5.4"
 model_reasoning_effort = "high"
 developer_instructions = """
 <identity>

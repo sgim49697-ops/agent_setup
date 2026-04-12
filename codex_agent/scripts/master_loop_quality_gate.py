@@ -75,7 +75,7 @@ def compute_outcome_checks(state: dict, harness: str, validator: dict, trace: di
     latest_artifact = latest_artifact_mtime(harness)
     details['latest_artifact_mtime'] = latest_artifact
     if int(state.get('stagnant_cycle_count', 0)) >= 3 and latest_artifact is None:
-        warnings.append('Artifact freshness could not be verified for a harness that appears stalled.')
+        errors.append('Artifact freshness gate failed: stalled harness has produced no newer artifacts across 3+ cycles.')
     if len(snaps) >= 3 and latest_artifact is not None:
         oldest = snaps[-3].get('updated_at')
         try:
@@ -123,10 +123,17 @@ def main() -> int:
         'details': details,
     }
 
+    signature = ' | '.join(errors)
+    previous_signature = str(state.get('last_quality_gate_signature') or '')
+    previous_streak = int(state.get('quality_gate_failure_streak', 0))
     if errors:
         state['quality_gate_error_count'] = len(errors)
+        state['quality_gate_failure_streak'] = previous_streak + 1 if signature == previous_signature else 1
+        state['last_quality_gate_signature'] = signature
     else:
         state['quality_gate_error_count'] = 0
+        state['quality_gate_failure_streak'] = 0
+        state['last_quality_gate_signature'] = ''
     if any('Review-only cycle detected' in error for error in errors):
         state['review_only_failures'] = int(state.get('review_only_failures', 0)) + 1
     save_state(state_path, state, previous=load_state(state_path))
