@@ -319,9 +319,9 @@ function App() {
         .slice(0, 4)
     : []
   const finalOutlineLead =
-    finalExcerpt || '최종 원고가 열리면 이 영역에 첫 문단 요약과 장면 흐름이 먼저 표시됩니다.'
+    finalExcerpt || '최종 원고가 열리면 이 영역에 첫 문단 요약과 섹션 흐름이 먼저 표시됩니다.'
   const finalStructureLabel =
-    finalSections.length > 0 ? `핵심 장면 ${finalSections.length}개` : '장면 구조 잠금 전'
+    finalSections.length > 0 ? `핵심 섹션 ${finalSections.length}개` : '섹션 구조 잠금 전'
   const focusStageLabel =
     state.generation.status === 'initial'
       ? '브리프 입력'
@@ -342,13 +342,13 @@ function App() {
         : stageVisibleHooks[currentStage.id]
   const focusProgressLabel =
     state.generation.status === 'initial' ? '브리프 봉인 전' : `${currentStageNumber} / 5 단계`
-  const focusStageOrderLabel = currentStageNumber > 0 ? String(currentStageNumber).padStart(2, '0') : '00'
   const progressSummary =
     state.generation.status === 'initial'
       ? '브리프를 봉인하면 다섯 단계 마감 레일이 순서대로 켜집니다.'
       : state.generation.status === 'error'
         ? '실패 지점을 고치면 같은 흐름을 처음부터 다시 밟습니다.'
         : `${state.generation.completedStages.length}개 단계를 닫았고 다음 연결만 남았습니다.`
+  const briefSummaryLine = briefSummary || '독자 · 톤 · 길이 조합을 정하는 중입니다.'
   const nextActionLabel =
     state.generation.status === 'initial'
       ? '포스트 생성'
@@ -373,11 +373,6 @@ function App() {
         : nextStage
           ? `${nextActionLabel} 전환만 남았습니다.`
           : '복사 후 같은 흐름으로 다음 주제를 다시 시작할 수 있습니다.'
-  const commandLead = finalPost
-    ? '최종 원고가 준비되었습니다. 지금은 복사와 마지막 확인만 마치면 됩니다.'
-    : state.generation.status === 'loading'
-      ? '생성이 이미 시작되었습니다. 입력면은 잠겨 있고, 아래 작업면에서 단계별 결과만 확인하면 됩니다.'
-      : '브리프를 봉인하면 리서치부터 최종 원고까지 한 번에 이어집니다.'
   const commandShortNote = finalPost
     ? '복사와 마지막 확인만 남았습니다.'
     : state.generation.status === 'loading'
@@ -442,20 +437,20 @@ function App() {
   const selectedStageOrderLabel = String(selectedStageIndex + 1).padStart(2, '0')
   const heroHeadline =
     state.generation.status === 'initial'
-      ? '한 번 잠그면 끝까지 이어지는 야간 편집실'
+      ? '브리프 한 번으로 최종 원고까지 이어집니다'
       : state.generation.status === 'error'
-        ? '복구 지점만 남긴 야간 편집실'
+        ? '복구 지점만 정리하고 흐름을 다시 잇습니다'
         : finalPost
-          ? '원고 봉인을 마쳤고 출고 신호만 남았습니다.'
-          : `${focusStageLabel}만 켜 둔 야간 편집실`
+          ? '최종 원고가 잠겼고 복사만 남았습니다'
+          : `${focusStageLabel}만 앞으로 남긴 단일 작성 흐름`
   const heroLead =
     state.generation.status === 'initial'
-      ? '브리프를 봉인하는 순간부터 최종 원고를 복사하는 순간까지, 화면에는 지금 붙드는 장면과 바로 다음 동작만 남겼습니다. 긴 기록과 전문은 뒤쪽 서랍으로 밀어 첫 화면을 더 좁고 단단하게 유지했습니다.'
+      ? '주제, 독자, 톤, 길이만 잠그면 한 명의 작성 흐름이 리서치, 개요, 초안, 검토, 최종 원고까지 이어집니다. 첫 화면에는 지금 단계와 다음 작업만 남기고 긴 기록은 뒤 레이어로 밀었습니다.'
       : state.generation.status === 'error'
         ? '실패한 흐름 전체를 다시 읽지 않도록, 복구해야 할 단계와 다시 시작 신호만 남겼습니다.'
         : finalPost
-          ? '최종 원고가 잠겼습니다. 지금은 제목, 장면 흐름, 복사 준비만 먼저 확인하면 됩니다.'
-          : '작성 흐름이 이미 움직이고 있습니다. 현재 단계와 다음 행동만 앞으로 밀고, 긴 기록과 전문은 뒤쪽 서랍으로 물렸습니다.'
+          ? '최종 원고가 잠겼습니다. 지금은 제목, 섹션 흐름, 복사 준비만 먼저 확인하면 됩니다.'
+          : '작성 흐름이 이미 움직이고 있습니다. 현재 단계와 다음 작업만 앞으로 두고, 긴 기록과 전문은 뒤쪽 서랍으로 물렸습니다.'
   const supportSurfaceDescription = finalPost
     ? '최종 원고가 열리면 보조 기록을 펼치지 않아도 복사 직전 확인만 끝낼 수 있습니다.'
     : '검토 메모와 산출물은 뒤쪽 서랍에 남기고, 첫 화면에는 현재 단계와 다음 행동만 남겼습니다.'
@@ -469,67 +464,6 @@ function App() {
     state.generation.status === 'initial'
       ? '입력 준비 중'
       : `${focusStageLabel} · ${progress}%`
-  const heroStageReel = workflowStages.map((stage, index) => {
-    const isRecovery = state.generation.status === 'error' && stage.id === 'research'
-    const isCurrent =
-      state.generation.currentStage === stage.id &&
-      state.generation.status !== 'initial' &&
-      state.generation.status !== 'error' &&
-      state.generation.status !== 'export-ready'
-    const isComplete =
-      state.generation.completedStages.includes(stage.id) ||
-      (state.generation.status === 'export-ready' && stage.id === 'final')
-    const isUpcoming =
-      !isRecovery &&
-      !isCurrent &&
-      !isComplete &&
-      (state.generation.status === 'initial'
-        ? stage.id === 'research'
-        : nextStage?.id === stage.id)
-
-    const tone = isRecovery
-      ? 'recovery'
-      : isCurrent
-        ? 'current'
-        : isComplete
-          ? 'complete'
-          : isUpcoming
-            ? 'upcoming'
-            : 'idle'
-
-    const stateLabel = isRecovery
-      ? '복구 시작'
-      : isCurrent
-        ? '진행 중'
-        : isComplete
-          ? '봉인 완료'
-          : isUpcoming
-            ? state.generation.status === 'initial'
-              ? '첫 큐'
-              : '다음 큐'
-            : '대기'
-
-    const detail = isRecovery
-      ? '브리프를 다듬고 같은 레일을 다시 켭니다.'
-      : isCurrent
-        ? stageVisibleHooks[stage.id]
-        : isComplete
-          ? '결과를 되짚거나 출고 직전 확인만 남았습니다.'
-          : isUpcoming
-            ? stage.description
-            : index < currentStageIndex
-              ? '닫힌 장면은 필요할 때만 다시 펼칩니다.'
-              : stageVisibleHooks[stage.id]
-
-    return {
-      detail,
-      id: stage.id,
-      index: String(index + 1).padStart(2, '0'),
-      label: stage.label,
-      stateLabel,
-      tone,
-    }
-  })
   const briefLockLead =
     state.generation.status === 'loading'
       ? '입력은 잠기고 작업 레일만 남아 있습니다.'
@@ -538,14 +472,14 @@ function App() {
         : '짧은 브리프만 봉인하고 바로 작업 레일로 넘깁니다.'
   const briefLockDescription =
     state.generation.status === 'loading'
-      ? '생성 중에는 왼쪽 잠금대에서 맥락만 보고, 실제 읽기와 판단은 오른쪽 작업면으로 넘깁니다.'
+      ? '생성 중에는 잠긴 브리프만 확인하고, 실제 읽기와 판단은 오른쪽 작업면에서 이어갑니다.'
       : state.generation.status === 'error'
         ? '실패 조건을 걷어낸 뒤 다시 시작하면 리서치부터 최종 원고까지 같은 흐름으로 복구됩니다.'
         : '주제, 독자, 톤, 길이만 고정하면 한 줄 작성 흐름이 차례대로 켜집니다.'
   const stagePanelMessage =
     state.generation.status === 'initial'
       ? selectedStage === 'research'
-        ? '브리프를 봉인하면 가장 먼저 열릴 준비 면입니다.'
+        ? '브리프를 봉인하면 가장 먼저 열릴 단계입니다.'
         : `${selectedStageMeta.label}은 브리프를 봉인한 뒤 앞선 단계가 닫히면 순서대로 열립니다.`
       : state.generation.status === 'error'
         ? selectedStage === currentStage.id
@@ -558,26 +492,26 @@ function App() {
             : `${selectedStageMeta.label} 단계는 ${nextActionLabel} 이전에 열릴 작업면입니다.`
   const panelFocusTitle =
     state.generation.status === 'initial'
-      ? `${selectedStageMeta.label}이 열리기 전 대기 슬립`
+      ? `${selectedStageMeta.label} 대기 단계`
       : state.generation.status === 'error'
         ? selectedStage === currentStage.id
-          ? '브리프 복구가 먼저 필요한 복구 슬립'
-          : `${selectedStageMeta.label}은 복구 뒤 다시 이어질 장면`
+          ? '브리프 복구가 먼저 필요한 단계'
+          : `${selectedStageMeta.label}은 복구 뒤 다시 열릴 단계`
         : selectedStage === currentStage.id
-          ? `${selectedStageMeta.label} 스포트라이트`
+          ? `${selectedStageMeta.label} 진행 단계`
           : state.generation.completedStages.includes(selectedStage)
-            ? `${selectedStageMeta.label} 회고 슬립`
-            : `${selectedStageMeta.label} 예고 슬립`
-  const panelDrawerTitle = finalPost ? '전문은 뒤 레이어로 유지' : '기록은 뒤 서랍으로 유지'
+            ? `${selectedStageMeta.label} 검토 단계`
+            : `${selectedStageMeta.label} 예고 단계`
+  const panelDrawerTitle = finalPost ? '긴 원고는 뒤 레이어 유지' : '기록은 뒤 서랍 유지'
   const panelDrawerNote =
     selectedStage === currentStage.id
       ? supportSurfaceDescription
-      : '이 장면은 순서를 미리 읽거나 되짚어 보는 보조 면이므로, 실제 전환은 현재 단계가 닫힌 뒤에만 일어납니다.'
+      : '이 단계는 순서를 미리 읽거나 되짚어 보는 보조 면입니다. 실제 전환은 현재 단계가 닫힌 뒤에만 일어납니다.'
   const panelBridgeTitle = selectedStage === currentStage.id ? nextActionLabel : focusStageLabel
   const panelBridgeNote =
     selectedStage === currentStage.id
       ? closureMessage
-      : '이 작업면은 앞뒤 흐름을 조망하는 보조 장면입니다. 실제 진행은 단계 레일의 현재 위치로 돌아가 이어가면 됩니다.'
+      : '이 작업면은 앞뒤 흐름을 조망하는 보조 단계입니다. 실제 진행은 단계 레일의 현재 위치로 돌아가 이어가면 됩니다.'
   const liveRegionMessage = `${statusLabel(state.generation.status)} | ${focusStageLabel} | ${state.copyFeedback || state.generation.statusMessage}`
 
   async function handleGenerate() {
