@@ -130,6 +130,11 @@ fi
 
 MEMORY_LINE='- At cycle start, use omx_memory MCP (`project_memory_read` and `notepad_read`) to recover harness-specific lessons. After verify/gate completion, use `notepad_write_working` to persist one concrete learning for this harness.'
 
+ROUTER_OBSERVE_LINE=''
+if [[ "$ACTIVE_HARNESS" == "router" && "$HARNESS_STREAK" -le 3 ]]; then
+  ROUTER_OBSERVE_LINE='- Router early-observation mode: during the first 3 router cycles, explicitly confirm the Stitch router reference still fits the actual routing UI before patching.'
+fi
+
 update_state status running
 update_state project_status in_progress
 update_state cycle_status running
@@ -175,6 +180,7 @@ $QUALITY_GATE_MEMORY
 $QUALITY_GATE_WARNING_MEMORY
 $DESIGNER_VERIFIER_LINE
 $MEMORY_LINE
+$ROUTER_OBSERVE_LINE
 $BUDGET_LINE
 $RETRY_MODE_LINE
 - If stagnant_cycle_count >= 3, invoke \$stagnant-breaker semantics to sharpen the plan, but keep the model retrying rather than escalating to a human blocker.

@@ -37,7 +37,7 @@ metrics = json.loads((root / '.omx/state/master-loop-baseline-metrics.json').rea
 quality = json.loads((root / '.omx/state/master-loop-quality-gate.json').read_text(encoding='utf-8')) if (root / '.omx/state/master-loop-quality-gate.json').exists() else {}
 print('=== state ===')
 print(f'worker_elapsed_sec: {os.environ.get("RUNNER_ELAPSED", "")}')
-for key in ['status','project_status','cycle_status','cycle','current_phase','current_harness','remaining_harnesses','last_progress_at','last_progress_summary','next_cycle_required','hard_blocker','relaunch_count','regression_count','quality_gate_failure_streak','current_harness_cycle_streak']:
+for key in ['status','project_status','cycle_status','cycle','current_phase','current_harness','remaining_harnesses','last_progress_at','last_progress_summary','last_worker_start_at','last_worker_finish_at','last_worker_interrupt_at','last_worker_interrupt_reason','last_launch_reason','next_cycle_required','hard_blocker','relaunch_count','regression_count','quality_gate_failure_streak','current_harness_cycle_streak']:
     print(f'{key}: {state.get(key)}')
 print('\n=== validator ===')
 print(f"ok: {validator.get('ok')} | errors: {len(validator.get('errors', []))} | warnings: {len(validator.get('warnings', []))}")

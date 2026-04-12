@@ -241,6 +241,8 @@ def launch_runner(state: dict[str, Any], reason: str) -> dict[str, Any]:
     run(['tmux', 'new-window', '-t', SESSION, '-n', RUNNER_WINDOW, '-c', str(ROOT), str(RUNNER_SCRIPT)])
     state['status'] = 'running'
     state['last_launch_reason'] = reason
+    state['last_worker_interrupt_reason'] = reason
+    state['last_worker_interrupt_at'] = utc_now()
     state['last_launch_at'] = utc_now()
     state['relaunch_count'] = int(state.get('relaunch_count', 0)) + 1
     state['cycle_status'] = 'running'
