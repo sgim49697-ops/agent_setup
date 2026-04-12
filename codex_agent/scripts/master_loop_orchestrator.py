@@ -1,0 +1,451 @@
+#!/usr/bin/env python3
+# master_loop_orchestrator.py - 단계형 bounded cycle 실행기
+"""Step-based orchestrator for one bounded UX cycle.
+
+Splits a single cycle into multiple independent codex invocations, each with a
+focused persona injected from `.codex/prompts/*.md`. Between steps, Python-level
+gates (ko-copy, quality-gate) run in-process so failures block the pipeline
+immediately rather than being caught after a full cycle.
+
+Why: the legacy single-shot runner let the model "declare" designer/critic/
+ko-copy phases in free text, but nothing enforced them. Here, each step is a
+separate process with its own prompt, working directory, and artifact paths.
+Inertia is broken across steps because each invocation starts with a fresh
+session.
+
+Step order:
+  1. design    -> codex run with designer persona produces patch + notes
+  2. critique  -> codex run with critic persona independently reviews changes
+  3. ko-copy   -> python gate + optional codex run to fix Korean copy
+  4. verify    -> codex run with verifier persona final review
+  5. gates     -> validator + trace-sanity + baseline + quality-gate (python)
+  6. complete  -> master_loop_complete_harness.py if gates pass
+
+Exit code: 0 if all steps pass, non-zero on pipeline failure.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import subprocess
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+ROOT = Path("/home/user/projects/agent_setup/codex_agent")
+CODEX_BIN = "/home/user/.npm-global/bin/codex"
+STATE_PATH = ROOT / ".omx/state/master-ux-loop.json"
+STATE_HELPER = ROOT / "scripts/master_loop_state.py"
+QUALITY_GATE = ROOT / "scripts/master_loop_quality_gate.py"
+KO_COPY_GATE = ROOT / "scripts/master_loop_ui_language_gate.py"
+VALIDATOR = ROOT / "scripts/master_loop_validator.py"
+TRACE_SANITY = ROOT / "scripts/master_loop_trace_sanity.py"
+BASELINE = ROOT / "scripts/master_loop_baseline_metrics.py"
+COMPLETE = ROOT / "scripts/master_loop_complete_harness.py"
+PROMPT_DIR = ROOT / ".codex/prompts"
+LOG_PATH = ROOT / ".omx/logs/master-ux-benchmark-v2.log"
+
+STEP_TIMEOUT_SEC = int(os.environ.get("ORCH_STEP_TIMEOUT_SEC", "1200"))
+CRITIC_MAX_RETRIES = int(os.environ.get("ORCH_CRITIC_MAX_RETRIES", "1"))
+KO_COPY_MAX_RETRIES = int(os.environ.get("ORCH_KO_COPY_MAX_RETRIES", "2"))
+
+
+def utc_now() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def log(msg: str) -> None:
+    LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with LOG_PATH.open("a", encoding="utf-8") as fh:
+        fh.write(f"[{utc_now()}] orchestrator: {msg}\n")
+
+
+def update_state(key: str, value: str) -> None:
+    try:
+        subprocess.run(
+            ["python3", str(STATE_HELPER), str(STATE_PATH), key, str(value)],
+            check=False,
+            capture_output=True,
+            timeout=30,
+        )
+    except Exception as exc:
+        log(f"update_state({key}) failed: {exc}")
+
+
+def cycle_dir(cycle: int, harness: str) -> Path:
+    path = ROOT / f".omx/cycles/cycle-{cycle:04d}-{harness}"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def load_prompt_md(name: str) -> str:
+    """Load a persona prompt from .codex/prompts/<name>.md, strip YAML frontmatter."""
+    path = PROMPT_DIR / f"{name}.md"
+    if not path.exists():
+        return ""
+    text = path.read_text(encoding="utf-8")
+    if text.startswith("---"):
+        parts = text.split("---", 2)
+        if len(parts) >= 3:
+            text = parts[2]
+    return text.strip()
+
+
+def run_codex_step(
+    step_name: str,
+    prompt: str,
+    artifact_dir: Path,
+    timeout_sec: int = STEP_TIMEOUT_SEC,
+) -> tuple[int, Path]:
+    """Run one codex invocation with the given prompt, capturing output to artifact dir."""
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+    step_log = artifact_dir / f"{step_name}.log"
+    last_file = artifact_dir / f"{step_name}.last.txt"
+    prompt_file = artifact_dir / f"{step_name}.prompt.md"
+    prompt_file.write_text(prompt, encoding="utf-8")
+
+    started = utc_now()
+    log(f"step {step_name} starting (artifact={artifact_dir.name})")
+    update_state("current_phase", f"orchestrator-{step_name}")
+    update_state("last_progress_at", started)
+    update_state("last_progress_summary", f"orchestrator step {step_name} started")
+
+    cmd = [
+        CODEX_BIN,
+        "exec",
+        "--dangerously-bypass-approvals-and-sandbox",
+        "--color",
+        "never",
+        "-C",
+        str(ROOT),
+        "-o",
+        str(last_file),
+        prompt,
+    ]
+    try:
+        with step_log.open("w", encoding="utf-8") as log_fh:
+            log_fh.write(f"# step={step_name} started={started}\n")
+            log_fh.flush()
+            proc = subprocess.run(
+                cmd,
+                stdout=log_fh,
+                stderr=subprocess.STDOUT,
+                timeout=timeout_sec,
+                check=False,
+            )
+        rc = proc.returncode
+    except subprocess.TimeoutExpired:
+        rc = 124
+        with step_log.open("a", encoding="utf-8") as log_fh:
+            log_fh.write(f"\n# step timed out after {timeout_sec}s\n")
+
+    finished = utc_now()
+    log(f"step {step_name} finished rc={rc} at {finished}")
+    return rc, last_file
+
+
+def run_python_gate(name: str, cmd: list[str]) -> tuple[int, str]:
+    """Run a python gate script, return (rc, combined-output)."""
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        out = (proc.stdout or "") + (proc.stderr or "")
+        return proc.returncode, out
+    except subprocess.TimeoutExpired:
+        return 124, f"{name} timed out"
+    except Exception as exc:
+        return 1, f"{name} error: {exc}"
+
+
+def load_ko_copy_report() -> dict:
+    report = ROOT / ".omx/state/master-loop-ui-language-gate.json"
+    if not report.exists():
+        return {}
+    try:
+        return json.loads(report.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+# ----------------------------- STEP PROMPTS ----------------------------- #
+
+
+def build_design_prompt(harness: str, cycle: int, ctx: str, artifact_dir: Path) -> str:
+    persona = load_prompt_md("designer")
+    return f"""You are the designer step of a bounded UX cycle. Execute ONLY the design/edit phase.
+
+<designer_persona>
+{persona}
+</designer_persona>
+
+Active harness: {harness}
+Cycle: {cycle}
+Workspace: {ROOT}
+Artifact directory: {artifact_dir}
+
+Required work (single step, not a full cycle):
+1. Read docs/stitch-ux-reference.md and relevant Stitch MCP context for {harness}.
+2. Produce the visible UI patch for {harness}. Make the edits directly in the repo.
+3. Korean-first visible copy. English only in aria/data-testid/test-hook text.
+4. Write a short rationale to {artifact_dir}/designer-notes.md covering:
+   - Aesthetic direction chosen
+   - Files changed (paths)
+   - Korean-first copy decisions
+   - Known gaps to hand off to critic
+5. Do NOT run verify/gate/browser-review in this step. That is handled by later steps.
+6. Do NOT mutate remaining_harnesses or write completion markers here.
+
+Context from wrapper:
+{ctx}
+
+Finish as soon as the edit is made and the notes file is written.
+"""
+
+
+def build_critique_prompt(harness: str, cycle: int, artifact_dir: Path, prior_rounds: int) -> str:
+    persona = load_prompt_md("critic")
+    designer_notes = artifact_dir / "designer-notes.md"
+    notes_text = designer_notes.read_text(encoding="utf-8") if designer_notes.exists() else "(designer notes missing)"
+    retry_hint = ""
+    if prior_rounds > 0:
+        retry_hint = f"\nThis is critique round {prior_rounds + 1}. Be even more skeptical of remaining gaps.\n"
+    return f"""You are the critic step. Independently review the designer's edit WITHOUT being biased by their framing.
+
+<critic_persona>
+{persona}
+</critic_persona>
+
+Active harness: {harness}
+Cycle: {cycle}
+Artifact directory: {artifact_dir}
+{retry_hint}
+Designer notes to review:
+---
+{notes_text}
+---
+
+Required work:
+1. Open the changed files via git diff or ls-files and read them fresh. Do not trust the designer's self-report.
+2. Evaluate the changes against: Korean-first copy, information density, a11y, visual hierarchy, framework idiom.
+3. Write your verdict to {artifact_dir}/critic-report.md using this exact format:
+
+   # Critic Report
+   verdict: approve | reject
+   blocking_issues:
+     - (one line per blocking issue, empty list if approve)
+   suggestions:
+     - (one line per suggestion)
+   evidence:
+     - (file:line references for each issue)
+
+4. If verdict is reject, DO NOT edit code. List the issues and stop.
+5. If verdict is approve, note that the patch is ready for ko-copy + verify.
+
+Finish as soon as critic-report.md is written.
+"""
+
+
+def build_ko_copy_fix_prompt(harness: str, cycle: int, artifact_dir: Path, ko_report: dict) -> str:
+    persona = load_prompt_md("designer")
+    findings = json.dumps(ko_report, ensure_ascii=False, indent=2)[:4000]
+    return f"""You are the ko-copy-fix step. Fix Korean-first copy violations flagged by the gate.
+
+<designer_persona>
+{persona}
+</designer_persona>
+
+Active harness: {harness}
+Cycle: {cycle}
+
+ko-copy gate findings (JSON):
+{findings}
+
+Required work:
+1. Convert visible English copy to Korean for the affected harness only.
+2. Preserve English ONLY in aria-label / data-testid / live-region hook text.
+3. Do not change layout, logic, or unrelated files.
+4. After edits, write a one-line summary to {artifact_dir}/ko-copy-fix.md listing the files touched.
+
+Finish as soon as the fix is applied.
+"""
+
+
+def build_verify_prompt(harness: str, cycle: int, artifact_dir: Path) -> str:
+    persona = load_prompt_md("verifier")
+    critic_path = artifact_dir / "critic-report.md"
+    critic_text = critic_path.read_text(encoding="utf-8") if critic_path.exists() else "(critic report missing)"
+    return f"""You are the verify step. Give the final fresh-eyes verdict before python gates.
+
+<verifier_persona>
+{persona}
+</verifier_persona>
+
+Active harness: {harness}
+Cycle: {cycle}
+Artifact directory: {artifact_dir}
+
+Critic report:
+---
+{critic_text}
+---
+
+Required work:
+1. Use scripts/harness_preview.py ensure {harness} to get the stable preview URL.
+2. Run a minimal browser-review pass and a Korean-first spot check.
+3. Write {artifact_dir}/verifier-report.md with:
+
+   # Verifier Report
+   verdict: pass | fail
+   evidence:
+     - preview_url: ...
+     - screenshots or notes
+   open_issues:
+     - (empty if pass)
+
+4. Do NOT remove the harness from remaining_harnesses here - the python gate + complete step handle that.
+
+Finish as soon as verifier-report.md is written.
+"""
+
+
+# ----------------------------- STEPS ----------------------------- #
+
+
+def step_design(harness: str, cycle: int, ctx: str, artifact_dir: Path) -> int:
+    prompt = build_design_prompt(harness, cycle, ctx, artifact_dir)
+    rc, _ = run_codex_step("design", prompt, artifact_dir)
+    return rc
+
+
+def step_critique(harness: str, cycle: int, artifact_dir: Path) -> tuple[int, bool]:
+    """Returns (rc, approved). approved=True if verdict line says 'approve'."""
+    prompt = build_critique_prompt(harness, cycle, artifact_dir, prior_rounds=0)
+    rc, _ = run_codex_step("critique", prompt, artifact_dir)
+    report = artifact_dir / "critic-report.md"
+    if not report.exists():
+        return rc, False
+    text = report.read_text(encoding="utf-8", errors="ignore")
+    approved = False
+    for line in text.splitlines():
+        stripped = line.strip().lower()
+        if stripped.startswith("verdict:"):
+            approved = "approve" in stripped and "reject" not in stripped
+            break
+    return rc, approved
+
+
+def step_ko_copy(harness: str, cycle: int, artifact_dir: Path) -> int:
+    """Run ko-copy gate; on fail, run fix step (up to KO_COPY_MAX_RETRIES)."""
+    for attempt in range(KO_COPY_MAX_RETRIES + 1):
+        rc, _ = run_python_gate(
+            "ko-copy-gate",
+            ["python3", str(KO_COPY_GATE), "--harness", harness, "--quiet"],
+        )
+        if rc == 0:
+            log(f"ko-copy gate passed on attempt {attempt + 1}")
+            return 0
+        report = load_ko_copy_report()
+        log(f"ko-copy gate failed (attempt {attempt + 1}): rc={rc}")
+        if attempt >= KO_COPY_MAX_RETRIES:
+            break
+        prompt = build_ko_copy_fix_prompt(harness, cycle, artifact_dir, report)
+        fix_rc, _ = run_codex_step(f"ko-copy-fix-{attempt + 1}", prompt, artifact_dir)
+        if fix_rc != 0:
+            log(f"ko-copy fix step failed rc={fix_rc}")
+    return 1
+
+
+def step_verify(harness: str, cycle: int, artifact_dir: Path) -> int:
+    prompt = build_verify_prompt(harness, cycle, artifact_dir)
+    rc, _ = run_codex_step("verify", prompt, artifact_dir)
+    return rc
+
+
+def step_python_gates(harness: str) -> int:
+    """Run all post-step python quality gates. Returns 0 if all pass."""
+    run_python_gate("validator", ["python3", str(VALIDATOR), "--rewrite", "--quiet"])
+    run_python_gate("trace-sanity", ["python3", str(TRACE_SANITY), "--quiet"])
+    run_python_gate("baseline", ["python3", str(BASELINE), "--quiet"])
+    rc, out = run_python_gate(
+        "quality-gate",
+        ["python3", str(QUALITY_GATE), "--active-harness", harness, "--enforce", "--quiet"],
+    )
+    if rc != 0:
+        log(f"quality gate failed rc={rc}: {out[:500]}")
+    return rc
+
+
+def step_complete_harness(harness: str) -> int:
+    rc, out = run_python_gate(
+        "complete-harness",
+        ["python3", str(COMPLETE), "--harness", harness],
+    )
+    log(f"complete-harness rc={rc}: {out[:300]}")
+    return rc
+
+
+# ----------------------------- ORCHESTRATE ----------------------------- #
+
+
+def orchestrate(harness: str, cycle: int, ctx: str) -> int:
+    artifact_dir = cycle_dir(cycle, harness)
+    update_state("orchestrator_active", "true")
+    update_state("orchestrator_artifact_dir", str(artifact_dir))
+    log(f"=== cycle {cycle} harness {harness} artifact={artifact_dir} ===")
+
+    rc = step_design(harness, cycle, ctx, artifact_dir)
+    if rc != 0:
+        log(f"design step failed rc={rc}; proceeding to gates for regression detection")
+
+    critique_rc, approved = step_critique(harness, cycle, artifact_dir)
+    if critique_rc != 0:
+        log(f"critique step rc={critique_rc}")
+    log(f"critic verdict: {'APPROVE' if approved else 'REJECT'}")
+
+    if not approved and CRITIC_MAX_RETRIES > 0:
+        log("critic rejected; running one design retry pass")
+        retry_ctx = f"{ctx}\n\nCRITIC REJECTED - read {artifact_dir}/critic-report.md and address blocking_issues before re-editing."
+        rc_retry = step_design(harness, cycle, retry_ctx, artifact_dir)
+        log(f"design retry rc={rc_retry}")
+
+    ko_rc = step_ko_copy(harness, cycle, artifact_dir)
+    if ko_rc != 0:
+        log("ko-copy step failed after retries; python gate will mark regression")
+
+    verify_rc = step_verify(harness, cycle, artifact_dir)
+    if verify_rc != 0:
+        log(f"verify step rc={verify_rc}")
+
+    gate_rc = step_python_gates(harness)
+
+    if gate_rc == 0 and ko_rc == 0:
+        step_complete_harness(harness)
+
+    pipeline_rc = 0
+    if gate_rc != 0:
+        pipeline_rc = 20
+    elif ko_rc != 0:
+        pipeline_rc = 21
+    elif verify_rc != 0:
+        pipeline_rc = 22
+    elif critique_rc != 0 and not approved:
+        pipeline_rc = 23
+
+    update_state("orchestrator_active", "false")
+    update_state("last_orchestrator_exit", str(pipeline_rc))
+    log(f"=== cycle {cycle} harness {harness} done rc={pipeline_rc} ===")
+    return pipeline_rc
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--active-harness", required=True)
+    parser.add_argument("--cycle", required=True, type=int)
+    parser.add_argument("--prompt-context", default="")
+    args = parser.parse_args()
+    return orchestrate(args.active_harness, args.cycle, args.prompt_context)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
