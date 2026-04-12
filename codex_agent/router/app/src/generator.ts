@@ -92,7 +92,7 @@ function slugify(value: string) {
 }
 
 function specialistLabel(id: SpecialistId) {
-  return specialistProfiles.find((profile) => profile.id === id)?.label ?? 'Fallback Specialist'
+  return specialistProfiles.find((profile) => profile.id === id)?.label ?? '폴백 스페셜리스트 (Fallback Specialist)'
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -123,8 +123,8 @@ export function routeTopic(topic: string): RoutingDecision {
       specialist: 'fallback',
       confidence: 0.42,
       matchedSignals: [],
-      reason: 'No clear domain signals were found in the topic, so the router kept the article on the generalist path.',
-      fallbackReason: 'The topic is too general for a confident specialist match.',
+      reason: '주제 안에서 강한 도메인 신호가 보이지 않아, 라우터가 글을 범용 경로로 유지했다.',
+      fallbackReason: '이 주제는 특정 specialist를 강하게 고를 만큼 신호가 뚜렷하지 않다.',
     }
   }
 
@@ -133,8 +133,8 @@ export function routeTopic(topic: string): RoutingDecision {
       specialist: 'fallback',
       confidence: 0.48,
       matchedSignals: Array.from(new Set([...top.matchedSignals, ...second.matchedSignals])),
-      reason: `The router found competing signals for ${specialistLabel(top.specialist)} and ${specialistLabel(second.specialist)}.`,
-      fallbackReason: 'The highest specialist scores are tied, so a safer fallback route is used.',
+      reason: `라우터가 ${specialistLabel(top.specialist)}와 ${specialistLabel(second.specialist)} 사이에서 경쟁 신호를 동시에 감지했다.`,
+      fallbackReason: '최상위 specialist 점수가 동률이라 더 안전한 fallback route를 사용한다.',
     }
   }
 
@@ -144,7 +144,7 @@ export function routeTopic(topic: string): RoutingDecision {
     specialist: top.specialist,
     confidence,
     matchedSignals: top.matchedSignals,
-    reason: `${specialistLabel(top.specialist)} was selected because the topic strongly matches ${top.matchedSignals.join(', ')} signals.`,
+    reason: `${top.matchedSignals.join(', ')} 신호가 강하게 겹쳐 ${specialistLabel(top.specialist)} 경로를 선택했다.`,
     fallbackReason: null,
   }
 }
@@ -166,7 +166,7 @@ function buildResearchSummary(
         'React나 browser runtime이 판단 기준을 어떻게 바꾸는지 연결한다.',
         '마지막에는 shipping checklist로 마무리한다.',
       ],
-      supportingLens: `${profile.reviewLens} The route confidence is ${(routing.confidence * 100).toFixed(0)}%.`,
+      supportingLens: `${profile.reviewLens} 라우트 신뢰도는 ${(routing.confidence * 100).toFixed(0)}%다.`,
     }
   }
 
@@ -179,7 +179,7 @@ function buildResearchSummary(
         '단계별 handoff와 failure mode를 같은 흐름 안에 놓는다.',
         '실전 운영 시 recovery 기준까지 남긴다.',
       ],
-      supportingLens: `${profile.reviewLens} The route confidence is ${(routing.confidence * 100).toFixed(0)}%.`,
+      supportingLens: `${profile.reviewLens} 라우트 신뢰도는 ${(routing.confidence * 100).toFixed(0)}%다.`,
     }
   }
 
@@ -192,7 +192,7 @@ function buildResearchSummary(
         '선택 기준과 downside를 같은 축 위에 놓는다.',
         'rollout과 rollback 기준까지 함께 적는다.',
       ],
-      supportingLens: `${profile.reviewLens} The route confidence is ${(routing.confidence * 100).toFixed(0)}%.`,
+      supportingLens: `${profile.reviewLens} 라우트 신뢰도는 ${(routing.confidence * 100).toFixed(0)}%다.`,
     }
   }
 
@@ -204,7 +204,7 @@ function buildResearchSummary(
       '과장 없이 범용 구조를 유지한다.',
       '추가 조사 포인트를 마지막에 남긴다.',
     ],
-    supportingLens: `${profile.reviewLens} The route confidence is ${(routing.confidence * 100).toFixed(0)}%.`,
+    supportingLens: `${profile.reviewLens} 라우트 신뢰도는 ${(routing.confidence * 100).toFixed(0)}%다.`,
   }
 }
 
@@ -362,15 +362,15 @@ function buildFinalPost(
 
   const closing =
     specialist === 'fallback'
-      ? `- Final conclusion: ${inputs.topic}는 specialist route가 명확하지 않기 때문에, 현재는 보수적인 기본 구조로 이해하고 추가 검증 질문을 먼저 정리하는 편이 안전하다.`
-      : `- Final conclusion: ${inputs.topic}는 ${specialistLabel(specialist)}의 렌즈로 읽을 때 가장 설명력이 높았고, 라우터는 ${(routing.confidence * 100).toFixed(0)}% confidence로 이 경로를 선택했다.`
+      ? `- 최종 판단: ${inputs.topic}는 specialist route가 명확하지 않기 때문에, 현재는 보수적인 기본 구조로 이해하고 추가 검증 질문을 먼저 정리하는 편이 안전하다.`
+      : `- 최종 판단: ${inputs.topic}는 ${specialistLabel(specialist)}의 렌즈로 읽을 때 가장 설명력이 높았고, 라우터는 ${(routing.confidence * 100).toFixed(0)}% 신뢰도로 이 경로를 선택했다.`
 
   return [
     `# ${titleCase(inputs.topic)}`,
     '',
-    `> Route: ${specialistLabel(specialist)} | Confidence: ${(routing.confidence * 100).toFixed(0)}%`,
+    `> 경로(Route): ${specialistLabel(specialist)} | 신뢰도(Confidence): ${(routing.confidence * 100).toFixed(0)}%`,
     '',
-    '## Intro',
+    '## 시작 메모',
     intro,
     '',
     ...drafts.flatMap((draft) => [
@@ -380,10 +380,10 @@ function buildFinalPost(
       '',
       ...draft.paragraphs,
       '',
-      `- Takeaway: ${draft.takeaway}`,
+      `- 핵심 정리: ${draft.takeaway}`,
       '',
     ]),
-    '## Closing checklist',
+    '## 마무리 체크리스트',
     '',
     closing,
   ].join('\n')

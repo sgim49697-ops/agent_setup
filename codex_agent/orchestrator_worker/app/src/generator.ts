@@ -88,15 +88,15 @@ function createBundles(inputs: BlogGeneratorInputs): TaskBundle[] {
 
 export function buildOrchestratorPlan(inputs: BlogGeneratorInputs): OrchestratorPlan {
   return {
-    productGoal: `Implement the tech blog post generator for ${inputs.topic} while keeping decomposition, ownership, and integration trace explicit.`,
+    productGoal: `${inputs.topic}용 테크 블로그 생성기를 구현하되, 분해 기준과 ownership, integration trace가 화면에서 명확히 읽히게 만든다.`,
     decompositionReason:
-      `This topic benefits from splitting UI framing, state semantics, and editorial content so the final product can show how orchestration manages collaboration boundaries. ${audienceGuidance[inputs.audience]}`,
+      `이 주제는 UI framing, 상태 semantics, 콘텐츠 작성을 나눠야 orchestration이 협업 경계를 어떻게 관리하는지 제품 화면에서 보여주기 좋다. ${audienceGuidance[inputs.audience]}`,
     bundles: createBundles(inputs),
     integrationChecklist: [
-      'UI copy must reflect the actual state machine progression.',
-      'Worker ownership must not overlap in a way that hides responsibility.',
-      'Final post must read like one product, not three disconnected work streams.',
-      'Review notes and final export must stay aligned after integration.',
+      'UI copy는 실제 state machine progression과 어긋나지 않아야 한다.',
+      'Worker ownership은 책임이 흐려질 만큼 겹치지 않아야 한다.',
+      'Final post는 세 개의 작업 스트림이 아니라 하나의 제품처럼 읽혀야 한다.',
+      'Review notes와 final export는 integration 이후에도 같은 결론을 유지해야 한다.',
     ],
   }
 }
@@ -105,15 +105,15 @@ export function buildUiWorkerOutput(inputs: BlogGeneratorInputs, plan: Orchestra
   return {
     workerId: 'ui_worker',
     summary:
-      `UI Worker mapped the orchestrator plan into a readable shell with a stage tracker, decomposition board, worker cards, integration desk, and export panel.`,
+      'UI 워커가 stage tracker, 분해 보드, worker 카드, integration desk, export panel을 하나의 읽기 쉬운 셸로 정리했다.',
     handoffNote:
-      'State Worker should keep button disabling and status timing aligned with the messaging. Content Worker should respect the panel hierarchy and keep dense copy contained.',
+      '상태 워커는 버튼 disabled 타이밍과 상태 문구를 맞춰야 하고, 콘텐츠 워커는 패널 계층을 존중해 긴 본문을 접힌 표면 안에 가둬야 한다.',
     deliverablePreview: [
-      'Primary CTA: Generate post',
-      'Secondary CTA: Copy markdown',
-      'Empty states for orchestrator desk, worker board, final post',
-      `Tone framing: ${toneGuidance[inputs.tone]}`,
-      `Plan checkpoints: ${plan.integrationChecklist.length}`,
+      'Primary CTA: 생성 시작 (Generate post)',
+      'Secondary CTA: Markdown 복사 (Copy markdown)',
+      '오케스트레이터 데스크, worker board, final post 빈 상태',
+      `톤 프레이밍: ${toneGuidance[inputs.tone]}`,
+      `계획 체크포인트: ${plan.integrationChecklist.length}개`,
     ],
   }
 }
@@ -122,14 +122,14 @@ export function buildStateWorkerOutput(inputs: BlogGeneratorInputs): WorkerOutpu
   return {
     workerId: 'state_worker',
     summary:
-      `State Worker defined a deterministic sequence from planning to integration review, with explicit loading, populated, review-complete, export-ready, and error transitions.`,
+      '상태 워커가 planning부터 integration review까지의 순서를 deterministic하게 고정하고, loading/populated/review-complete/export-ready/error 전이를 명시했다.',
     handoffNote:
-      'Integrator should confirm that loading disables Generate post, error never leaks into export-ready, and review-complete appears before final export.',
+      'Integrator는 loading 동안 Generate post가 비활성화되는지, error가 export-ready로 새지 않는지, review-complete가 final export보다 먼저 보이는지 확인해야 한다.',
     deliverablePreview: [
-      'Loading state disables Generate post',
-      'fail/error prefix triggers planning-stage error',
-      'review-complete appears before export-ready',
-      `Audience guardrail: ${audienceGuidance[inputs.audience]}`,
+      'Loading 상태에서 Generate post 비활성화',
+      'fail/error prefix는 planning-stage error를 트리거',
+      'review-complete는 export-ready보다 먼저 노출',
+      `독자 가드레일: ${audienceGuidance[inputs.audience]}`,
     ],
   }
 }
@@ -205,9 +205,9 @@ function buildRawFinalPost(
   return [
     `# ${titleCase(inputs.topic)}`,
     '',
-    `> Audience: ${titleCase(inputs.audience)} | Tone: ${titleCase(inputs.tone)} | Length: ${titleCase(inputs.length)}`,
+    `> 독자(Audience): ${titleCase(inputs.audience)} | 톤(Tone): ${titleCase(inputs.tone)} | 길이(Length): ${titleCase(inputs.length)}`,
     '',
-    '## Intro',
+    '## 시작 메모',
     `${research.thesis} 이 글은 UI, state, content 책임을 따로 본 뒤 최종 통합 기준으로 다시 묶는 흐름을 따른다.`,
     '',
     ...drafts.flatMap((draft) => [
@@ -217,12 +217,12 @@ function buildRawFinalPost(
       '',
       ...draft.paragraphs,
       '',
-      `- Takeaway: ${draft.takeaway}`,
+      `- 핵심 정리: ${draft.takeaway}`,
       '',
     ]),
-    '## Closing checklist',
+    '## 마무리 체크리스트',
     '',
-    `- Draft conclusion: ${inputs.topic}는 분해만 잘해서는 부족하고, 마지막 integration review가 품질을 닫아줘야 실제 제품처럼 보인다.`,
+    `- 초안 결론: ${inputs.topic}는 분해만 잘해서는 부족하고, 마지막 integration review가 품질을 닫아줘야 실제 제품처럼 보인다.`,
   ].join('\n')
 }
 
@@ -244,14 +244,14 @@ export function buildContentWorkerBundle(inputs: BlogGeneratorInputs): {
     workerOutput: {
       workerId: 'content_worker',
       summary:
-        `Content Worker produced the article spine: research summary, outline, ${sectionDrafts.length} section drafts, review notes, and a raw final markdown draft.`,
+        `콘텐츠 워커가 글의 뼈대를 완성했다. research summary, outline, ${sectionDrafts.length}개 section draft, review note, raw final markdown draft가 준비됐다.`,
       handoffNote:
-        'Integrator should tighten the intro and closing, remove any repeated interaction copy, and make the final post read like one product instead of three work streams.',
+        'Integrator는 intro/closing을 더 조이고, 반복되는 인터랙션 문구를 제거해 final post가 세 개의 작업 흐름이 아니라 하나의 제품처럼 읽히게 만들어야 한다.',
       deliverablePreview: [
-        `Research bullets: ${researchSummary.focusBullets.length}`,
-        `Outline sections: ${outline.length}`,
-        `Draft count: ${sectionDrafts.length}`,
-        `Review notes: ${reviewNotes.length}`,
+        `리서치 bullet: ${researchSummary.focusBullets.length}`,
+        `아웃라인 섹션: ${outline.length}`,
+        `초안 수: ${sectionDrafts.length}`,
+        `리뷰 노트: ${reviewNotes.length}`,
       ],
     },
     researchSummary,
@@ -265,18 +265,18 @@ export function buildContentWorkerBundle(inputs: BlogGeneratorInputs): {
 export function buildIntegrationReview(inputs: BlogGeneratorInputs): IntegrationReview {
   return {
     layoutConsistency:
-      'Integrator aligned the decomposition board, worker cards, review desk, and final export into one information hierarchy.',
+      'Integrator가 decomposition board, worker card, review desk, final export를 하나의 정보 계층으로 다시 정렬했다.',
     stateConsistency:
-      'Integrator confirmed loading, review-complete, and export-ready semantics match the visible status copy and button behavior.',
+      'Integrator가 loading, review-complete, export-ready semantics가 화면의 상태 문구와 버튼 동작에 맞는지 확인했다.',
     contentConsistency:
-      `Integrator tightened the intro and closing so ${inputs.topic} reads as one product narrative instead of three disconnected implementation notes.`,
+      `Integrator가 intro와 closing을 조여 ${inputs.topic}가 세 개의 단절된 구현 메모가 아니라 하나의 제품 서사처럼 읽히게 만들었다.`,
     fixesApplied: [
-      'Synced CTA copy with state progression',
-      'Tightened empty/error messaging to match reducer behavior',
-      'Polished intro and closing so the final post feels integrated',
+      'CTA copy를 state progression과 동기화',
+      'empty/error 메시지를 reducer 동작과 맞게 정리',
+      'intro와 closing을 다듬어 final post가 더 통합적으로 느껴지게 조정',
     ],
     finalizationNote:
-      'The integration review closes the gap between worker ownership and user-facing coherence, which is the core value of the orchestrator_worker harness.',
+      'Integration review는 worker ownership과 사용자-facing coherence 사이의 간극을 닫아주며, 이것이 orchestrator_worker 하네스의 핵심 가치다.',
   }
 }
 
@@ -286,15 +286,15 @@ export function buildFinalPost(
   integrationReview: IntegrationReview,
 ): string {
   const improvedIntro = `${titleCase(inputs.topic)}는 작업을 잘게 나누는 것만으로 품질이 좋아지지 않는다. UI, state, content를 분리한 뒤 마지막 integration review로 다시 묶을 때 비로소 하나의 제품처럼 읽힌다.`
-  const improvedClosing = `- Final conclusion: ${inputs.topic}는 worker ownership을 분명히 하면서도, 마지막에 ${integrationReview.fixesApplied[0].toLowerCase()} 같은 통합 작업으로 마감할 때 가장 설득력 있게 구현된다.`
+  const improvedClosing = `- 최종 결론: ${inputs.topic}는 worker ownership을 분명히 하면서도, 마지막에 ${integrationReview.fixesApplied[0].toLowerCase()} 같은 통합 작업으로 마감할 때 가장 설득력 있게 구현된다.`
 
   return rawFinalPost
     .replace(
-      /^## Intro[\s\S]*?(?=\n## )/m,
-      `## Intro\n${improvedIntro}\n`,
+      /^## 시작 메모[\s\S]*?(?=\n## )/m,
+      `## 시작 메모\n${improvedIntro}\n`,
     )
     .replace(
-      /- Draft conclusion:[\s\S]*$/m,
+      /- 초안 결론:[\s\S]*$/m,
       improvedClosing,
     )
 }

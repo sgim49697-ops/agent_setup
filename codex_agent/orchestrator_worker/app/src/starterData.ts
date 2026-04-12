@@ -5,27 +5,27 @@ import type { DeliverableCard, TopicPreset, WorkflowStage, WorkerProfile } from 
 export const workflowStages: WorkflowStage[] = [
   {
     id: 'research',
-    label: 'Research results',
+    label: '리서치 결과 (Research results)',
     description: 'Orchestrator가 분해 기준을 먼저 잡고 content worker가 리서치 핵심을 만든다.',
   },
   {
     id: 'outline',
-    label: 'Outline',
+    label: '아웃라인 (Outline)',
     description: 'Task bundles와 worker ownership을 토대로 구조를 고정한다.',
   },
   {
     id: 'drafts',
-    label: 'Section drafts',
+    label: '섹션 초안 (Section drafts)',
     description: '각 worker가 맡은 deliverable preview를 만들고 content draft를 연결한다.',
   },
   {
     id: 'review',
-    label: 'Review notes',
+    label: '리뷰 노트 (Review notes)',
     description: 'Integrator가 layout, state, content consistency를 점검한다.',
   },
   {
     id: 'final',
-    label: 'Final post',
+    label: '최종 글 (Final post)',
     description: '통합 리뷰를 거친 최종 Markdown과 export 상태를 제공한다.',
   },
 ]
@@ -33,19 +33,19 @@ export const workflowStages: WorkflowStage[] = [
 export const workerProfiles: WorkerProfile[] = [
   {
     id: 'ui_worker',
-    label: 'UI Worker',
+    label: 'UI 워커 (UI Worker)',
     focus: 'stage tracker, CTA copy, empty/error UX, 정보 계층을 정리한다.',
     reviewLens: 'visual hierarchy and next-action clarity',
   },
   {
     id: 'state_worker',
-    label: 'State Worker',
+    label: '상태 워커 (State Worker)',
     focus: 'loading, populated, review-complete, export-ready semantics를 설계한다.',
     reviewLens: 'state transition and interaction consistency',
   },
   {
     id: 'content_worker',
-    label: 'Content Worker',
+    label: '콘텐츠 워커 (Content Worker)',
     focus: 'research, outline, drafts, review, final markdown를 생성한다.',
     reviewLens: 'editorial flow and content usefulness',
   },
@@ -104,16 +104,16 @@ export const topicPresets: TopicPreset[] = [
 ]
 
 export const reviewLenses = [
-  'decomposition clarity',
-  'ownership separation',
-  'integration consistency',
-  'responsiveness',
-  'a11y basics',
+  '분해 기준이 첫 화면에서 읽히는가',
+  'ownership 분리가 충분히 명확한가',
+  'integration 흐름이 일관되게 느껴지는가',
+  '반응형 흐름이 안정적인가',
+  '기본 접근성이 확보됐는가',
 ]
 
 export const evaluationChecklist = [
-  'Build the app with npm run build',
-  'Write reports/scorecard.json',
-  'Run HARNESS=orchestrator_worker uv run python scripts/evaluate.py',
-  'Confirm reports/evaluation_report.json exists',
+  '앱을 `npm run build`로 빌드한다.',
+  '`reports/scorecard.json`을 최신 상태로 둔다.',
+  '`HARNESS=orchestrator_worker uv run python scripts/evaluate.py`를 실행한다.',
+  '`reports/evaluation_report.json` 생성 여부를 확인한다.',
 ]
