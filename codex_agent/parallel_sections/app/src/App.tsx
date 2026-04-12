@@ -324,11 +324,12 @@ function App() {
     copyFeedback: '',
   })
   const runRef = useRef(0)
-  const [activeReaderPanel, setActiveReaderPanel] = useState<'review' | 'final'>('review')
+  const [activeReaderPanel, setActiveReaderPanel] = useState<'review' | 'final' | null>(null)
 
   async function handleGenerate() {
     const runId = runRef.current + 1
     runRef.current = runId
+    setActiveReaderPanel(null)
 
     dispatch({
       type: 'start-run',
@@ -491,14 +492,7 @@ function App() {
         ? 'Review the merge fixes and let the desk resolve overlap.'
         : 'Review the merged article, then export the markdown.'
 
-  useEffect(() => {
-    if (finalArticle) {
-      setActiveReaderPanel('final')
-      return
-    }
-
-    setActiveReaderPanel('review')
-  }, [finalArticle, mergeReport])
+  const currentReaderPanel = finalArticle ? activeReaderPanel ?? 'final' : 'review'
 
   const artifactPreview: ArtifactIndex = {
     screenshots: ['runs/desktop-verification.png', 'runs/mobile-verification.png'],
@@ -875,26 +869,26 @@ function App() {
               <div className="reader-tabs" role="tablist" aria-label="Post-merge surface">
                 <button
                   type="button"
-                  className={`reader-tab ${activeReaderPanel === 'review' ? 'is-active' : ''}`}
+                  className={`reader-tab ${currentReaderPanel === 'review' ? 'is-active' : ''}`}
                   onClick={() => setActiveReaderPanel('review')}
                   role="tab"
-                  aria-selected={activeReaderPanel === 'review'}
+                  aria-selected={currentReaderPanel === 'review'}
                 >
                   Review notes
                 </button>
                 <button
                   type="button"
-                  className={`reader-tab ${activeReaderPanel === 'final' ? 'is-active' : ''}`}
+                  className={`reader-tab ${currentReaderPanel === 'final' ? 'is-active' : ''}`}
                   onClick={() => setActiveReaderPanel('final')}
                   role="tab"
-                  aria-selected={activeReaderPanel === 'final'}
+                  aria-selected={currentReaderPanel === 'final'}
                 >
                   Final post
                 </button>
               </div>
             </div>
 
-            {activeReaderPanel === 'review' ? (
+            {currentReaderPanel === 'review' ? (
               mergeReport ? (
                 <div className="merge-layout">
                   <div className="merge-notes">
