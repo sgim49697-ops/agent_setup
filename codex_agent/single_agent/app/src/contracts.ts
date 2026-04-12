@@ -23,6 +23,7 @@ export interface BlogGeneratorInputs {
 export interface WorkflowStage {
   id: GenerationStageId
   label: string
+  hook?: string
   testHook: string
   output: keyof PipelineOutputs
   description: string
