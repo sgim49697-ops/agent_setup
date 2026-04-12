@@ -24,10 +24,11 @@ python3 "$ROOT/scripts/openclaw_sync_codex_oauth.py" --restart-gateway-if-needed
 printf '[%s] Detached tmux worker starting codex exec master loop\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> "$LOG"
 
 readarray -t CONTEXT < <(python3 - <<'PY'
+import json
 from pathlib import Path
 from master_loop_state import load_state, normalize_remaining_harnesses
-p=Path('/home/user/projects/agent_setup/codex_agent/.omx/state/master-ux-loop.json')
-state=load_state(p)
+root=Path('/home/user/projects/agent_setup/codex_agent')
+state=load_state(root / '.omx/state/master-ux-loop.json')
 cycle = int(state.get('cycle', 0)) + 1
 remaining = normalize_remaining_harnesses(state.get('remaining_harnesses'))
 current = str(state.get('current_harness') or '').strip()
@@ -37,7 +38,16 @@ phase = str(state.get('current_phase') or 'cycle-resume')
 stagnant = int(state.get('stagnant_cycle_count', 0))
 regressions = int(state.get('remaining_regression_count', 0))
 review_only = int(state.get('review_only_failures', 0))
-remaining_json = str(remaining)
+remaining_json = json.dumps(remaining, ensure_ascii=False)
+quality = {}
+qpath = root / '.omx/state/master-loop-quality-gate.json'
+if qpath.exists():
+    try:
+        quality = json.loads(qpath.read_text(encoding='utf-8'))
+    except Exception:
+        quality = {}
+last_gate_errors = quality.get('errors', []) if quality.get('active_harness') == current else []
+last_gate_warnings = quality.get('warnings', []) if quality.get('active_harness') == current else []
 print(cycle)
 print(current)
 print(phase)
@@ -45,6 +55,8 @@ print(stagnant)
 print(regressions)
 print(review_only)
 print(remaining_json)
+print(' | '.join(last_gate_errors))
+print(' | '.join(last_gate_warnings))
 PY
 )
 CURRENT_CYCLE="${CONTEXT[0]}"
@@ -54,6 +66,8 @@ STAGNANT_COUNT="${CONTEXT[3]}"
 REGRESSION_COUNT="${CONTEXT[4]}"
 REVIEW_ONLY_FAILURES="${CONTEXT[5]}"
 REMAINING_JSON="${CONTEXT[6]}"
+LAST_GATE_ERRORS="${CONTEXT[7]}"
+LAST_GATE_WARNINGS="${CONTEXT[8]}"
 
 STITCH_REF='shared asset assets/2271c2a16ec8460c91f7d85b87099fe9'
 if [[ "$ACTIVE_HARNESS" == "orchestrator_worker" ]]; then
@@ -70,6 +84,15 @@ fi
 REVIEW_ONLY_LINE="- Review-only cycles are forbidden. Include an edit phase before any browser-review phase."
 if [[ "$REVIEW_ONLY_FAILURES" -gt 0 ]]; then
   REVIEW_ONLY_LINE="- Previous cycles failed as review-only. This cycle must include a concrete edit phase and then re-verify; browser-review alone is failure."
+fi
+
+QUALITY_GATE_MEMORY="- No unresolved quality gate findings are recorded for this harness."
+if [[ -n "$LAST_GATE_ERRORS" ]]; then
+  QUALITY_GATE_MEMORY="- Previous cycle failed quality gate for $ACTIVE_HARNESS because: $LAST_GATE_ERRORS"
+fi
+QUALITY_GATE_WARNING_MEMORY=""
+if [[ -n "$LAST_GATE_WARNINGS" ]]; then
+  QUALITY_GATE_WARNING_MEMORY="- Previous cycle warning for $ACTIVE_HARNESS: $LAST_GATE_WARNINGS"
 fi
 
 update_state status running
@@ -104,6 +127,8 @@ Required outcomes for this cycle:
 Dynamic guards:
 $MUST_SHRINK_LINE
 $REVIEW_ONLY_LINE
+$QUALITY_GATE_MEMORY
+$QUALITY_GATE_WARNING_MEMORY
 PROMPT_EOF
 )
 
