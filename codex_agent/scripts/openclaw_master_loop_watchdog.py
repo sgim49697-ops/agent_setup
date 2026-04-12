@@ -371,6 +371,8 @@ def launch_runner(state: dict[str, Any], reason: str) -> dict[str, Any]:
     state['cycle_status'] = 'running'
     state['project_status'] = 'in_progress'
     state['next_cycle_required'] = False
+    state['runtime_guard_active'] = False
+    state['runtime_guard_reason'] = ''
     log(f'launched runner window (reason={reason})')
     return state
 
