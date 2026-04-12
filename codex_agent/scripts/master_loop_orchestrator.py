@@ -51,9 +51,46 @@ PROMPT_DIR = ROOT / ".codex/prompts"
 LOG_PATH = ROOT / ".omx/logs/master-ux-benchmark-v2.log"
 
 STEP_TIMEOUT_SEC = int(os.environ.get("ORCH_STEP_TIMEOUT_SEC", "1200"))
+DESIGN_MAX_RETRIES = int(os.environ.get("ORCH_DESIGN_MAX_RETRIES", "1"))
 CRITIC_MAX_RETRIES = int(os.environ.get("ORCH_CRITIC_MAX_RETRIES", "1"))
 KO_COPY_MAX_RETRIES = int(os.environ.get("ORCH_KO_COPY_MAX_RETRIES", "2"))
+VERIFY_MAX_RETRIES = int(os.environ.get("ORCH_VERIFY_MAX_RETRIES", "1"))
 LOCK_PATH = ROOT / ".omx/state/orchestrator.lock"
+
+STEP_MCP_PROFILE = {
+    "design": {
+        "omx_memory": True,
+        "omx_code_intel": True,
+        "stitch": True,
+        "playwright": False,
+        "omx_state": False,
+        "omx_trace": False,
+    },
+    "critique": {
+        "omx_memory": True,
+        "omx_code_intel": True,
+        "stitch": False,
+        "playwright": False,
+        "omx_state": False,
+        "omx_trace": False,
+    },
+    "ko-copy": {
+        "omx_memory": True,
+        "omx_code_intel": True,
+        "stitch": False,
+        "playwright": False,
+        "omx_state": False,
+        "omx_trace": False,
+    },
+    "verify": {
+        "omx_memory": True,
+        "omx_code_intel": False,
+        "stitch": False,
+        "playwright": True,
+        "omx_state": False,
+        "omx_trace": False,
+    },
+}
 
 
 def acquire_lock():
@@ -130,18 +167,25 @@ def run_codex_step(
     update_state("last_progress_at", started)
     update_state("last_progress_summary", f"orchestrator step {step_name} started")
 
+    profile_key = "ko-copy" if step_name.startswith("ko-copy") else step_name
+    profile = STEP_MCP_PROFILE.get(profile_key, {})
     cmd = [
         CODEX_BIN,
         "exec",
         "--dangerously-bypass-approvals-and-sandbox",
+        "--ephemeral",
         "--color",
         "never",
         "-C",
         str(ROOT),
+    ]
+    for server, enabled in profile.items():
+        cmd.extend(["-c", f"mcp_servers.{server}.enabled={str(enabled).lower()}"])
+    cmd.extend([
         "-o",
         str(last_file),
         prompt,
-    ]
+    ])
     try:
         with step_log.open("w", encoding="utf-8") as log_fh:
             log_fh.write(f"# step={step_name} started={started}\n")
@@ -442,28 +486,48 @@ def orchestrate(harness: str, cycle: int, ctx: str) -> int:
     update_state("orchestrator_artifact_dir", str(artifact_dir))
     log(f"=== cycle {cycle} harness {harness} artifact={artifact_dir} ===")
 
-    rc = step_design(harness, cycle, ctx, artifact_dir)
-    if rc != 0:
-        log(f"design step failed rc={rc}; proceeding to gates for regression detection")
+    design_rc = 1
+    critique_rc = 1
+    approved = False
+    retry_ctx = ctx
+    for attempt in range(DESIGN_MAX_RETRIES + 1):
+        design_rc = step_design(harness, cycle, retry_ctx, artifact_dir)
+        if design_rc != 0:
+            log(f"design step failed rc={design_rc} on attempt {attempt + 1}")
+            if attempt >= DESIGN_MAX_RETRIES:
+                break
+            retry_ctx = f"{ctx}\n\nDESIGN STEP FAILED on attempt {attempt + 1}. Retry the edit with smaller, safer changes."
+            continue
 
-    critique_rc, approved = step_critique(harness, cycle, artifact_dir)
-    if critique_rc != 0:
-        log(f"critique step rc={critique_rc}")
-    log(f"critic verdict: {'APPROVE' if approved else 'REJECT'}")
+        critique_rc, approved = step_critique(harness, cycle, artifact_dir)
+        if critique_rc != 0:
+            log(f"critique step rc={critique_rc} on attempt {attempt + 1}")
+        log(f"critic verdict attempt {attempt + 1}: {'APPROVE' if approved else 'REJECT'}")
+        if approved:
+            break
+        if attempt >= DESIGN_MAX_RETRIES:
+            break
+        retry_ctx = (
+            f"{ctx}\n\nCRITIC REJECTED - read {artifact_dir}/critic-report.md and address "
+            f"blocking_issues before re-editing. This is retry attempt {attempt + 2}."
+        )
 
-    if not approved and CRITIC_MAX_RETRIES > 0:
-        log("critic rejected; running one design retry pass")
-        retry_ctx = f"{ctx}\n\nCRITIC REJECTED - read {artifact_dir}/critic-report.md and address blocking_issues before re-editing."
-        rc_retry = step_design(harness, cycle, retry_ctx, artifact_dir)
-        log(f"design retry rc={rc_retry}")
+    ko_rc = 1
+    verify_rc = 1
+    if design_rc == 0 and approved:
+        ko_rc = step_ko_copy(harness, cycle, artifact_dir)
+        if ko_rc != 0:
+            log("ko-copy step failed after retries; python gate will mark regression")
 
-    ko_rc = step_ko_copy(harness, cycle, artifact_dir)
-    if ko_rc != 0:
-        log("ko-copy step failed after retries; python gate will mark regression")
-
-    verify_rc = step_verify(harness, cycle, artifact_dir)
-    if verify_rc != 0:
-        log(f"verify step rc={verify_rc}")
+        for attempt in range(VERIFY_MAX_RETRIES + 1):
+            verify_rc = step_verify(harness, cycle, artifact_dir)
+            if verify_rc == 0:
+                break
+            log(f"verify step rc={verify_rc} on attempt {attempt + 1}")
+            if attempt >= VERIFY_MAX_RETRIES:
+                break
+    else:
+        log("skipping ko-copy/verify because design+critique never reached an approved patch")
 
     gate_rc = step_python_gates(harness)
 
@@ -475,10 +539,12 @@ def orchestrate(harness: str, cycle: int, ctx: str) -> int:
         pipeline_rc = 20
     elif ko_rc != 0:
         pipeline_rc = 21
-    elif verify_rc != 0:
-        pipeline_rc = 22
+    elif design_rc != 0:
+        pipeline_rc = 10
     elif critique_rc != 0 and not approved:
         pipeline_rc = 23
+    elif verify_rc != 0:
+        pipeline_rc = 22
 
     update_state("orchestrator_active", "false")
     update_state("last_orchestrator_exit", str(pipeline_rc))

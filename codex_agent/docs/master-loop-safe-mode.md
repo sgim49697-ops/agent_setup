@@ -85,3 +85,33 @@ bash scripts/master_loop_safe_mode.sh off
 - 수리는 `master_loop_manual_step.py`로 step 단위 진행
 - 상태/아티팩트는 `.omx/cycles/cycle-<n>-<harness>/`에서 확인
 - 수동 수리가 끝났을 때만 safe mode를 해제하고 watchdog를 다시 올린다
+
+## 정상 자동화로 복귀하기 전에
+
+safe mode는 임시 정지 수단이고, 정상 복귀 전에는 아래를 먼저 적용한다.
+
+### 1) 런타임 자원 제한 설치
+
+```bash
+bash scripts/install_runtime_limits.sh
+```
+
+설치되는 제한:
+- `openclaw-gateway.service`
+  - `MemoryMax=1G`
+  - `TasksMax=128`
+  - `CPUQuota=120%`
+- `ux-master-loop-watchdog.service`
+  - `MemoryMax=256M`
+  - `TasksMax=64`
+  - `CPUQuota=50%`
+
+### 2) watchdog runtime budget 확인
+
+`bash scripts/openclaw_master_loop_status.sh`에서 다음을 확인:
+- `active_stitch_mcp_count`
+- `active_playwright_mcp_count`
+- `active_codex_exec_count`
+- `runtime_guard_active`
+
+budget 초과면 watchdog는 자동 relaunch 대신 중복 MCP/step을 정리하고 이번 tick을 건너뛴다.

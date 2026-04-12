@@ -13,6 +13,41 @@ The UX benchmark automation no longer relies only on one giant prompt. A bounded
 When background runtime safety is more important than throughput, use
 `docs/master-loop-safe-mode.md` and run one orchestrator step at a time.
 
+## Lean step runtime profiles
+
+The orchestrator now applies step-specific MCP budgets instead of letting every
+`codex exec` start the full MCP stack.
+
+- **design**
+  - enabled: `stitch`, `omx_memory`, `omx_code_intel`
+  - disabled: `playwright`, `omx_state`, `omx_trace`
+- **critique**
+  - enabled: `omx_memory`, `omx_code_intel`
+  - disabled: `stitch`, `playwright`, `omx_state`, `omx_trace`
+- **ko-copy**
+  - enabled: `omx_memory`, `omx_code_intel`
+  - disabled: `stitch`, `playwright`, `omx_state`, `omx_trace`
+- **verify**
+  - enabled: `playwright`, `omx_memory`
+  - disabled: `stitch`, `omx_code_intel`, `omx_state`, `omx_trace`
+
+Purpose:
+- keep heavy MCP proxies out of steps that do not need them
+- reduce duplicate `stitch-mcp` / `playwright-mcp` buildup
+- make background automation viable again after safe-mode debugging
+
+## OpenClaw is no longer in the hot path
+
+The worker and watchdog no longer restart or sync `openclaw-gateway` on every
+tick or worker start.
+
+Current policy:
+- benchmark automation should run without OpenClaw
+- Telegram alerts may start the gateway lazily only when an alert is actually sent
+
+Purpose:
+- keep the steady-state benchmark loop independent from gateway resource spikes
+
 ## Step flow inside one bounded cycle
 
 For an active harness, the orchestrator runs focused steps in order:
@@ -64,6 +99,25 @@ Purpose:
 
 Purpose:
 - make recycle/kill paths visible even when wrapper tail logic is interrupted
+
+### Runtime budget guard
+The watchdog now records and enforces per-tick process budgets:
+- `active_orchestrator_count`
+- `active_worker_count`
+- `active_codex_exec_count`
+- `active_stitch_mcp_count`
+- `active_playwright_mcp_count`
+- `active_automation_process_count`
+
+If the budget is exceeded, the watchdog:
+1. kills duplicate worker/orchestrator trees
+2. kills duplicate `stitch-mcp` / `playwright-mcp`
+3. records `runtime_guard_*` state
+4. skips relaunch for that tick
+
+Purpose:
+- avoid WSL-wide CPU/RAM spikes
+- prefer cleanup + backoff over runaway relaunch loops
 
 ### Orchestrator lock
 `master_loop_orchestrator.py` takes an exclusive flock on:

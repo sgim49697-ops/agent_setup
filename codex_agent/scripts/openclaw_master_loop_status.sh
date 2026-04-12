@@ -27,7 +27,7 @@ INNER
 )" --quiet >/dev/null || true
 
 python3 - <<'PY'
-import json, os
+import json, os, subprocess
 from pathlib import Path
 root = Path('/home/user/projects/agent_setup/codex_agent')
 state = json.loads((root / '.omx/state/master-ux-loop.json').read_text(encoding='utf-8')) if (root / '.omx/state/master-ux-loop.json').exists() else {}
@@ -35,10 +35,23 @@ validator = json.loads((root / '.omx/state/master-loop-validator.json').read_tex
 trace = json.loads((root / '.omx/state/master-loop-trace-sanity.json').read_text(encoding='utf-8')) if (root / '.omx/state/master-loop-trace-sanity.json').exists() else {}
 metrics = json.loads((root / '.omx/state/master-loop-baseline-metrics.json').read_text(encoding='utf-8')) if (root / '.omx/state/master-loop-baseline-metrics.json').exists() else {}
 quality = json.loads((root / '.omx/state/master-loop-quality-gate.json').read_text(encoding='utf-8')) if (root / '.omx/state/master-loop-quality-gate.json').exists() else {}
+safe = json.loads((root / '.omx/state/master-loop-safe-mode.json').read_text(encoding='utf-8')) if (root / '.omx/state/master-loop-safe-mode.json').exists() else {"enabled": False}
+proc = subprocess.run(['ps', '-eo', 'args='], capture_output=True, text=True)
+lines = [line for line in proc.stdout.splitlines() if line.strip()]
+runtime = {
+    'active_worker_count': sum('run_master_ux_worker.sh' in line for line in lines),
+    'active_orchestrator_count': sum('master_loop_orchestrator.py' in line for line in lines),
+    'active_codex_exec_count': sum('codex exec' in line for line in lines),
+    'active_stitch_mcp_count': sum('stitch-mcp' in line for line in lines),
+    'active_playwright_mcp_count': sum('playwright-mcp' in line for line in lines),
+}
+runtime['active_automation_process_count'] = sum(runtime.values())
 print('=== state ===')
 print(f'worker_elapsed_sec: {os.environ.get("RUNNER_ELAPSED", "")}')
-for key in ['status','project_status','cycle_status','cycle','current_phase','current_harness','remaining_harnesses','last_progress_at','last_progress_summary','last_worker_start_at','last_worker_finish_at','last_worker_interrupt_at','last_worker_interrupt_reason','last_launch_reason','next_cycle_required','hard_blocker','relaunch_count','regression_count','quality_gate_failure_streak','current_harness_cycle_streak']:
-    print(f'{key}: {state.get(key)}')
+for key in ['status','project_status','cycle_status','cycle','current_phase','current_harness','remaining_harnesses','last_progress_at','last_progress_summary','last_worker_start_at','last_worker_finish_at','last_worker_interrupt_at','last_worker_interrupt_reason','last_launch_reason','next_cycle_required','hard_blocker','relaunch_count','regression_count','quality_gate_failure_streak','current_harness_cycle_streak','active_worker_count','active_orchestrator_count','active_codex_exec_count','active_stitch_mcp_count','active_playwright_mcp_count','active_automation_process_count','runtime_guard_active','runtime_guard_reason','runtime_guard_last_triggered_at']:
+    print(f'{key}: {state.get(key) if state.get(key) is not None else runtime.get(key)}')
+print(f"safe_mode_enabled: {safe.get('enabled')}")
+print(f"safe_mode_reason: {safe.get('reason')}")
 print('\n=== validator ===')
 print(f"ok: {validator.get('ok')} | errors: {len(validator.get('errors', []))} | warnings: {len(validator.get('warnings', []))}")
 for line in validator.get('errors', [])[:3]:

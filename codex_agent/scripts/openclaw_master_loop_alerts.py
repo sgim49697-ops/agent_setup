@@ -153,7 +153,13 @@ def should_send(alert_state: dict[str, Any], kind: str, signature: str) -> bool:
     return now_ts() - int(last) >= ALERT_COOLDOWN_SEC
 
 
+def ensure_gateway_started() -> None:
+    subprocess.run(['systemctl', '--user', 'start', 'openclaw-gateway.service'], capture_output=True, text=True)
+    time.sleep(1)
+
+
 def send_alert(message: str, dry_run: bool = False) -> tuple[bool, str]:
+    ensure_gateway_started()
     cmd = [
         'openclaw', 'message', 'send',
         '--channel', ALERT_CHANNEL,

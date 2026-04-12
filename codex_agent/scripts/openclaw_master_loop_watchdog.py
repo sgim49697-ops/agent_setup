@@ -24,7 +24,6 @@ PROJECT_FINAL_MARKER = ROOT / '.omx/logs/master-ux-benchmark-v2-project-final.md
 LEGACY_FINAL_MARKER = ROOT / '.omx/logs/master-ux-benchmark-v2-final.md'
 BLOCK_MARKER = ROOT / '.omx/logs/master-ux-benchmark-v2.blocked'
 RUNNER_SCRIPT = ROOT / 'scripts/run_master_ux_worker.sh'
-SYNC_SCRIPT = ROOT / 'scripts/openclaw_sync_codex_oauth.py'
 GIT_CHECKPOINT_SCRIPT = ROOT / 'scripts/git_state_checkpoint_watchdog.py'
 BASELINE_SCRIPT = ROOT / 'scripts/master_loop_baseline_metrics.py'
 QUALITY_GATE_SCRIPT = ROOT / 'scripts/master_loop_quality_gate.py'
@@ -42,6 +41,12 @@ ARCHIVE_ROOT = ROOT / '.omx/logs/archive'
 BLOCKER_AUTO_CLEAR_MINUTES = 10
 STALL_TIMEOUT_MINUTES = 18
 TRACE_RESTART_THRESHOLD = 2
+PROCESS_BUDGET_BACKOFF_MINUTES = 5
+MAX_ORCHESTRATOR_PROCS = 1
+MAX_CODEX_EXEC_PROCS = 1
+MAX_STITCH_MCP_PROCS = 1
+MAX_PLAYWRIGHT_MCP_PROCS = 1
+MAX_AUTOMATION_TOTAL_PROCS = 6
 TRANSIENT_BLOCKER_HINTS = (
     'oauth',
     'refresh',
@@ -143,6 +148,70 @@ def write_state(state: dict[str, Any]) -> None:
 
 def run(cmd: list[str]) -> subprocess.CompletedProcess[str]:
     return subprocess.run(cmd, capture_output=True, text=True)
+
+
+def process_snapshot() -> list[str]:
+    proc = run(['ps', '-eo', 'pid=,ppid=,etimes=,args='])
+    if proc.returncode != 0:
+        return []
+    return [line.rstrip() for line in proc.stdout.splitlines() if line.strip()]
+
+
+def collect_runtime_metrics() -> dict[str, int]:
+    counts = {
+        'orchestrator': 0,
+        'worker': 0,
+        'codex_exec': 0,
+        'stitch_mcp': 0,
+        'playwright_mcp': 0,
+        'automation_total': 0,
+    }
+    for line in process_snapshot():
+        if 'master_loop_orchestrator.py' in line:
+            counts['orchestrator'] += 1
+        if 'run_master_ux_worker.sh' in line:
+            counts['worker'] += 1
+        if 'codex exec' in line:
+            counts['codex_exec'] += 1
+        if 'stitch-mcp' in line:
+            counts['stitch_mcp'] += 1
+        if 'playwright-mcp' in line:
+            counts['playwright_mcp'] += 1
+    counts['automation_total'] = (
+        counts['orchestrator']
+        + counts['worker']
+        + counts['codex_exec']
+        + counts['stitch_mcp']
+        + counts['playwright_mcp']
+    )
+    return counts
+
+
+def runtime_budget_issue(metrics: dict[str, int]) -> str | None:
+    if metrics['orchestrator'] > MAX_ORCHESTRATOR_PROCS:
+        return f"orchestrator>{MAX_ORCHESTRATOR_PROCS}"
+    if metrics['codex_exec'] > MAX_CODEX_EXEC_PROCS:
+        return f"codex_exec>{MAX_CODEX_EXEC_PROCS}"
+    if metrics['stitch_mcp'] > MAX_STITCH_MCP_PROCS:
+        return f"stitch_mcp>{MAX_STITCH_MCP_PROCS}"
+    if metrics['playwright_mcp'] > MAX_PLAYWRIGHT_MCP_PROCS:
+        return f"playwright_mcp>{MAX_PLAYWRIGHT_MCP_PROCS}"
+    if metrics['automation_total'] > MAX_AUTOMATION_TOTAL_PROCS:
+        return f"automation_total>{MAX_AUTOMATION_TOTAL_PROCS}"
+    return None
+
+
+def cleanup_runtime_budget_excess() -> None:
+    pkill_runner_tree()
+    for pattern in ('stitch-mcp proxy', 'playwright-mcp'):
+        subprocess.run(['pkill', '-TERM', '-f', pattern], check=False, capture_output=True)
+    try:
+        import time
+        time.sleep(1)
+    except Exception:
+        pass
+    for pattern in ('stitch-mcp proxy', 'playwright-mcp'):
+        subprocess.run(['pkill', '-KILL', '-f', pattern], check=False, capture_output=True)
 
 
 def gateway_healthy() -> bool:
@@ -407,11 +476,30 @@ def main() -> int:
         log(f"safe mode enabled by {safe_mode.get('actor') or 'unknown'}; skipping sync/relaunch ({safe_mode.get('reason') or 'no reason'})")
         return 0
 
-    sync = subprocess.run(['python3', str(SYNC_SCRIPT), '--restart-gateway-if-needed', '--quiet'], capture_output=True, text=True)
-    if sync.returncode != 0:
-        log(f'auth sync failed: {sync.stderr.strip() or sync.stdout.strip()}')
-
     state = read_state()
+    metrics = collect_runtime_metrics()
+    state['active_orchestrator_count'] = metrics['orchestrator']
+    state['active_worker_count'] = metrics['worker']
+    state['active_codex_exec_count'] = metrics['codex_exec']
+    state['active_stitch_mcp_count'] = metrics['stitch_mcp']
+    state['active_playwright_mcp_count'] = metrics['playwright_mcp']
+    state['active_automation_process_count'] = metrics['automation_total']
+    issue = runtime_budget_issue(metrics)
+    if issue:
+        cleanup_runtime_budget_excess()
+        state['runtime_guard_active'] = True
+        state['runtime_guard_reason'] = issue
+        state['runtime_guard_last_triggered_at'] = utc_now()
+        state['status'] = 'stalled'
+        state['cycle_status'] = 'stalled'
+        state['last_progress_summary'] = f'watchdog paused relaunch due to runtime budget overflow ({issue}) and cleaned duplicate MCP/processes'
+        write_state(state)
+        checkpoint_git()
+        log(f'runtime budget exceeded ({issue}); cleaned excess processes and skipped relaunch for this tick')
+        return 0
+    state['runtime_guard_active'] = False
+    state['runtime_guard_reason'] = ''
+
     ensure_tmux_base()
 
     state, cleared = try_clear_transient_blocker(state)

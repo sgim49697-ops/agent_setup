@@ -87,9 +87,18 @@ def session_windows() -> list[str]:
     return proc.stdout.splitlines()
 
 
+def cleanup_orphan_preview_processes(harness: str, port: int) -> None:
+    app = app_dir(harness)
+    pattern = f"{app} && npm run preview -- --host {HOST} --port {port}"
+    run(['pkill', '-TERM', '-f', pattern])
+    time.sleep(0.5)
+    run(['pkill', '-KILL', '-f', pattern])
+
+
 def launch_window(harness: str, port: int) -> None:
     ensure_tmux_session()
     name = window_name(harness)
+    cleanup_orphan_preview_processes(harness, port)
     if name in session_windows():
         run(['tmux', 'kill-window', '-t', f'{SESSION}:{name}'])
     log_file = log_path(harness)

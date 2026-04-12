@@ -30,7 +30,9 @@ PY
     exit 90
   fi
 fi
-python3 "$ROOT/scripts/openclaw_sync_codex_oauth.py" --restart-gateway-if-needed --quiet || true
+if [[ "${MASTER_LOOP_SYNC_OPENCLAW_ON_START:-0}" == "1" ]]; then
+  python3 "$ROOT/scripts/openclaw_sync_codex_oauth.py" --quiet || true
+fi
 printf '[%s] Detached tmux worker starting codex exec master loop\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> "$LOG"
 
 FINISH_REASON="unknown"
