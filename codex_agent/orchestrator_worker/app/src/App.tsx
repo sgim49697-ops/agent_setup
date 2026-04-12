@@ -744,9 +744,9 @@ function App() {
       <section className="board-priority">
         <article className="panel board-main">
           <div className="section-head">
-            <p className="eyebrow">Ownership Board</p>
-            <h2>Worker ownership first, handoff details on demand</h2>
-            <p>The default surface stays focused on who owns what and whether integration can start.</p>
+            <p className="eyebrow">소유 범위 보드</p>
+            <h2>워커 소유 범위를 먼저 보고, 핸드오프 세부는 필요할 때만 엽니다</h2>
+            <p>기본 표면은 누가 무엇을 맡았는지와 통합을 시작할 수 있는지만 먼저 보여줍니다.</p>
           </div>
           <div className="worker-grid">
             {workerProfiles.map((profile) => {
@@ -758,10 +758,10 @@ function App() {
                 <article key={profile.id} className={`worker-card status-${status}`}>
                   <div className="worker-head">
                     <div>
-                      <p className="eyebrow">Worker status</p>
+                      <p className="eyebrow">워커 상태</p>
                       <h3>{profile.label}</h3>
                     </div>
-                    <span className={`worker-pill worker-${status}`}>{status}</span>
+                    <span className={`worker-pill worker-${status}`}>{workerStatusLabel(status)}</span>
                   </div>
 
                   <p className="helper-note">{profile.focus}</p>
@@ -770,11 +770,11 @@ function App() {
                   {bundle ? (
                     <div className="summary-stack">
                       <div className="sub-block">
-                        <h4>Ownership scope</h4>
+                        <h4>소유 범위</h4>
                         <p>{bundle.scope}</p>
                       </div>
                       <div className="sub-block">
-                        <h4>Owned deliverables</h4>
+                        <h4>담당 산출물</h4>
                         <div className="chip-row">
                           {bundle.ownedDeliverables.map((item) => (
                             <span key={item} className="meta-chip">
@@ -786,20 +786,20 @@ function App() {
                     </div>
                   ) : (
                     <div className="empty-state compact-empty">
-                      <p>Generate the product to assign this worker its ownership slice.</p>
+                      <p>글 생성 시작 (Generate post)을 눌러야 이 워커의 소유 범위가 배정됩니다.</p>
                     </div>
                   )}
 
                   {output ? (
                     <details className="detail-drawer">
-                      <summary className="detail-summary">Open handoff and integration notes</summary>
+                      <summary className="detail-summary">핸드오프와 통합 메모 열기</summary>
                       <div className="detail-body">
                         <div className="sub-block">
-                          <h4>Worker summary</h4>
+                          <h4>워커 요약</h4>
                           <p>{output.summary}</p>
                         </div>
                         <div className="sub-block">
-                          <h4>Deliverable preview</h4>
+                          <h4>산출물 미리보기</h4>
                           <ul className="compact-list">
                             {output.deliverablePreview.map((item) => (
                               <li key={item}>{item}</li>
@@ -808,7 +808,7 @@ function App() {
                         </div>
                         {bundle ? (
                           <div className="sub-block">
-                            <h4>Integration risks</h4>
+                            <h4>통합 리스크</h4>
                             <ul className="compact-list">
                               {bundle.integrationRisks.map((risk) => (
                                 <li key={risk}>{risk}</li>
@@ -817,14 +817,14 @@ function App() {
                           </div>
                         ) : null}
                         <div className="sub-block">
-                          <h4>Handoff note</h4>
+                          <h4>핸드오프 메모</h4>
                           <p>{output.handoffNote}</p>
                         </div>
                       </div>
                     </details>
                   ) : (
                     <div className="empty-state compact-empty">
-                      <p>This worker has not produced output yet.</p>
+                      <p>이 워커는 아직 산출물을 넘기지 않았습니다.</p>
                     </div>
                   )}
                 </article>
@@ -835,29 +835,29 @@ function App() {
 
         <aside className="panel board-rail">
           <div className="section-head">
-            <p className="eyebrow">Integration checkpoint</p>
-            <h2>Current pressure and next action</h2>
+            <p className="eyebrow">통합 체크포인트</p>
+            <h2>지금 압력이 걸리는 지점과 다음 행동</h2>
           </div>
           <div className="summary-stack">
             <article className="info-card">
-              <p className="panel-label">Current moment</p>
+              <p className="panel-label">현재 시점</p>
               <h3>{checkpointLabel}</h3>
               <p>{currentMoment}</p>
             </article>
             <article className="info-card">
-              <p className="panel-label">Ownership coverage</p>
+              <p className="panel-label">소유 범위 커버리지</p>
               <h3>
-                {completedWorkerCount}/{workerProfiles.length} worker slices delivered
+                {completedWorkerCount}/{workerProfiles.length}개 워커 산출물 전달됨
               </h3>
               <p>
                 {plan
-                  ? `${plan.bundles.length} bundles are locked and waiting to be integrated into one product story.`
-                  : 'The orchestrator will show bundle ownership here once planning completes.'}
+                  ? `${plan.bundles.length}개 번들이 잠겼고, 이제 하나의 제품 서사로 통합되기를 기다리고 있습니다.`
+                  : '계획이 확정되면 오케스트레이터가 여기에서 번들 소유 범위를 보여줍니다.'}
               </p>
             </article>
             <article className="info-card">
-              <p className="panel-label">Next action</p>
-              <h3>{finalPost ? 'Export or review' : 'Keep the checkpoint focused'}</h3>
+              <p className="panel-label">다음 행동</p>
+              <h3>{finalPost ? '검토하거나 내보내기' : '체크포인트를 먼저 고정하기'}</h3>
               <p>{nextAction}</p>
             </article>
           </div>
@@ -866,16 +866,16 @@ function App() {
 
       <details className="panel planning-drawer">
         <summary className="drawer-summary">
-          <span>Research results + Outline + Orchestrator plan</span>
+          <span>리서치 결과 (Research results) + 아웃라인 (Outline) + 오케스트레이터 계획</span>
           <div>
-            <strong>Open the planning context only when you need the shared frame behind the board.</strong>
-            <p>The default product surface keeps ownership and integration ahead of evidence-heavy planning detail.</p>
+            <strong>보드 뒤의 공통 프레임이 필요할 때만 계획 맥락을 여세요.</strong>
+            <p>기본 제품 표면은 근거가 많은 계획 세부보다 소유 범위와 통합을 먼저 둡니다.</p>
           </div>
         </summary>
 
         <div className="planning-grid">
           <article className="info-card">
-            <h3>Orchestrator plan</h3>
+            <h3>오케스트레이터 계획</h3>
             {plan ? (
               <>
                 <p>{plan.decompositionReason}</p>
@@ -883,13 +883,13 @@ function App() {
               </>
             ) : (
               <div className="empty-state compact-empty">
-                <p>Generate the product to see why the orchestrator chose this decomposition.</p>
+                <p>글 생성 시작 (Generate post)을 눌러야 오케스트레이터가 이 분해 방식을 고른 이유를 볼 수 있습니다.</p>
               </div>
             )}
           </article>
 
           <article className="info-card">
-            <h3>Research results</h3>
+            <h3>리서치 결과 (Research results)</h3>
             {researchSummary ? (
               <>
                 <p>{researchSummary.angle}</p>
@@ -903,13 +903,13 @@ function App() {
               </>
             ) : (
               <div className="empty-state compact-empty">
-                <p>Research results appear here after the content worker finishes its first pass.</p>
+                <p>콘텐츠 워커가 첫 패스를 마치면 여기에 리서치 결과가 나타납니다.</p>
               </div>
             )}
           </article>
 
           <article className="info-card">
-            <h3>Outline</h3>
+            <h3>아웃라인 (Outline)</h3>
             {outline.length > 0 ? (
               <div className="outline-grid">
                 {outline.map((section) => (
@@ -921,13 +921,13 @@ function App() {
               </div>
             ) : (
               <div className="empty-state compact-empty">
-                <p>Outline appears here after the content worker turns research into a stable structure.</p>
+                <p>콘텐츠 워커가 리서치를 안정된 구조로 바꾸면 여기에 아웃라인이 나타납니다.</p>
               </div>
             )}
           </article>
 
           <article className="info-card">
-            <h3>Integration checklist</h3>
+            <h3>통합 체크리스트</h3>
             {plan ? (
               <ul className="compact-list">
                 {plan.integrationChecklist.map((item) => (
@@ -936,7 +936,7 @@ function App() {
               </ul>
             ) : (
               <div className="empty-state compact-empty">
-                <p>The integration checklist appears here once the orchestrator locks the plan.</p>
+                <p>오케스트레이터가 계획을 잠그면 여기에 통합 체크리스트가 나타납니다.</p>
               </div>
             )}
           </article>
@@ -947,8 +947,8 @@ function App() {
         <article className="panel final-panel">
           <div className="reader-shell-head">
             <div className="section-head">
-              <p className="eyebrow">Reader surface</p>
-              <h2>Only one downstream surface stays open at a time</h2>
+              <p className="eyebrow">리더 표면</p>
+              <h2>하위 표면은 한 번에 하나만 열어 둡니다</h2>
             </div>
             <div className="reader-tabs" role="tablist" aria-label="Orchestrator workspace">
               <button
@@ -958,7 +958,7 @@ function App() {
                 role="tab"
                 aria-selected={activeSurface === 'drafts'}
               >
-                Section drafts
+                섹션 초안 (Section drafts)
               </button>
               <button
                 type="button"
@@ -967,7 +967,7 @@ function App() {
                 role="tab"
                 aria-selected={activeSurface === 'review'}
               >
-                Review notes
+                리뷰 노트 (Review notes)
               </button>
               <button
                 type="button"
@@ -976,7 +976,7 @@ function App() {
                 role="tab"
                 aria-selected={activeSurface === 'final'}
               >
-                Final post
+                최종 글 (Final post)
               </button>
             </div>
           </div>
@@ -999,7 +999,7 @@ function App() {
               </div>
             ) : (
               <div className="empty-state">
-                <p>Section drafts appear here after the content worker finishes its ownership slice.</p>
+                <p>콘텐츠 워커가 맡은 범위를 마치면 여기에 섹션 초안이 나타납니다.</p>
               </div>
             )
           ) : null}
@@ -1008,7 +1008,7 @@ function App() {
             integrationReview && reviewNotes ? (
               <div className="review-layout">
                 <div className="info-card">
-                  <h3>Review notes</h3>
+                  <h3>리뷰 노트 (Review notes)</h3>
                   <div className="review-stack">
                     {reviewNotes.map((note) => (
                       <article key={note.label} className={`review-card severity-${note.severity}`}>
@@ -1019,17 +1019,17 @@ function App() {
                   </div>
                 </div>
                 <div className="info-card">
-                  <h3>Integration review</h3>
+                  <h3>통합 리뷰</h3>
                   <p>
-                    <strong>Layout:</strong> {integrationReview.layoutConsistency}
+                    <strong>레이아웃:</strong> {integrationReview.layoutConsistency}
                   </p>
                   <p>
-                    <strong>State:</strong> {integrationReview.stateConsistency}
+                    <strong>상태:</strong> {integrationReview.stateConsistency}
                   </p>
                   <p>
-                    <strong>Content:</strong> {integrationReview.contentConsistency}
+                    <strong>콘텐츠:</strong> {integrationReview.contentConsistency}
                   </p>
-                  <h4>Fixes applied</h4>
+                  <h4>적용한 수정</h4>
                   <ul className="compact-list">
                     {integrationReview.fixesApplied.map((item) => (
                       <li key={item}>{item}</li>
@@ -1040,7 +1040,7 @@ function App() {
               </div>
             ) : (
               <div className="empty-state">
-                <p>Review notes appear after all worker outputs are available and the integration desk starts reconciling them.</p>
+                <p>모든 워커 산출물이 모이고 통합 데스크가 조정을 시작하면 여기에 리뷰 노트가 나타납니다.</p>
               </div>
             )
           ) : null}
@@ -1050,7 +1050,7 @@ function App() {
               <pre className="markdown-preview">{finalPost}</pre>
             ) : (
               <div className="empty-state">
-                <p>The final post appears here after the integrator finishes consistency review.</p>
+                <p>통합 담당자가 일관성 리뷰를 마치면 여기에 최종 글이 나타납니다.</p>
               </div>
             )
           ) : null}
@@ -1058,8 +1058,8 @@ function App() {
 
         <article className="panel stage-panel">
           <div className="section-head">
-            <p className="eyebrow">Stage Tracker</p>
-            <h2>Decompose first, integrate last</h2>
+            <p className="eyebrow">단계 추적기</p>
+            <h2>먼저 분해하고, 마지막에 통합합니다</h2>
           </div>
           <div className="stage-grid">
             {workflowStages.map((stage) => {
@@ -1082,10 +1082,10 @@ function App() {
 
       <details className="panel utility-drawer">
         <summary className="drawer-summary">
-          <span>Evidence + Evaluation</span>
+          <span>근거 + 평가</span>
           <div>
-            <strong>Open benchmark evidence only when you need the audit layer.</strong>
-            <p>The ownership board, integration checkpoint, and reader surface stay on the primary product path.</p>
+            <strong>감사 레이어가 필요할 때만 벤치마크 근거를 여세요.</strong>
+            <p>소유 범위 보드, 통합 체크포인트, 리더 표면은 기본 제품 경로에 남아 있습니다.</p>
           </div>
         </summary>
 
@@ -1099,7 +1099,7 @@ function App() {
             ))}
           </div>
           <div className="info-card checklist-card">
-            <h3>Evaluation checklist</h3>
+            <h3>평가 체크리스트</h3>
             <ul className="compact-list">
               {evaluationChecklist.map((item) => (
                 <li key={item}>{item}</li>
@@ -1107,7 +1107,7 @@ function App() {
             </ul>
           </div>
           <div className="info-card">
-            <h3>Review lenses</h3>
+            <h3>리뷰 관점</h3>
             <ul className="compact-list">
               {reviewLenses.map((item) => (
                 <li key={item}>{item}</li>
@@ -1115,11 +1115,11 @@ function App() {
             </ul>
           </div>
           <div className="info-card">
-            <h3>Artifact preview</h3>
+            <h3>아티팩트 미리보기</h3>
             <pre className="contract-preview">{JSON.stringify(artifactPreview, null, 2)}</pre>
           </div>
           <div className="info-card">
-            <h3>Scorecard preview</h3>
+            <h3>스코어카드 미리보기</h3>
             <pre className="contract-preview">{JSON.stringify(scorePreview, null, 2)}</pre>
           </div>
         </div>
