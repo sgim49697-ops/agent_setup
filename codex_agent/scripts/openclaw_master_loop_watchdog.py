@@ -78,8 +78,34 @@ def mark_runner_kill(reason: str) -> None:
         pass
 
 
+def pkill_runner_tree() -> None:
+    """Forcefully kill any surviving wrapper/orchestrator/codex processes.
+
+    tmux kill-window sends SIGHUP to the pane's bash. If our HUP trap catches
+    that and exits cleanly, the python orchestrator and codex children do NOT
+    automatically die -- they stay alive under the tmux server, accumulating
+    across watchdog recycles. We pattern-match and SIGKILL them explicitly so
+    the next launch starts from a clean slate.
+    """
+    patterns = [
+        'master_loop_orchestrator.py',
+        'run_master_ux_worker.sh',
+        'codex exec --dangerously-bypass',
+    ]
+    for pat in patterns:
+        subprocess.run(['pkill', '-TERM', '-f', pat], check=False, capture_output=True)
+    try:
+        import time
+        time.sleep(1)
+    except Exception:
+        pass
+    for pat in patterns:
+        subprocess.run(['pkill', '-KILL', '-f', pat], check=False, capture_output=True)
+
+
 def kill_runner_window(reason: str) -> None:
     mark_runner_kill(reason)
+    pkill_runner_tree()
     run(['tmux', 'kill-window', '-t', f'{SESSION}:{RUNNER_WINDOW}'])
 
 

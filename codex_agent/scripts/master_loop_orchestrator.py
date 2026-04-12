@@ -27,6 +27,7 @@ Exit code: 0 if all steps pass, non-zero on pipeline failure.
 from __future__ import annotations
 
 import argparse
+import fcntl
 import json
 import os
 import subprocess
@@ -50,6 +51,21 @@ LOG_PATH = ROOT / ".omx/logs/master-ux-benchmark-v2.log"
 STEP_TIMEOUT_SEC = int(os.environ.get("ORCH_STEP_TIMEOUT_SEC", "1200"))
 CRITIC_MAX_RETRIES = int(os.environ.get("ORCH_CRITIC_MAX_RETRIES", "1"))
 KO_COPY_MAX_RETRIES = int(os.environ.get("ORCH_KO_COPY_MAX_RETRIES", "2"))
+LOCK_PATH = ROOT / ".omx/state/orchestrator.lock"
+
+
+def acquire_lock():
+    """Exclusive non-blocking flock. Returns file handle kept open for lifetime, or None."""
+    LOCK_PATH.parent.mkdir(parents=True, exist_ok=True)
+    fh = LOCK_PATH.open("w", encoding="utf-8")
+    try:
+        fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        fh.close()
+        return None
+    fh.write(f"pid={os.getpid()} started={datetime.now(timezone.utc).isoformat()}\n")
+    fh.flush()
+    return fh
 
 
 def utc_now() -> str:
@@ -444,7 +460,18 @@ def main() -> int:
     parser.add_argument("--cycle", required=True, type=int)
     parser.add_argument("--prompt-context", default="")
     args = parser.parse_args()
-    return orchestrate(args.active_harness, args.cycle, args.prompt_context)
+    lock_fh = acquire_lock()
+    if lock_fh is None:
+        log(f"another orchestrator instance holds {LOCK_PATH}; aborting (pid={os.getpid()})")
+        return 75
+    try:
+        return orchestrate(args.active_harness, args.cycle, args.prompt_context)
+    finally:
+        try:
+            fcntl.flock(lock_fh.fileno(), fcntl.LOCK_UN)
+        except Exception:
+            pass
+        lock_fh.close()
 
 
 if __name__ == "__main__":

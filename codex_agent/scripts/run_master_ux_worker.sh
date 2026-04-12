@@ -25,17 +25,26 @@ printf '[%s] Detached tmux worker starting codex exec master loop\n' "$(date -u 
 
 FINISH_REASON="unknown"
 FINAL_STATUS="unknown"
+cleanup_children() {
+  # Kill entire subprocess tree (orchestrator python + codex) so signal arrival
+  # does not orphan them. Without this, watchdog's tmux kill-window + our HUP
+  # trap would leave python3/codex alive under the tmux server.
+  pkill -TERM -P $$ 2>/dev/null || true
+  sleep 1
+  pkill -KILL -P $$ 2>/dev/null || true
+}
 on_exit() {
   local ts
   ts="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+  cleanup_children
   python3 "$STATE_HELPER" "$STATE" last_worker_finish_at "$ts" 2>/dev/null || true
   python3 "$STATE_HELPER" "$STATE" last_worker_exit_status "$FINAL_STATUS" 2>/dev/null || true
   python3 "$STATE_HELPER" "$STATE" last_worker_finish_reason "$FINISH_REASON" 2>/dev/null || true
   printf '[%s] Wrapper EXIT trap fired (status=%s reason=%s)\n' "$ts" "$FINAL_STATUS" "$FINISH_REASON" >> "$LOG"
 }
-trap 'FINISH_REASON=signal-term; FINAL_STATUS=143; exit 143' TERM
-trap 'FINISH_REASON=signal-hup;  FINAL_STATUS=129; exit 129' HUP
-trap 'FINISH_REASON=signal-int;  FINAL_STATUS=130; exit 130' INT
+trap 'FINISH_REASON=signal-term; FINAL_STATUS=143; cleanup_children; exit 143' TERM
+trap 'FINISH_REASON=signal-hup;  FINAL_STATUS=129; cleanup_children; exit 129' HUP
+trap 'FINISH_REASON=signal-int;  FINAL_STATUS=130; cleanup_children; exit 130' INT
 trap on_exit EXIT
 
 readarray -t CONTEXT < <(python3 - <<'PY'
