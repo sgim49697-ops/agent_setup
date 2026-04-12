@@ -1,27 +1,24 @@
 {
   "harness": "parallel_sections",
-  "evaluated_at": "2026-04-12T07:27:35Z",
+  "evaluated_at": "2026-04-12T07:31:17Z",
   "l1_playwright": {
     "smoke_total": 28,
-    "smoke_passed": 26,
-    "smoke_failed": 2,
-    "smoke_pass_rate": 0.9286,
-    "smoke_failed_tests": [
-      "플로우: 최종 포스트가 비어있지 않다",
-      "플로우: 최종 포스트가 비어있지 않다"
-    ]
+    "smoke_passed": 28,
+    "smoke_failed": 0,
+    "smoke_pass_rate": 1.0,
+    "smoke_failed_tests": []
   },
   "l2_quantitative": {
     "harness": "parallel_sections",
     "source_files": 7,
-    "source_lines": 2552,
+    "source_lines": 2576,
     "build_success": true,
-    "build_seconds": 1.47,
-    "bundle_bytes": 250569,
+    "build_seconds": 1.5,
+    "bundle_bytes": 251238,
     "smoke_total": 28,
-    "smoke_passed": 26,
-    "smoke_failed": 2,
-    "smoke_pass_rate": 0.9286,
+    "smoke_passed": 28,
+    "smoke_failed": 0,
+    "smoke_pass_rate": 1.0,
     "run_status": "completed",
     "run_duration_seconds": 720.0
   },
@@ -36,7 +33,7 @@
     "overall_score": 8.7
   },
   "final": {
-    "l1_smoke_score": 9.29,
+    "l1_smoke_score": 10.0,
     "l2_build_score": 10.0,
     "l3_subjective_score": 8.7,
     "l3_missing": false,
@@ -45,6 +42,6 @@
       "l2": 0.2,
       "l3": 0.5
     },
-    "final_score": 9.14
+    "final_score": 9.35
   }
 }
