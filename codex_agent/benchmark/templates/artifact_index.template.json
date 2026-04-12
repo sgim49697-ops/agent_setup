@@ -1,0 +1,17 @@
+{
+  "screenshots": [
+    "reports/generated/desktop-initial.png",
+    "reports/generated/mobile-final.png"
+  ],
+  "final_urls": [
+    "http://127.0.0.1:4173/"
+  ],
+  "notes": [
+    "Implemented with local mock data only.",
+    "Review step includes a revision summary."
+  ],
+  "deliverables": [
+    "reports/review_report.md",
+    "reports/scorecard.json"
+  ]
+}

@@ -1,8 +1,19 @@
-// contracts.ts - 공통 제품 계약 타입 정의
+// contracts.ts - evaluator_optimizer Loop Lab 타입 정의
 
 export type Audience = 'beginner' | 'practitioner' | 'advanced'
 export type Tone = 'clear' | 'pragmatic' | 'opinionated'
 export type Length = 'short' | 'medium' | 'long'
+
+export type ChecklistVerdict = 'PASS' | 'PARTIAL' | 'FAIL'
+export type GenerationStatus =
+  | 'initial'
+  | 'loading'
+  | 'populated'
+  | 'review-complete'
+  | 'export-ready'
+  | 'error'
+
+export type IterationPhase = 'writer' | 'reviewer' | 'optimizer' | 'ready'
 
 export interface BlogGeneratorInputs {
   topic: string
@@ -12,7 +23,7 @@ export interface BlogGeneratorInputs {
 }
 
 export interface WorkflowStage {
-  id: string
+  id: 'research' | 'outline' | 'drafts' | 'review' | 'final'
   label: string
   output: string
   description: string
@@ -30,4 +41,60 @@ export interface TopicPreset {
   tone: Tone
   length: Length
   rationale: string
+}
+
+export interface ChecklistRow {
+  index: number
+  label: string
+  verdict: ChecklistVerdict
+  note: string
+}
+
+export interface SectionDraft {
+  title: string
+  body: string
+  takeaway: string
+}
+
+export interface FinalArticle {
+  title: string
+  intro: string
+  mergedSections: SectionDraft[]
+  closing: string
+  markdown: string
+}
+
+export interface IterationRecord {
+  iteration: number
+  startedAt: string
+  phase: IterationPhase
+  verdictRows: ChecklistRow[]
+  passCount: number
+  partialCount: number
+  failCount: number
+  optimizerChanges: string[]
+  buildStatus: string
+  needsAnotherLoop: boolean
+  researchSummary: string[]
+  outline: string[]
+  sectionDrafts: SectionDraft[]
+  reviewNotes: string[]
+  iterationMarkdown: string
+}
+
+export interface LoopSummary {
+  minimumLoopsMet: boolean
+  lastIterationPassCount: number
+  readyForExport: boolean
+}
+
+export interface PipelineOutputs {
+  research_summary: string[]
+  outline: string[]
+  section_drafts: SectionDraft[]
+  review_notes: string[]
+  final_post: string
+  final_article: FinalArticle
+  iterations: IterationRecord[]
+  loop_summary: LoopSummary
 }

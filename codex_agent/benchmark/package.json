@@ -1,0 +1,20 @@
+{
+  "name": "benchmark",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "npx playwright test --config playwright.config.ts",
+    "test:desktop": "npx playwright test --config playwright.config.ts --project=desktop",
+    "test:mobile": "npx playwright test --config playwright.config.ts --project=mobile",
+    "test:journey": "ENABLE_V2_JOURNEY=1 npx playwright test --config playwright.config.ts playwright/journey.spec.ts",
+    "test:journey:desktop": "ENABLE_V2_JOURNEY=1 npx playwright test --config playwright.config.ts playwright/journey.spec.ts --project=desktop",
+    "test:journey:mobile": "ENABLE_V2_JOURNEY=1 npx playwright test --config playwright.config.ts playwright/journey.spec.ts --project=mobile"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.59.1"
+  }
+}

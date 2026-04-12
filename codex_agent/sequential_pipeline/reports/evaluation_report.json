@@ -1,0 +1,54 @@
+{
+  "harness": "sequential_pipeline",
+  "evaluated_at": "2026-04-12T05:37:39Z",
+  "l1_playwright": {
+    "smoke_total": 34,
+    "smoke_passed": 28,
+    "smoke_failed": 6,
+    "smoke_pass_rate": 0.8235,
+    "smoke_failed_tests": [
+      "journey: brief -> research -> outline -> draft/review -> final progression is visible",
+      "journey: final/export state exposes copy action after progression",
+      "journey: error path remains recoverable",
+      "journey: brief -> research -> outline -> draft/review -> final progression is visible",
+      "journey: final/export state exposes copy action after progression",
+      "journey: error path remains recoverable"
+    ]
+  },
+  "l2_quantitative": {
+    "harness": "sequential_pipeline",
+    "source_files": 7,
+    "source_lines": 2273,
+    "build_success": true,
+    "build_seconds": 1.61,
+    "bundle_bytes": 244244,
+    "smoke_total": 34,
+    "smoke_passed": 28,
+    "smoke_failed": 6,
+    "smoke_pass_rate": 0.8235,
+    "run_status": "completed",
+    "run_duration_seconds": 792.0
+  },
+  "l3_scorecard": {
+    "task_success": 9,
+    "ux_score": 8,
+    "flow_clarity": 9,
+    "visual_quality": 8,
+    "responsiveness": 8,
+    "a11y_score": 8,
+    "process_adherence": 10,
+    "overall_score": 8.6
+  },
+  "final": {
+    "l1_smoke_score": 8.23,
+    "l2_build_score": 10.0,
+    "l3_subjective_score": 8.6,
+    "l3_missing": false,
+    "weights": {
+      "l1": 0.3,
+      "l2": 0.2,
+      "l3": 0.5
+    },
+    "final_score": 8.77
+  }
+}

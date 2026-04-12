@@ -1,0 +1,422 @@
+[
+  {
+    "harness": "single_agent",
+    "url": "http://127.0.0.1:4173",
+    "desktop": {
+      "viewport": "desktop",
+      "heroTitle": "Tech Blog Post Generator",
+      "initial": {
+        "topicVisible": true,
+        "audienceVisible": true,
+        "toneVisible": true,
+        "lengthVisible": true,
+        "generateVisible": true,
+        "copyVisible": true
+      },
+      "generated": {
+        "statusText": "Export readyFinal Markdown is ready. Export and review the post before sharing.Next step: Export or revise the final post.Markdown copied. You can paste the full post into your editor or CMS draft.",
+        "finalMarkdownChars": 3018,
+        "finalPanelChars": 3032,
+        "reviewTableRows": 0,
+        "timelineCards": 0,
+        "verificationCards": 0,
+        "workflowCards": 0,
+        "copyFeedback": "Markdown copied. You can paste the full post into your editor or CMS draft.",
+        "finalPanelTextSnippet": "Final postExport-ready Markdown# LangGraph 1.0에서 Supervisor 패턴 설계하기 > Audience: Practitioner | Tone: Pragmatic | Length: Medium ## Intro LangGraph 1.0에서 Supervisor 패턴 설계하기는 단일 기능 소개보다 '언제 쓰고 언제 피해야 하는지'를 알려줄 때 훨씬 설득력 있게 전달된다. 이 글은 practitioner 독자가 LangGraph 1."
+      },
+      "screenshot": "/home/user/projects/agent_setup/codex_agent/benchmark/manual_ui_review/2026-04-12/single_agent-desktop-final.png",
+      "errorPath": {
+        "alertVisible": true,
+        "alertText": "Error"
+      }
+    },
+    "mobile": {
+      "viewport": "mobile",
+      "heroTitle": "Tech Blog Post Generator",
+      "initial": {
+        "topicVisible": true,
+        "audienceVisible": true,
+        "toneVisible": true,
+        "lengthVisible": true,
+        "generateVisible": true,
+        "copyVisible": true
+      },
+      "generated": {
+        "statusText": "Export readyFinal Markdown is ready. Export and review the post before sharing.Next step: Export or revise the final post.Markdown copied. You can paste the full post into your editor or CMS draft.",
+        "finalMarkdownChars": 3018,
+        "finalPanelChars": 3032,
+        "reviewTableRows": 0,
+        "timelineCards": 0,
+        "verificationCards": 0,
+        "workflowCards": 0,
+        "copyFeedback": "Markdown copied. You can paste the full post into your editor or CMS draft.",
+        "finalPanelTextSnippet": "Final postExport-ready Markdown# LangGraph 1.0에서 Supervisor 패턴 설계하기 > Audience: Practitioner | Tone: Pragmatic | Length: Medium ## Intro LangGraph 1.0에서 Supervisor 패턴 설계하기는 단일 기능 소개보다 '언제 쓰고 언제 피해야 하는지'를 알려줄 때 훨씬 설득력 있게 전달된다. 이 글은 practitioner 독자가 LangGraph 1."
+      },
+      "screenshot": "/home/user/projects/agent_setup/codex_agent/benchmark/manual_ui_review/2026-04-12/single_agent-mobile-final.png",
+      "errorPath": {
+        "alertVisible": true,
+        "alertText": "Error"
+      }
+    }
+  },
+  {
+    "harness": "sequential_pipeline",
+    "url": "http://127.0.0.1:4174",
+    "desktop": {
+      "viewport": "desktop",
+      "heroTitle": "Researcher to Reviewer, step by step.",
+      "initial": {
+        "topicVisible": true,
+        "audienceVisible": true,
+        "toneVisible": true,
+        "lengthVisible": true,
+        "generateVisible": true,
+        "copyVisible": true
+      },
+      "generated": {
+        "statusText": "Export readyFinal post reflects reviewer edits and is ready to export.Next handoff: Export the reviewer-adjusted final post.Markdown copied. This export is the reviewer-adjusted final version.",
+        "finalMarkdownChars": 2883,
+        "finalPanelChars": 3017,
+        "reviewTableRows": 0,
+        "timelineCards": 0,
+        "verificationCards": 0,
+        "workflowCards": 0,
+        "copyFeedback": "Markdown copied. This export is the reviewer-adjusted final version.",
+        "finalPanelTextSnippet": "Final postReviewer-adjusted MarkdownReviewer applied 3 concrete edits so the final post reflects editorial changes instead of merely listing review notes.# LangGraph 1.0에서 Supervisor 패턴 설계하기 > Audience: Practitioner | Tone: Pragmatic | Length: Medium ## Intro "
+      },
+      "screenshot": "/home/user/projects/agent_setup/codex_agent/benchmark/manual_ui_review/2026-04-12/sequential_pipeline-desktop-final.png",
+      "errorPath": {
+        "alertVisible": true,
+        "alertText": "Error"
+      }
+    },
+    "mobile": {
+      "viewport": "mobile",
+      "heroTitle": "Researcher to Reviewer, step by step.",
+      "initial": {
+        "topicVisible": true,
+        "audienceVisible": true,
+        "toneVisible": true,
+        "lengthVisible": true,
+        "generateVisible": true,
+        "copyVisible": true
+      },
+      "generated": {
+        "statusText": "Export readyFinal post reflects reviewer edits and is ready to export.Next handoff: Export the reviewer-adjusted final post.Markdown copied. This export is the reviewer-adjusted final version.",
+        "finalMarkdownChars": 2883,
+        "finalPanelChars": 3017,
+        "reviewTableRows": 0,
+        "timelineCards": 0,
+        "verificationCards": 0,
+        "workflowCards": 0,
+        "copyFeedback": "Markdown copied. This export is the reviewer-adjusted final version.",
+        "finalPanelTextSnippet": "Final postReviewer-adjusted MarkdownReviewer applied 3 concrete edits so the final post reflects editorial changes instead of merely listing review notes.# LangGraph 1.0에서 Supervisor 패턴 설계하기 > Audience: Practitioner | Tone: Pragmatic | Length: Medium ## Intro "
+      },
+      "screenshot": "/home/user/projects/agent_setup/codex_agent/benchmark/manual_ui_review/2026-04-12/sequential_pipeline-mobile-final.png",
+      "errorPath": {
+        "alertVisible": true,
+        "alertText": "Error"
+      }
+    }
+  },
+  {
+    "harness": "parallel_sections",
+    "url": "http://127.0.0.1:4175",
+    "desktop": {
+      "viewport": "desktop",
+      "heroTitle": "Tech Blog Post Generator",
+      "initial": {
+        "topicVisible": true,
+        "audienceVisible": true,
+        "toneVisible": true,
+        "lengthVisible": true,
+        "generateVisible": true,
+        "copyVisible": true
+      },
+      "generated": {
+        "statusText": "Export readyNewsroom board is complete. The final article is reader-ready and the export panel is live.Merged markdown copied from the final article export.",
+        "finalMarkdownChars": 3567,
+        "finalPanelChars": 6741,
+        "reviewTableRows": 0,
+        "timelineCards": 0,
+        "verificationCards": 0,
+        "workflowCards": 0,
+        "copyFeedback": "Export readyNewsroom board is complete. The final article is reader-ready and the export panel is live.Merged markdown copied from the final article export.",
+        "finalPanelTextSnippet": "Final postReader-ready merged articleNewsroom merge completeLangGraph 1.0에서 Supervisor 패턴 설계하기LangGraph 1.0에서 Supervisor 패턴 설계하기는 빠르게 섹션을 병렬 작성할 수 있지만, shipping quality는 merge desk가 중복과 전환, 톤 밀도를 정리하는 순간에 결정된다. Shared frame: coordinator가 논지와 ownership을 먼저 잠그고,"
+      },
+      "screenshot": "/home/user/projects/agent_setup/codex_agent/benchmark/manual_ui_review/2026-04-12/parallel_sections-desktop-final.png",
+      "errorPath": {
+        "alertVisible": true,
+        "alertText": "Error"
+      }
+    },
+    "mobile": {
+      "viewport": "mobile",
+      "heroTitle": "Tech Blog Post Generator",
+      "initial": {
+        "topicVisible": true,
+        "audienceVisible": true,
+        "toneVisible": true,
+        "lengthVisible": true,
+        "generateVisible": true,
+        "copyVisible": true
+      },
+      "generated": {
+        "statusText": "Export readyNewsroom board is complete. The final article is reader-ready and the export panel is live.Merged markdown copied from the final article export.",
+        "finalMarkdownChars": 3567,
+        "finalPanelChars": 6741,
+        "reviewTableRows": 0,
+        "timelineCards": 0,
+        "verificationCards": 0,
+        "workflowCards": 0,
+        "copyFeedback": "Export readyNewsroom board is complete. The final article is reader-ready and the export panel is live.Merged markdown copied from the final article export.",
+        "finalPanelTextSnippet": "Final postReader-ready merged articleNewsroom merge completeLangGraph 1.0에서 Supervisor 패턴 설계하기LangGraph 1.0에서 Supervisor 패턴 설계하기는 빠르게 섹션을 병렬 작성할 수 있지만, shipping quality는 merge desk가 중복과 전환, 톤 밀도를 정리하는 순간에 결정된다. Shared frame: coordinator가 논지와 ownership을 먼저 잠그고,"
+      },
+      "screenshot": "/home/user/projects/agent_setup/codex_agent/benchmark/manual_ui_review/2026-04-12/parallel_sections-mobile-final.png",
+      "errorPath": {
+        "alertVisible": true,
+        "alertText": "Error"
+      }
+    }
+  },
+  {
+    "harness": "router",
+    "url": "http://127.0.0.1:4176",
+    "desktop": {
+      "viewport": "desktop",
+      "heroTitle": "Tech Blog Post Generator",
+      "initial": {
+        "topicVisible": true,
+        "audienceVisible": true,
+        "toneVisible": true,
+        "lengthVisible": true,
+        "generateVisible": true,
+        "copyVisible": true
+      },
+      "generated": {
+        "statusText": "Export readyRouter pipeline is complete. Final post and evaluation checklist are ready.Final markdown copied from the routed specialist output.",
+        "finalMarkdownChars": 2904,
+        "finalPanelChars": 2916,
+        "reviewTableRows": 0,
+        "timelineCards": 0,
+        "verificationCards": 0,
+        "workflowCards": 0,
+        "copyFeedback": "Export readyRouter pipeline is complete. Final post and evaluation checklist are ready.Final markdown copied from the routed specialist output.",
+        "finalPanelTextSnippet": "Final postRouted Markdown export# LangGraph 1.0에서 Supervisor 패턴 설계하기 > Route: Orchestration Specialist | Confidence: 94% ## Intro LangGraph 1.0에서 Supervisor 패턴 설계하기는 개별 기능보다 control loop, handoff, recovery 기준을 중심으로 볼 때 설계 의도가 가장 선명해진다. 이 글은 역할 구조와 handoff를 먼저 "
+      },
+      "screenshot": "/home/user/projects/agent_setup/codex_agent/benchmark/manual_ui_review/2026-04-12/router-desktop-final.png",
+      "errorPath": {
+        "alertVisible": true,
+        "alertText": "Error"
+      }
+    },
+    "mobile": {
+      "viewport": "mobile",
+      "heroTitle": "Tech Blog Post Generator",
+      "initial": {
+        "topicVisible": true,
+        "audienceVisible": true,
+        "toneVisible": true,
+        "lengthVisible": true,
+        "generateVisible": true,
+        "copyVisible": true
+      },
+      "generated": {
+        "statusText": "Export readyRouter pipeline is complete. Final post and evaluation checklist are ready.Final markdown copied from the routed specialist output.",
+        "finalMarkdownChars": 2904,
+        "finalPanelChars": 2916,
+        "reviewTableRows": 0,
+        "timelineCards": 0,
+        "verificationCards": 0,
+        "workflowCards": 0,
+        "copyFeedback": "Export readyRouter pipeline is complete. Final post and evaluation checklist are ready.Final markdown copied from the routed specialist output.",
+        "finalPanelTextSnippet": "Final postRouted Markdown export# LangGraph 1.0에서 Supervisor 패턴 설계하기 > Route: Orchestration Specialist | Confidence: 94% ## Intro LangGraph 1.0에서 Supervisor 패턴 설계하기는 개별 기능보다 control loop, handoff, recovery 기준을 중심으로 볼 때 설계 의도가 가장 선명해진다. 이 글은 역할 구조와 handoff를 먼저 "
+      },
+      "screenshot": "/home/user/projects/agent_setup/codex_agent/benchmark/manual_ui_review/2026-04-12/router-mobile-final.png",
+      "errorPath": {
+        "alertVisible": true,
+        "alertText": "Error"
+      }
+    }
+  },
+  {
+    "harness": "orchestrator_worker",
+    "url": "http://127.0.0.1:4177",
+    "desktop": {
+      "viewport": "desktop",
+      "heroTitle": "Tech Blog Post Generator",
+      "initial": {
+        "topicVisible": true,
+        "audienceVisible": true,
+        "toneVisible": true,
+        "lengthVisible": true,
+        "generateVisible": true,
+        "copyVisible": true
+      },
+      "generated": {
+        "statusText": "Export readyOrchestrator pipeline is complete. Final post and evaluation checklist are ready.Final markdown copied from the integrated worker output.",
+        "finalMarkdownChars": 2681,
+        "finalPanelChars": 2697,
+        "reviewTableRows": 0,
+        "timelineCards": 0,
+        "verificationCards": 0,
+        "workflowCards": 0,
+        "copyFeedback": "Export readyOrchestrator pipeline is complete. Final post and evaluation checklist are ready.Final markdown copied from the integrated worker output.",
+        "finalPanelTextSnippet": "Final postIntegrated Markdown export# LangGraph 1.0에서 Supervisor 패턴 설계하기 > Audience: Practitioner | Tone: Pragmatic | Length: Medium ## Intro LangGraph 1.0에서 Supervisor 패턴 설계하기는 작업을 잘게 나누는 것만으로 품질이 좋아지지 않는다. UI, state, content를 분리한 뒤 마지막 integration review로 다시"
+      },
+      "screenshot": "/home/user/projects/agent_setup/codex_agent/benchmark/manual_ui_review/2026-04-12/orchestrator_worker-desktop-final.png",
+      "errorPath": {
+        "alertVisible": true,
+        "alertText": "Error"
+      }
+    },
+    "mobile": {
+      "viewport": "mobile",
+      "heroTitle": "Tech Blog Post Generator",
+      "initial": {
+        "topicVisible": true,
+        "audienceVisible": true,
+        "toneVisible": true,
+        "lengthVisible": true,
+        "generateVisible": true,
+        "copyVisible": true
+      },
+      "generated": {
+        "statusText": "Export readyOrchestrator pipeline is complete. Final post and evaluation checklist are ready.Final markdown copied from the integrated worker output.",
+        "finalMarkdownChars": 2681,
+        "finalPanelChars": 2697,
+        "reviewTableRows": 0,
+        "timelineCards": 0,
+        "verificationCards": 0,
+        "workflowCards": 0,
+        "copyFeedback": "Export readyOrchestrator pipeline is complete. Final post and evaluation checklist are ready.Final markdown copied from the integrated worker output.",
+        "finalPanelTextSnippet": "Final postIntegrated Markdown export# LangGraph 1.0에서 Supervisor 패턴 설계하기 > Audience: Practitioner | Tone: Pragmatic | Length: Medium ## Intro LangGraph 1.0에서 Supervisor 패턴 설계하기는 작업을 잘게 나누는 것만으로 품질이 좋아지지 않는다. UI, state, content를 분리한 뒤 마지막 integration review로 다시"
+      },
+      "screenshot": "/home/user/projects/agent_setup/codex_agent/benchmark/manual_ui_review/2026-04-12/orchestrator_worker-mobile-final.png",
+      "errorPath": {
+        "alertVisible": true,
+        "alertText": "Error"
+      }
+    }
+  },
+  {
+    "harness": "evaluator_optimizer",
+    "url": "http://127.0.0.1:4178",
+    "desktop": {
+      "viewport": "desktop",
+      "heroTitle": "Visible Loop Lab",
+      "initial": {
+        "topicVisible": true,
+        "audienceVisible": true,
+        "toneVisible": true,
+        "lengthVisible": true,
+        "generateVisible": true,
+        "copyVisible": true
+      },
+      "generated": {
+        "statusText": "export-readyexport.ready | Iteration 3 cleared 9/9 checklist gates.",
+        "finalMarkdownChars": 3014,
+        "finalPanelChars": 6889,
+        "reviewTableRows": 9,
+        "timelineCards": 3,
+        "verificationCards": 0,
+        "workflowCards": 5,
+        "copyFeedback": "Copy unlocks after iteration 3 finishes and the release candidate is export-ready.",
+        "finalPanelTextSnippet": "Final postFinal postThe release candidate only unlocks after the third visible loop clears the gate.Iteration 3 release candidateLangGraph 1.0에서 Supervisor 패턴 설계하기LangGraph 1.0에서 Supervisor 패턴 설계하기 becomes useful when the post stops celebrating the idea and st"
+      },
+      "screenshot": "/home/user/projects/agent_setup/codex_agent/benchmark/manual_ui_review/2026-04-12/evaluator_optimizer-desktop-final.png",
+      "errorPath": {
+        "alertVisible": true,
+        "alertText": "errorerror | The reviewer blocked this topic at classification time. Remove the fail/error prefix and run the loop again."
+      }
+    },
+    "mobile": {
+      "viewport": "mobile",
+      "heroTitle": "Visible Loop Lab",
+      "initial": {
+        "topicVisible": true,
+        "audienceVisible": true,
+        "toneVisible": true,
+        "lengthVisible": true,
+        "generateVisible": true,
+        "copyVisible": true
+      },
+      "generated": {
+        "statusText": "export-readyexport.ready | Iteration 3 cleared 9/9 checklist gates.",
+        "finalMarkdownChars": 3014,
+        "finalPanelChars": 6889,
+        "reviewTableRows": 9,
+        "timelineCards": 3,
+        "verificationCards": 0,
+        "workflowCards": 5,
+        "copyFeedback": "Copy unlocks after iteration 3 finishes and the release candidate is export-ready.",
+        "finalPanelTextSnippet": "Final postFinal postThe release candidate only unlocks after the third visible loop clears the gate.Iteration 3 release candidateLangGraph 1.0에서 Supervisor 패턴 설계하기LangGraph 1.0에서 Supervisor 패턴 설계하기 becomes useful when the post stops celebrating the idea and st"
+      },
+      "screenshot": "/home/user/projects/agent_setup/codex_agent/benchmark/manual_ui_review/2026-04-12/evaluator_optimizer-mobile-final.png",
+      "errorPath": {
+        "alertVisible": true,
+        "alertText": "errorerror | The reviewer blocked this topic at classification time. Remove the fail/error prefix and run the loop again."
+      }
+    }
+  },
+  {
+    "harness": "omx_evaluator_optimizer",
+    "url": "http://127.0.0.1:4179",
+    "desktop": {
+      "viewport": "desktop",
+      "heroTitle": "Gauntlet Loop Lab",
+      "initial": {
+        "topicVisible": true,
+        "audienceVisible": true,
+        "toneVisible": true,
+        "lengthVisible": true,
+        "generateVisible": true,
+        "copyVisible": true
+      },
+      "generated": {
+        "statusText": "export-readyexport-ready | Iteration 10 cleared 9/9 checklist gates after 10 verification cycles.",
+        "finalMarkdownChars": 3419,
+        "finalPanelChars": 8008,
+        "reviewTableRows": 9,
+        "timelineCards": 10,
+        "verificationCards": 10,
+        "workflowCards": 5,
+        "copyFeedback": "Copy unlocks after iteration 10 finishes and the release candidate is export-ready.",
+        "finalPanelTextSnippet": "Final postFinal postThe release candidate only unlocks after the tenth visible loop clears every gate.Iteration 10 release candidateLangGraph 1.0에서 Supervisor 패턴 설계하기LangGraph 1.0에서 Supervisor 패턴 설계하기 becomes easier to trust when the article shows how rough dr"
+      },
+      "screenshot": "/home/user/projects/agent_setup/codex_agent/benchmark/manual_ui_review/2026-04-12/omx_evaluator_optimizer-desktop-final.png",
+      "errorPath": {
+        "alertVisible": true,
+        "alertText": "errorerror | The reviewer blocked this topic at classification time. Remove the fail/error prefix and run the gauntlet again."
+      }
+    },
+    "mobile": {
+      "viewport": "mobile",
+      "heroTitle": "Gauntlet Loop Lab",
+      "initial": {
+        "topicVisible": true,
+        "audienceVisible": true,
+        "toneVisible": true,
+        "lengthVisible": true,
+        "generateVisible": true,
+        "copyVisible": true
+      },
+      "generated": {
+        "statusText": "export-readyexport-ready | Iteration 10 cleared 9/9 checklist gates after 10 verification cycles.",
+        "finalMarkdownChars": 3419,
+        "finalPanelChars": 8008,
+        "reviewTableRows": 9,
+        "timelineCards": 10,
+        "verificationCards": 10,
+        "workflowCards": 5,
+        "copyFeedback": "Copy unlocks after iteration 10 finishes and the release candidate is export-ready.",
+        "finalPanelTextSnippet": "Final postFinal postThe release candidate only unlocks after the tenth visible loop clears every gate.Iteration 10 release candidateLangGraph 1.0에서 Supervisor 패턴 설계하기LangGraph 1.0에서 Supervisor 패턴 설계하기 becomes easier to trust when the article shows how rough dr"
+      },
+      "screenshot": "/home/user/projects/agent_setup/codex_agent/benchmark/manual_ui_review/2026-04-12/omx_evaluator_optimizer-mobile-final.png",
+      "errorPath": {
+        "alertVisible": true,
+        "alertText": "errorerror | The reviewer blocked this topic at classification time. Remove the fail/error prefix and run the gauntlet again."
+      }
+    }
+  }
+]

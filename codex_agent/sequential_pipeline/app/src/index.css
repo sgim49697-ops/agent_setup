@@ -1,15 +1,15 @@
 :root {
-  --paper: #f4ede1;
-  --panel: rgba(255, 251, 245, 0.94);
-  --line: rgba(16, 35, 58, 0.12);
-  --ink: #10233a;
-  --muted: #5a6b7d;
-  --accent: #ff6a3d;
-  --accent-strong: #d94a21;
-  --accent-cool: #136f63;
+  --paper: #edf2fb;
+  --panel: rgba(247, 250, 255, 0.94);
+  --line: rgba(15, 31, 56, 0.12);
+  --ink: #0f1f38;
+  --muted: #5d6f8d;
+  --accent: #2457d6;
+  --accent-strong: #1638a5;
+  --accent-cool: #0f7d67;
   --shadow-soft:
-    0 22px 44px rgba(16, 35, 58, 0.08),
-    0 8px 18px rgba(16, 35, 58, 0.05);
+    0 22px 44px rgba(15, 31, 56, 0.08),
+    0 8px 18px rgba(15, 31, 56, 0.05);
   font-family:
     'Space Grotesk',
     'Segoe UI',
@@ -18,8 +18,8 @@
   font-weight: 400;
   color: var(--ink);
   background:
-    radial-gradient(circle at top left, rgba(255, 106, 61, 0.12), transparent 26%),
-    linear-gradient(180deg, #f8f2e8, #efe6d8);
+    radial-gradient(circle at top left, rgba(36, 87, 214, 0.14), transparent 28%),
+    linear-gradient(180deg, #f5f8fe, #e8eef8);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -62,7 +62,7 @@ button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 3px solid rgba(255, 106, 61, 0.24);
+  outline: 3px solid rgba(36, 87, 214, 0.24);
   outline-offset: 2px;
 }
 
@@ -73,17 +73,17 @@ h3 {
     'Fraunces',
     Georgia,
     serif;
-  line-height: 1.05;
+  line-height: 1.08;
   color: var(--ink);
 }
 
 h1 {
-  font-size: clamp(3rem, 6vw, 5.2rem);
+  font-size: clamp(2.7rem, 5vw, 4.8rem);
   letter-spacing: -0.05em;
 }
 
 h2 {
-  font-size: clamp(1.6rem, 2vw, 2.4rem);
+  font-size: clamp(1.55rem, 2.1vw, 2.35rem);
   letter-spacing: -0.04em;
 }
 

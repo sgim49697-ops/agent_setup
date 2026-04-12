@@ -36,6 +36,10 @@
 - `runs/`
 - `reports/`
 
+## OMX 확장 하네스
+
+기존 6개 비교군은 그대로 두고, 별도 확장 실험으로 `omx_evaluator_optimizer` 워크스페이스를 추가할 수 있다. 이 워크스페이스는 `evaluator_optimizer`의 강화형으로, 더 많은 review/revise 루프와 반복 검증(compare/evaluate/validate) 압박을 전제로 한다.
+
 ## 운영 모델
 
 이 실험실에서 `Codex`는 앱 내부 런타임 엔진이 아니라, 각 워크스페이스에서 사이트를 구현하는 실험 대상입니다. 원하는 하네스 폴더에서 `codex`를 실행하면 그 폴더의 `AGENTS.md`와 `harness/` 계약을 따르게 됩니다.

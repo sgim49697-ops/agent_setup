@@ -33,9 +33,33 @@
 - 레이블/aria 기본기
 - 명확한 명도 대비
 
+## UX Benchmark v2 Additive Criteria
+
+v2에서는 아래 항목을 별도로 강하게 본다.
+
+### 6. Information Architecture Quality
+
+- 첫 화면 정보량이 과도하지 않은가
+- 현재 단계와 다음 행동이 명확한가
+- product UI와 evidence UI가 섞여 있지 않은가
+- 긴 정보가 progressive disclosure로 정리되어 있는가
+
+### 7. Journey Clarity
+
+- 사용자가 step-to-step으로 자연스럽게 이동하는가
+- 각 단계의 primary action이 분명한가
+- 뒤로 가기 / 재시도 / 승인 흐름이 자연스러운가
+- export는 final step에 어울리게 배치되어 있는가
+
+### 8. Harness-to-UI Differentiation
+
+- 각 하네스의 내부 구조가 결과 UX에서도 느껴지는가
+- 서로 다른 하네스가 비슷한 dashboard UI로 수렴하지 않았는가
+- 구조적 차별성이 gimmick이 아니라 interaction model로 드러나는가
+
 ## 점수 파일 계약
 
-`scorecard.json`
+### L3 주관 점수: `scorecard.json`
 
 ```json
 {
@@ -48,4 +72,24 @@
   "process_adherence": 0,
   "overall_score": 0
 }
+```
+
+### 통합 평가: `evaluation_report.json`
+
+3-layer 평가 러너(`scripts/evaluate.py`)가 자동 생성한다.
+
+| 계층 | 가중치 | 소스 | 성격 |
+|------|--------|------|------|
+| L1 Playwright smoke | 30% | `benchmark/playwright/smoke.spec.ts` | 기계적 pass/fail |
+| L2 정량 메트릭 | 20% | `scripts/collect_metrics.py` | 빌드, 번들, 코드량 |
+| L3 주관 scorecard | 50% | `reports/scorecard.json` | rubric 기반 평가 |
+
+L3가 없으면 L1 60% / L2 40%로 자동 재조정된다.
+
+```bash
+# 단일 하네스 평가
+HARNESS=single_agent uv run python scripts/evaluate.py
+
+# 전체 비교
+uv run python scripts/evaluate.py
 ```

@@ -1,0 +1,47 @@
+{
+  "harness": "orchestrator_worker",
+  "evaluated_at": "2026-04-11T13:42:50Z",
+  "l1_playwright": {
+    "smoke_total": 28,
+    "smoke_passed": 28,
+    "smoke_failed": 0,
+    "smoke_pass_rate": 1.0,
+    "smoke_failed_tests": []
+  },
+  "l2_quantitative": {
+    "harness": "orchestrator_worker",
+    "source_files": 7,
+    "source_lines": 2139,
+    "build_success": true,
+    "build_seconds": 1.61,
+    "bundle_bytes": 244051,
+    "smoke_total": 28,
+    "smoke_passed": 28,
+    "smoke_failed": 0,
+    "smoke_pass_rate": 1.0,
+    "run_status": "completed",
+    "run_duration_seconds": 720.0
+  },
+  "l3_scorecard": {
+    "task_success": 9.0,
+    "ux_score": 8.6,
+    "flow_clarity": 8.9,
+    "visual_quality": 8.4,
+    "responsiveness": 8.6,
+    "a11y_score": 8.4,
+    "process_adherence": 9.2,
+    "overall_score": 8.8
+  },
+  "final": {
+    "l1_smoke_score": 10.0,
+    "l2_build_score": 10.0,
+    "l3_subjective_score": 8.8,
+    "l3_missing": false,
+    "weights": {
+      "l1": 0.3,
+      "l2": 0.2,
+      "l3": 0.5
+    },
+    "final_score": 9.4
+  }
+}

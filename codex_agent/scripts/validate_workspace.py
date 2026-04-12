@@ -14,6 +14,12 @@ HARNESSES = [
     "evaluator_optimizer",
 ]
 
+EXTRA_HARNESSES = [
+    "omx_evaluator_optimizer",
+]
+
+HARNESSES += EXTRA_HARNESSES
+
 ROOT_REQUIRED = [
     "README.md",
     "benchmark/spec.md",

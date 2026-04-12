@@ -35,7 +35,7 @@
 
 ## 점수 파일 계약
 
-`scorecard.json`
+### L3 주관 점수: `scorecard.json`
 
 ```json
 {
@@ -48,4 +48,24 @@
   "process_adherence": 0,
   "overall_score": 0
 }
+```
+
+### 통합 평가: `evaluation_report.json`
+
+3-layer 평가 러너(`scripts/evaluate.py`)가 자동 생성한다.
+
+| 계층 | 가중치 | 소스 | 성격 |
+|------|--------|------|------|
+| L1 Playwright smoke | 30% | `benchmark/playwright/smoke.spec.ts` | 기계적 pass/fail |
+| L2 정량 메트릭 | 20% | `scripts/collect_metrics.py` | 빌드, 번들, 코드량 |
+| L3 주관 scorecard | 50% | `reports/scorecard.json` | rubric 기반 평가 |
+
+L3가 없으면 L1 60% / L2 40%로 자동 재조정된다.
+
+```bash
+# 단일 하네스 평가
+HARNESS=single_agent uv run python scripts/evaluate.py
+
+# 전체 비교
+uv run python scripts/evaluate.py
 ```

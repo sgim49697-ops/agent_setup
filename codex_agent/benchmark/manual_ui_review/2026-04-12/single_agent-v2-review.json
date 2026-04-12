@@ -1,0 +1,22 @@
+{
+  "desktop": {
+    "viewport": "desktop",
+    "hero": "Focused single-agent writing wizard",
+    "stepperCount": 5,
+    "evidenceDrawer": 1,
+    "finalChars": 3018,
+    "statusText": "Export readyFinal Markdown is ready. Export and review the post before sharing.Current step: Final post • Next: Export or restartGenerate the final post first. The export action becomes active once the wizard reaches Final post.",
+    "copyFeedback": "Generate the final post first. The export action becomes active once the wizard reaches Final post.",
+    "screenshot": "/home/user/projects/agent_setup/codex_agent/benchmark/manual_ui_review/2026-04-12/single_agent-desktop-final-v2.png"
+  },
+  "mobile": {
+    "viewport": "mobile",
+    "hero": "Focused single-agent writing wizard",
+    "stepperCount": 5,
+    "evidenceDrawer": 1,
+    "finalChars": 3018,
+    "statusText": "Export readyFinal Markdown is ready. Export and review the post before sharing.Current step: Final post • Next: Export or restartGenerate the final post first. The export action becomes active once the wizard reaches Final post.",
+    "copyFeedback": "Generate the final post first. The export action becomes active once the wizard reaches Final post.",
+    "screenshot": "/home/user/projects/agent_setup/codex_agent/benchmark/manual_ui_review/2026-04-12/single_agent-mobile-final-v2.png"
+  }
+}

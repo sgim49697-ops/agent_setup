@@ -1,37 +1,35 @@
-// starterData.ts - 공통 benchmark starter용 정적 데이터
+// starterData.ts - sequential pipeline용 정적 benchmark 데이터
 
-import type { DeliverableCard, TopicPreset, WorkflowStage } from './contracts'
+import type { DeliverableCard, PipelineRoleCard, TopicPreset } from './contracts'
 
-export const workflowStages: WorkflowStage[] = [
+export const pipelineRoles: PipelineRoleCard[] = [
   {
-    id: 'research',
-    label: 'Research results',
-    output: 'research_summary',
-    description: '핵심 사실, 비교 포인트, 참고 근거를 구조화한다.',
+    id: 'researcher',
+    label: 'Researcher',
+    stageLabel: 'Research results',
+    description: '주제 브리프를 angle, thesis, supporting facts로 정리한다.',
+    handoffLabel: 'Hands off to Outliner',
   },
   {
-    id: 'outline',
-    label: 'Outline',
-    output: 'outline',
-    description: '문단 구조와 논리 흐름을 설계한다.',
+    id: 'outliner',
+    label: 'Outliner',
+    stageLabel: 'Outline',
+    description: 'research 결과를 읽기 좋은 section order로 변환한다.',
+    handoffLabel: 'Hands off to Writer',
   },
   {
-    id: 'drafts',
-    label: 'Section drafts',
-    output: 'section_drafts',
-    description: '섹션별 초안을 작성하고 일관성을 유지한다.',
+    id: 'writer',
+    label: 'Writer',
+    stageLabel: 'Section drafts',
+    description: 'outline을 section drafts와 pre-review markdown로 확장한다.',
+    handoffLabel: 'Hands off to Reviewer',
   },
   {
-    id: 'review',
-    label: 'Review notes',
-    output: 'review_notes',
-    description: '빠진 논점, 과장, 모호성을 검토한다.',
-  },
-  {
-    id: 'final',
-    label: 'Final post',
-    output: 'final_post',
-    description: '최종 Markdown 결과물과 export 액션을 제공한다.',
+    id: 'reviewer',
+    label: 'Reviewer',
+    stageLabel: 'Review notes',
+    description: 'writer 초안을 보정하고 최종 Markdown을 확정한다.',
+    handoffLabel: 'Prepares Final post',
   },
 ]
 
@@ -83,8 +81,8 @@ export const topicPresets: TopicPreset[] = [
 ]
 
 export const reviewLenses = [
-  'flow clarity',
-  'visual quality',
+  'handoff clarity',
+  'reviewer reflection',
   'responsiveness',
   'a11y basics',
   'process adherence',

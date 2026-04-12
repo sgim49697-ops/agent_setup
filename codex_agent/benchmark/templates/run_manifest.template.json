@@ -1,0 +1,8 @@
+{
+  "harness": "single_agent",
+  "run_id": "2026-04-11T00-00-00Z-sample",
+  "started_at": "2026-04-11T00:00:00Z",
+  "finished_at": "2026-04-11T00:15:00Z",
+  "task_spec_version": "v1",
+  "status": "completed"
+}
