@@ -430,10 +430,7 @@ def launch_runner(state: dict[str, Any], reason: str) -> dict[str, Any]:
 def step_pipeline_in_progress(state: dict[str, Any], metrics: dict[str, int]) -> bool:
     if parse_bool(state.get('orchestrator_active')):
         return True
-    phase = str(state.get('current_phase') or '')
-    if phase.startswith('orchestrator-'):
-        return True
-    return bool(metrics.get('orchestrator') or metrics.get('codex_exec'))
+    return bool(metrics.get('orchestrator') or metrics.get('codex_exec') or metrics.get('worker'))
 
 
 def record_active_observation(state: dict[str, Any], metrics: dict[str, int], issue: str | None = None) -> dict[str, Any]:

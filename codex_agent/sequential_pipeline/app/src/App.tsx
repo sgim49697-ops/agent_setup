@@ -1,7 +1,6 @@
 import { useReducer, useRef, useState } from 'react'
 import './App.css'
 import type {
-  ArtifactIndex,
   Audience,
   BlogGeneratorInputs,
   GenerationStageId,
@@ -23,6 +22,7 @@ import {
 import { deliverables, pipelineRoles, reviewLenses, topicPresets } from './starterData'
 
 type OutputKey = 'research_summary' | 'outline' | 'section_drafts' | 'review_notes'
+type TrackerStatus = 'complete' | 'current' | 'pending'
 
 type AppState = {
   inputs: BlogGeneratorInputs
@@ -285,7 +285,7 @@ function formatRoleLabel(role: PipelineRole) {
   return roleLabels[role]
 }
 
-function roleStatusLabel(status: 'complete' | 'current' | 'pending') {
+function roleStatusLabel(status: TrackerStatus) {
   switch (status) {
     case 'complete':
       return '닫힘'
@@ -357,6 +357,12 @@ function App() {
   const [evidenceOpen, setEvidenceOpen] = useState(false)
   const [presetOpen, setPresetOpen] = useState(false)
   const runRef = useRef(0)
+  const roleTabRefs = useRef<Record<PipelineRole, HTMLButtonElement | null>>({
+    researcher: null,
+    outliner: null,
+    writer: null,
+    reviewer: null,
+  })
 
   const research = state.generation.outputs.research_summary
   const outline = state.generation.outputs.outline
@@ -368,9 +374,10 @@ function App() {
     const isComplete = state.generation.completedRoles.includes(role.id)
     const isCurrent = state.generation.currentRole === role.id && state.generation.status !== 'error'
     const handoff = handoffs.find((item) => item.from === role.id)
+    const status: TrackerStatus = isComplete ? 'complete' : isCurrent ? 'current' : 'pending'
     return {
       ...role,
-      status: isComplete ? 'complete' : isCurrent ? 'current' : 'pending',
+      status,
       handoffSummary:
         role.id === 'reviewer'
           ? reviewerOutput?.finalizationNote ??
@@ -427,30 +434,6 @@ function App() {
     state.generation.status === 'export-ready' || state.generation.status === 'review-complete'
       ? null
       : roleTracker.find((role) => role.status === 'pending')?.id ?? null
-  const relaySignals = [
-    {
-      label: '현재 단계',
-      value: `${currentRoleMeta.label} · ${currentRoleMeta.stageLabel}`,
-      note:
-        state.generation.status === 'initial'
-          ? '첫 브리프 잠금 전이라 리서처 데스크가 조용히 대기 중입니다.'
-          : currentRoleMeta.handoffSummary,
-      tone:
-        state.generation.status === 'export-ready'
-          ? 'complete'
-          : state.generation.status === 'error'
-            ? 'pending'
-            : 'active',
-    },
-    {
-      label: nextRoleMeta ? '다음 단계' : '발행 준비',
-      value: nextRoleMeta ? `${nextRoleMeta.label} · ${nextRoleMeta.stageLabel}` : '복사와 마지막 읽기',
-      note:
-        nextRoleMeta?.handoffSummary ??
-        '최종 원고가 잠겨 복사와 마지막 읽기만 남았습니다.',
-      tone: nextRoleMeta ? 'next' : 'complete',
-    },
-  ] as const
   const heroSequenceStops = roleTracker.map((role, index) => {
     const tone =
       role.status === 'complete'
@@ -470,22 +453,12 @@ function App() {
             ? '다음 인계'
             : '대기'
 
-    const note =
-      tone === 'complete'
-        ? role.handoffSummary
-        : tone === 'current'
-          ? role.handoffSummary
-          : tone === 'next'
-            ? `${role.description} ${role.handoffLabel} 준비만 남았습니다.`
-            : role.description
-
     return {
       id: role.id,
       index,
       tone,
       statusText,
       label: `${role.label} · ${role.stageLabel}`,
-      note,
     }
   })
   const routeNotes = [
@@ -610,6 +583,42 @@ function App() {
       note: '전체 원고와 실행 근거는 필요할 때만 여는 이차 표면으로 분리했습니다.',
     },
   ] as const
+  const selectedRoleTabId = `role-tab-${selectedRoleMeta.id}`
+
+  function handleRoleKeyDown(role: PipelineRole, event: React.KeyboardEvent<HTMLButtonElement>) {
+    const currentIndex = roleTracker.findIndex((item) => item.id === role)
+
+    if (currentIndex === -1) {
+      return
+    }
+
+    let nextIndex = currentIndex
+
+    switch (event.key) {
+      case 'ArrowRight':
+      case 'ArrowDown':
+        nextIndex = (currentIndex + 1) % roleTracker.length
+        break
+      case 'ArrowLeft':
+      case 'ArrowUp':
+        nextIndex = (currentIndex - 1 + roleTracker.length) % roleTracker.length
+        break
+      case 'Home':
+        nextIndex = 0
+        break
+      case 'End':
+        nextIndex = roleTracker.length - 1
+        break
+      default:
+        return
+    }
+
+    event.preventDefault()
+    const nextRole = roleTracker[nextIndex].id
+
+    dispatch({ type: 'select-role', role: nextRole })
+    roleTabRefs.current[nextRole]?.focus()
+  }
 
   async function handleGenerate() {
     const runId = runRef.current + 1
@@ -781,29 +790,47 @@ function App() {
             </div>
 
             <article className="hero-closing-card">
-              <span className="signal-label">인계 관제석</span>
-              <strong>
-                {state.generation.status === 'export-ready'
-                  ? '네 단계가 끝났습니다. 이제 발행본 확인과 복사만 남았습니다.'
-                  : `현재 단계는 ${currentRoleMeta.label}이며, 다음 단계는 ${nextRoleMeta?.label ?? '발행 준비'}입니다.`}
-              </strong>
-              <p>
-                긴 산출물과 근거는 아래 작업면과 보조 서랍으로 내리고, 첫 줄에는 현재 단계와
-                다음 단계만 남겨 인계 순서를 바로 읽을 수 있게 정리했습니다.
-              </p>
+              <div className="hero-closing-head">
+                <div className="hero-closing-copy">
+                  <span className="signal-label">관제 요약</span>
+                  <strong>
+                    {state.generation.status === 'export-ready'
+                      ? '네 단계 인계가 모두 잠겨 발행본 확인과 복사만 남았습니다.'
+                      : `${currentRoleMeta.label}에서 ${nextRoleMeta?.label ?? '발행 준비'}로 넘어가는 순서를 먼저 보여 줍니다.`}
+                  </strong>
+                  <p>
+                    첫 화면에는 현재 단계와 다음 인계만 남기고, 긴 산출물은 아래 작업면으로
+                    내려 인계 경로를 먼저 읽히게 했습니다.
+                  </p>
+                </div>
+                <div className="hero-progress-pill" aria-label="잠금 진행도">
+                  <span>잠금 진행</span>
+                  <strong>{Math.round(progressPercent)}%</strong>
+                </div>
+              </div>
 
-              <div className="hero-window-list">
-                {relaySignals.map((signal, index) => (
-                  <article
-                    key={signal.label}
-                    className={`hero-window-card hero-window-${signal.tone}`}
-                  >
-                    <div className="hero-window-head">
-                      <span className="hero-window-step">{`0${index + 1}`}</span>
-                      <span className="signal-label">{signal.label}</span>
-                    </div>
-                    <strong>{signal.value}</strong>
-                    <p>{signal.note}</p>
+              <div className="status-banner status-banner-hero" aria-live="polite">
+                <span className="sr-only">
+                  {state.generation.status === 'export-ready'
+                    ? 'export-ready'
+                    : state.generation.status === 'review-complete'
+                      ? 'review-complete'
+                      : stageHookLabels[state.generation.currentStage ?? 'research']}
+                </span>
+                <strong>
+                  <span className={`status-pill status-${state.generation.status}`}>{statusLabel}</span>
+                  {currentStageLabel}
+                </strong>
+                <p>{state.generation.statusMessage}</p>
+                <p className="copy-feedback">{state.copyFeedback || actionHint}</p>
+              </div>
+
+              <div className="hero-signal-grid">
+                {routeNotes.map((item, index) => (
+                  <article key={`${item.label}-${index}`} className="hero-signal-card">
+                    <span className="signal-label">{item.label}</span>
+                    <strong>{item.value}</strong>
+                    <p>{item.note}</p>
                   </article>
                 ))}
               </div>
@@ -815,30 +842,14 @@ function App() {
               {heroSequenceStops.map((stop, index) => (
                 <article key={stop.id} className={`hero-sequence-card hero-sequence-${stop.tone}`}>
                   <span className="hero-sequence-index">{`0${index + 1}`}</span>
-                  <span className="hero-sequence-status">{stop.statusText}</span>
                   <div className="hero-sequence-copy">
                     <strong>{stop.label}</strong>
-                    <p>{stop.note}</p>
+                    <span>{stop.tone === 'next' ? '다음 인계 대기' : '순차 잠금 레일'}</span>
                   </div>
+                  <span className="hero-sequence-status">{stop.statusText}</span>
                 </article>
               ))}
             </div>
-          </div>
-
-          <div className="status-banner" aria-live="polite">
-            <span className="sr-only">
-              {state.generation.status === 'export-ready'
-                ? 'export-ready'
-                : state.generation.status === 'review-complete'
-                  ? 'review-complete'
-                  : stageHookLabels[state.generation.currentStage ?? 'research']}
-            </span>
-            <strong>
-              <span className={`status-pill status-${state.generation.status}`}>{statusLabel}</span>
-              {currentStageLabel}
-            </strong>
-            <p>{state.generation.statusMessage}</p>
-            <p className="copy-feedback">{state.copyFeedback || actionHint}</p>
           </div>
         </article>
 
@@ -1009,8 +1020,8 @@ function App() {
                   : actionHint}
             </p>
             <div className="route-pulse-grid" aria-label="현재 인계와 다음 이동">
-              {routeNotes.map((item) => (
-                <article key={item.label} className="route-pulse-card">
+              {routeNotes.map((item, index) => (
+                <article key={`${item.label}-${index}`} className="route-pulse-card">
                   <span className="signal-label">{item.label}</span>
                   <strong>{item.value}</strong>
                   <p>{item.note}</p>
@@ -1020,37 +1031,40 @@ function App() {
           </article>
 
           <div className="route-stage-column">
-            <div className="tracker-grid">
+            <div className="tracker-grid" role="tablist" aria-label="인계 단계 선택">
               {roleTracker.map((role, index) => (
                 <button
                   key={role.id}
+                  id={`role-tab-${role.id}`}
                   type="button"
-                  className="tracker-card-button"
-                  aria-pressed={state.selectedRole === role.id}
+                  ref={(node) => {
+                    roleTabRefs.current[role.id] = node
+                  }}
+                  role="tab"
+                  className={`tracker-card tracker-tab tracker-${role.status}`}
+                  aria-selected={state.selectedRole === role.id}
                   aria-current={role.status === 'current' ? 'step' : undefined}
+                  aria-controls="role-detail-panel"
+                  tabIndex={state.selectedRole === role.id ? 0 : -1}
                   onClick={() => dispatch({ type: 'select-role', role: role.id })}
+                  onKeyDown={(event) => handleRoleKeyDown(role.id, event)}
+                  data-testid={stageHookLabels[roleStageMap[role.id]]}
                 >
-                  <article
-                    className={`tracker-card tracker-${role.status}`}
-                    aria-label={stageHookLabels[roleStageMap[role.id]]}
-                    data-testid={stageHookLabels[roleStageMap[role.id]]}
-                  >
-                    <div className="tracker-top">
-                      <div className="tracker-index-wrap">
-                        <span className="tracker-index">{`0${index + 1}`}</span>
-                        <span className="tracker-badge">{role.label}</span>
-                      </div>
-                      <span className={`tracker-status tracker-${role.status}`}>
-                        {roleStatusLabel(role.status)}
-                      </span>
+                  <div className="tracker-top">
+                    <div className="tracker-index-wrap">
+                      <span className="tracker-index">{`0${index + 1}`}</span>
+                      <span className="tracker-badge">{role.label}</span>
                     </div>
-                    <h3>{role.stageLabel}</h3>
-                    <p>{role.description}</p>
-                    <div className="tracker-footer">
-                      <strong>{role.handoffLabel}</strong>
-                      <span>{role.handoffSummary}</span>
-                    </div>
-                  </article>
+                    <span className={`tracker-status tracker-${role.status}`}>
+                      {roleStatusLabel(role.status)}
+                    </span>
+                  </div>
+                  <h3>{role.stageLabel}</h3>
+                  <p>{role.description}</p>
+                  <div className="tracker-footer">
+                    <strong>{role.handoffLabel}</strong>
+                    <span>{role.handoffSummary}</span>
+                  </div>
                 </button>
               ))}
             </div>
@@ -1116,6 +1130,8 @@ function App() {
         </article>
 
         <RolePanel
+          panelId="role-detail-panel"
+          labelledById={selectedRoleTabId}
           title={selectedRoleMeta.label}
           stageLabel={selectedRoleMeta.stageLabel}
           status={state.generation.status}
@@ -1503,6 +1519,8 @@ function renderRoleSurface(
 }
 
 function RolePanel(props: {
+  panelId: string
+  labelledById: string
   title: string
   stageLabel: string
   status: GenerationStatus
@@ -1518,7 +1536,12 @@ function RolePanel(props: {
   const hasContent = Boolean(props.children)
 
   return (
-    <article className="panel-card role-panel">
+    <article
+      id={props.panelId}
+      className="panel-card role-panel"
+      role="tabpanel"
+      aria-labelledby={props.labelledById}
+    >
       <div className="section-head">
         <p className="eyebrow">{props.stageLabel}</p>
         <h2>{props.title}</h2>
