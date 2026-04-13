@@ -28,7 +28,9 @@ INNER
 
 python3 - <<'PY'
 import json, os, subprocess
+from datetime import datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 root = Path('/home/user/projects/agent_setup/codex_agent')
 state = json.loads((root / '.omx/state/master-ux-loop.json').read_text(encoding='utf-8')) if (root / '.omx/state/master-ux-loop.json').exists() else {}
 validator = json.loads((root / '.omx/state/master-loop-validator.json').read_text(encoding='utf-8')) if (root / '.omx/state/master-loop-validator.json').exists() else {}
@@ -46,6 +48,19 @@ runtime = {
     'active_playwright_mcp_count': sum('node /home/user/.npm/_npx/' in line and 'playwright-mcp' in line for line in lines),
 }
 runtime['active_automation_process_count'] = sum(runtime.values())
+KST = ZoneInfo("Asia/Seoul")
+
+def fmt_kst(value):
+    if not isinstance(value, str) or not value:
+        return value
+    try:
+        dt = datetime.fromisoformat(value.replace('Z', '+00:00'))
+    except ValueError:
+        return value
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(KST).strftime('%Y-%m-%d %H:%M:%S KST')
+
 print('=== state ===')
 print(f'worker_elapsed_sec: {os.environ.get("RUNNER_ELAPSED", "")}')
 for key in ['status','project_status','cycle_status','cycle','current_phase','current_harness','remaining_harnesses','deferred_harnesses','last_progress_at','last_progress_summary','last_worker_start_at','last_worker_finish_at','last_worker_interrupt_at','last_worker_interrupt_reason','last_launch_reason','next_cycle_required','hard_blocker','relaunch_count','regression_count','quality_gate_failure_streak','current_harness_cycle_streak','active_worker_count','active_orchestrator_count','active_codex_exec_count','active_stitch_mcp_count','active_playwright_mcp_count','active_automation_process_count','runtime_guard_active','runtime_guard_reason','runtime_guard_last_triggered_at']:
@@ -53,6 +68,8 @@ for key in ['status','project_status','cycle_status','cycle','current_phase','cu
         value = runtime.get(key)
     else:
         value = state.get(key) if state.get(key) is not None else runtime.get(key)
+    if isinstance(value, str) and key.endswith('_at'):
+        value = fmt_kst(value)
     print(f'{key}: {value}')
 print(f"safe_mode_enabled: {safe.get('enabled')}")
 print(f"safe_mode_reason: {safe.get('reason')}")
@@ -82,5 +99,33 @@ PY
 if [ -f "$LOG" ]; then
   echo
   echo '=== log tail ==='
-  tail -n 20 "$LOG"
+  python3 - <<'PY'
+import re
+from collections import deque
+from datetime import datetime, timezone
+from pathlib import Path
+from zoneinfo import ZoneInfo
+
+log = Path('/home/user/projects/agent_setup/codex_agent/.omx/logs/master-ux-benchmark-v2.log')
+KST = ZoneInfo("Asia/Seoul")
+pat = re.compile(r'^\[([0-9T:\-+.Z]+)\]')
+lines = deque(maxlen=20)
+with log.open('r', encoding='utf-8', errors='ignore') as fh:
+    for line in fh:
+        lines.append(line.rstrip('\n'))
+for line in lines:
+    m = pat.match(line)
+    if not m:
+        print(line)
+        continue
+    raw = m.group(1)
+    try:
+        dt = datetime.fromisoformat(raw.replace('Z', '+00:00'))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        stamp = dt.astimezone(KST).strftime('%Y-%m-%d %H:%M:%S KST')
+        print(f'[{stamp}]' + line[m.end():])
+    except ValueError:
+        print(line)
+PY
 fi

@@ -282,7 +282,7 @@ def ensure_tmux_base() -> None:
         run(['tmux', 'new-window', '-t', SESSION, '-n', LOG_WINDOW, '-c', str(ROOT), f"bash -lc 'tail -n 200 -f \"{LOG_PATH}\"'"])
         log('created tmux log window')
     if HEARTBEAT_WINDOW not in windows:
-        heartbeat_cmd = f"bash -lc 'while true; do clear; date -u; echo; {STATUS_SCRIPT}; echo; echo \"[next refresh in 600s]\"; sleep 600; done'"
+        heartbeat_cmd = f"bash -lc 'while true; do clear; TZ=Asia/Seoul date \"+%Y-%m-%d %H:%M:%S KST\"; echo; {STATUS_SCRIPT}; echo; echo \"[next refresh in 600s]\"; sleep 600; done'"
         run(['tmux', 'new-window', '-t', SESSION, '-n', HEARTBEAT_WINDOW, '-c', str(ROOT), heartbeat_cmd])
         log('created tmux heartbeat10 window')
 

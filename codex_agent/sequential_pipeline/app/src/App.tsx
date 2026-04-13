@@ -77,7 +77,7 @@ const initialGeneration: GenerationState = {
   completedStages: [],
   outputs: {},
   statusMessage:
-    'Initial | The route-based stepper is waiting for a brief. Generate post to start with Research results.',
+    '대기 | 브리프가 아직 잠기지 않았습니다. 글 생성 시작으로 자료 요약부터 열어 주세요.',
   errorMessage: null,
 }
 
@@ -88,7 +88,7 @@ const roleStageMap: Record<PipelineRole, GenerationStageId> = {
   reviewer: 'review',
 }
 
-const stageLabels: Record<GenerationStageId, string> = {
+const stageHookLabels: Record<GenerationStageId, string> = {
   research: 'Research results',
   outline: 'Outline',
   drafts: 'Section drafts',
@@ -96,13 +96,52 @@ const stageLabels: Record<GenerationStageId, string> = {
   final: 'Final post',
 }
 
+const stageLabels: Record<GenerationStageId, string> = {
+  research: '자료 요약',
+  outline: '구조 설계',
+  drafts: '섹션 초안',
+  review: '검토 메모',
+  final: '최종 원고',
+}
+
 const statusLabels: Record<GenerationStatus, string> = {
-  initial: 'Initial',
-  loading: 'Loading',
-  populated: 'Pipeline populated',
-  'review-complete': 'Review complete',
-  'export-ready': 'Export ready',
-  error: 'Error',
+  initial: '대기',
+  loading: '진행 중',
+  populated: '초안 확보',
+  'review-complete': '검토 완료',
+  'export-ready': '내보내기 준비',
+  error: '중단',
+}
+
+const roleLabels: Record<PipelineRole, string> = {
+  researcher: '리서처',
+  outliner: '아웃라이너',
+  writer: '라이터',
+  reviewer: '리뷰어',
+}
+
+const audienceUiLabels: Record<Audience, string> = {
+  beginner: '입문자',
+  practitioner: '실무자',
+  advanced: '고급 사용자',
+}
+
+const toneUiLabels: Record<Tone, string> = {
+  clear: '명료하게',
+  pragmatic: '실무적으로',
+  opinionated: '단호하게',
+}
+
+const lengthUiLabels: Record<Length, string> = {
+  short: '짧게',
+  medium: '보통',
+  long: '길게',
+}
+
+const reviewSeverityLabels: Record<'good' | 'watch' | 'improve', string> = {
+  good: '안정',
+  watch: '주의',
+  improve: '보완',
 }
 
 const baseScorePreview: Scorecard = {
@@ -134,7 +173,7 @@ function reducer(state: AppState, action: Action): AppState {
             ? {
                 ...initialGeneration,
                 statusMessage:
-                  'Brief updated. Generate again to restart the sequential handoff from Research results.',
+                  '브리프를 수정했습니다. 다시 생성하면 자료 요약부터 순차 인계를 재개합니다.',
               }
             : state.generation,
         copyFeedback: '',
@@ -147,7 +186,7 @@ function reducer(state: AppState, action: Action): AppState {
           ...state.generation,
           errorMessage: null,
           statusMessage:
-            'Preset loaded. Generate post to replay the full researcher → outliner → writer → reviewer flow.',
+            '프리셋을 불러왔습니다. 글 생성 시작으로 리서처부터 리뷰어까지 다시 잠글 수 있습니다.',
         },
         copyFeedback: '',
         selectedRole: 'researcher',
@@ -222,7 +261,7 @@ function reducer(state: AppState, action: Action): AppState {
           completedRoles: [],
           completedStages: [],
           outputs: {},
-          statusMessage: 'The sequential pipeline stopped before the first handoff could complete.',
+          statusMessage: '첫 인계가 닫히기 전에 흐름이 멈췄습니다.',
           errorMessage: action.message,
         },
         copyFeedback: '',
@@ -243,42 +282,42 @@ function sleep(ms: number) {
 }
 
 function formatRoleLabel(role: PipelineRole) {
-  return role.charAt(0).toUpperCase() + role.slice(1)
+  return roleLabels[role]
 }
 
 function nextActionText(generation: GenerationState) {
   if (generation.status === 'error') {
-    return 'Rewrite the topic and run the route again from Research results.'
+    return '주제를 다듬은 뒤 자료 요약부터 다시 잠가 주세요.'
   }
 
   if (generation.status === 'initial') {
-    return 'Generate post to start the first research handoff.'
+    return '글 생성 시작으로 첫 자료 요약 인계를 열어 주세요.'
   }
 
   if (generation.status === 'loading') {
     switch (generation.currentRole) {
       case 'researcher':
-        return 'Wait for the researcher brief so Outline can lock the section order.'
+        return '리서처 요약이 닫히면 아웃라이너가 섹션 순서를 바로 잠급니다.'
       case 'outliner':
-        return 'Review the thesis summary, then let the outliner shape the route.'
+        return '지금은 논지와 흐름을 고정하는 구간입니다. 구조 설계가 끝나면 초안으로 넘어갑니다.'
       case 'writer':
-        return 'The writer is expanding the outline into section drafts for review.'
+        return '라이터가 구조를 읽는 순서대로 초안을 펼치고 있습니다.'
       case 'reviewer':
-        return 'Reviewer edits are in flight. Final post stays locked until that pass ends.'
+        return '리뷰어 편집이 진행 중이라 최종 원고는 아직 잠겨 있습니다.'
       default:
-        return 'The next handoff is in progress.'
+        return '다음 인계를 준비하는 중입니다.'
     }
   }
 
   if (generation.status === 'review-complete') {
-    return 'Read the reviewer note, then unlock Final post.'
+    return '검토 메모를 확인한 뒤 최종 원고 잠금을 여세요.'
   }
 
   if (generation.status === 'export-ready') {
-    return 'Copy markdown or open the evidence drawer only if you need benchmark traces.'
+    return '마크다운을 복사하거나, 필요할 때만 보조 근거 서랍을 열어 주세요.'
   }
 
-  return 'Inspect the current step and move to the next handoff.'
+  return '현재 단계를 읽고 다음 인계로 이동할 준비를 해 주세요.'
 }
 
 function App() {
@@ -307,8 +346,8 @@ function App() {
       handoffSummary:
         role.id === 'reviewer'
           ? reviewerOutput?.finalizationNote ??
-            'Reviewer note appears here after the last editorial handoff.'
-          : handoff?.outputSummary ?? 'Handoff note will appear here once this role completes.',
+            '마지막 편집 인계가 닫히면 리뷰어 잠금 메모가 여기에 남습니다.'
+          : handoff?.outputSummary ?? '이 역할이 닫히면 다음 인계 메모가 여기에 남습니다.',
     }
   })
 
@@ -318,19 +357,38 @@ function App() {
     (state.generation.status === 'export-ready'
       ? {
           id: 'reviewer',
-          label: 'Reviewer',
-          stageLabel: 'Final post',
-          description: 'Reviewer-adjusted Markdown is now ready for export.',
-          handoffLabel: 'Export',
-          handoffSummary: reviewerOutput?.finalizationNote ?? 'Export-ready final Markdown is available.',
+          label: '리뷰어',
+          stageLabel: '최종 원고',
+          description: '리뷰 반영 원고가 잠겨 이제 바로 내보낼 수 있습니다.',
+          handoffLabel: '내보내기',
+          handoffSummary: reviewerOutput?.finalizationNote ?? '복사 가능한 최종 원고가 준비되었습니다.',
           status: 'complete',
         }
       : selectedRoleMeta)
   const statusLabel = statusLabels[state.generation.status]
   const currentStageLabel = state.generation.currentStage
     ? stageLabels[state.generation.currentStage]
-    : 'Research results'
+    : '자료 요약'
   const actionHint = nextActionText(state.generation)
+  const heroSignals = [
+    {
+      label: '현재 잠금 단계',
+      value: currentStageLabel,
+      note: `${statusLabel} 상태에서 다음 인계를 준비합니다.`,
+    },
+    {
+      label: '활성 담당',
+      value: state.generation.currentRole ? formatRoleLabel(state.generation.currentRole) : '리뷰 잠금 완료',
+      note: state.generation.currentRole
+        ? `${currentRoleMeta.handoffLabel} 직전까지 이 역할이 책임집니다.`
+        : '이제 최종 원고를 복사하거나 발행 전 점검만 남았습니다.',
+    },
+    {
+      label: '다음 움직임',
+      value: state.generation.status === 'export-ready' ? '내보내기 정리' : '인계 이어가기',
+      note: actionHint,
+    },
+  ]
 
   const manifestPreview: Record<string, unknown> = {
     harness: 'sequential_pipeline',
@@ -355,19 +413,19 @@ function App() {
     runRef.current = runId
 
     if (state.inputs.topic.trim().toLowerCase().includes('fail')) {
-      dispatch({
-        type: 'set-error',
-        role: 'researcher',
-        stage: 'research',
-        message:
-          'Forced failure triggered at the research stage. Remove the fail keyword and rerun the sequential flow.',
+    dispatch({
+      type: 'set-error',
+      role: 'researcher',
+      stage: 'research',
+      message:
+          '`fail` 키워드가 감지되어 자료 요약 단계에서 의도적으로 중단했습니다. 키워드를 지우고 다시 생성하세요.',
       })
       return
     }
 
     dispatch({
       type: 'start-run',
-      message: 'loading | Researcher is summarizing the brief before the first route handoff.',
+      message: '진행 중 | 리서처가 브리프를 읽고 첫 자료 요약 인계를 준비합니다.',
     })
 
     const nextResearch = runResearcher(state.inputs)
@@ -400,7 +458,7 @@ function App() {
       key: 'research_summary',
       value: nextResearch,
       status: 'loading',
-      message: 'loading | Research handoff delivered. Outliner is now shaping the reading route.',
+      message: '진행 중 | 자료 요약이 전달되었습니다. 아웃라이너가 읽기 경로를 고정하는 중입니다.',
     })
 
     await sleep(320)
@@ -416,7 +474,7 @@ function App() {
       key: 'outline',
       value: nextOutline,
       status: 'loading',
-      message: 'loading | Outline locked. Writer is expanding the route into section drafts.',
+      message: '진행 중 | 구조 설계가 잠겼습니다. 라이터가 섹션 초안을 펼치고 있습니다.',
     })
 
     await sleep(360)
@@ -432,7 +490,7 @@ function App() {
       key: 'section_drafts',
       value: nextWriterOutput,
       status: 'loading',
-      message: 'loading | Writer handoff delivered. Reviewer is tightening the copy before export.',
+      message: '진행 중 | 초안이 전달되었습니다. 리뷰어가 발행 직전 밀도를 다듬고 있습니다.',
     })
 
     await sleep(360)
@@ -449,7 +507,7 @@ function App() {
       value: nextReviewerOutput,
       handoffs: finalOutputs.handoffs,
       status: 'review-complete',
-      message: 'review-complete | Reviewer applied edits. Final post is being prepared for export.',
+      message: '검토 완료 | 리뷰어가 수정 메모를 반영했습니다. 최종 원고 잠금을 준비합니다.',
     })
 
     await sleep(220)
@@ -459,7 +517,7 @@ function App() {
     dispatch({
       type: 'finalize-run',
       finalPost: finalOutputs.final_post,
-      message: 'export-ready | Final post is ready. Copy markdown when you are done checking the route.',
+      message: '내보내기 준비 | 최종 원고가 잠겼습니다. 경로를 확인했다면 마크다운을 복사하세요.',
     })
   }
 
@@ -467,7 +525,7 @@ function App() {
     if (!state.generation.outputs.final_post || state.generation.status !== 'export-ready') {
       dispatch({
         type: 'set-copy-feedback',
-        message: 'Copy unlocks only after the reviewer finishes and the Final post becomes export-ready.',
+        message: '복사는 리뷰어 단계가 닫혀 최종 원고가 준비된 뒤에만 열립니다.',
       })
       return
     }
@@ -476,13 +534,13 @@ function App() {
       await navigator.clipboard.writeText(state.generation.outputs.final_post)
       dispatch({
         type: 'set-copy-feedback',
-        message: 'Final Markdown copied. The export payload matches the reviewer-adjusted route.',
+        message: '최종 마크다운을 복사했습니다. 리뷰 반영 원고와 같은 내용입니다.',
       })
     } catch {
       dispatch({
         type: 'set-copy-feedback',
         message:
-          'Clipboard copy failed in this browser context. The Final post is still visible in the export panel.',
+          '이 브라우저 맥락에서는 클립보드 복사가 실패했지만, 아래 최종 원고는 그대로 읽을 수 있습니다.',
       })
     }
   }
@@ -491,25 +549,43 @@ function App() {
     <main className="pipeline-shell">
       <section className="hero-layout">
         <article className="hero-card">
-          <p className="eyebrow">Sequential Pipeline Harness</p>
-          <h1>Route-Based Stepper</h1>
+          <p className="eyebrow">단계 지휘실</p>
+          <h1>한 번의 브리프로 원고를 잠그는 순차 지휘실</h1>
           <p className="lead">
-            Researcher, outliner, writer, and reviewer advance one brief through a single,
-            legible route. The default screen stays focused on the current handoff instead of
-            exposing every benchmark artifact at once.
+            리서처, 아웃라이너, 라이터, 리뷰어가 하나의 브리프를 순서대로 넘기며 원고를
+            잠급니다. 첫 화면은 근거판이 아니라 지금 닫히는 단계와 다음 인계 압력만
+            읽히도록 설계했습니다.
           </p>
+
+          <div className="hero-signal-grid">
+            {heroSignals.map((signal) => (
+              <article key={signal.label} className="hero-signal-card">
+                <span className="signal-label">{signal.label}</span>
+                <strong>{signal.value}</strong>
+                <p>{signal.note}</p>
+              </article>
+            ))}
+          </div>
 
           <div className="hero-actions">
             <button
               type="button"
               className="primary-button"
+              aria-label="Generate post"
+              data-testid="Generate post"
               onClick={handleGenerate}
               disabled={state.generation.status === 'loading'}
             >
-              {state.generation.status === 'loading' ? 'Generating...' : 'Generate post'}
+              {state.generation.status === 'loading' ? '생성 중...' : '글 생성 시작'}
             </button>
-            <button type="button" className="secondary-button" onClick={handleCopyMarkdown}>
-              Copy markdown
+            <button
+              type="button"
+              className="secondary-button"
+              aria-label="Copy markdown"
+              data-testid="Copy markdown"
+              onClick={handleCopyMarkdown}
+            >
+              마크다운 복사
             </button>
           </div>
 
@@ -525,15 +601,16 @@ function App() {
 
         <aside className="control-card">
           <div className="section-head">
-            <p className="eyebrow">Brief setup</p>
-            <h2>Lock the brief before the first handoff</h2>
+            <p className="eyebrow">브리프 봉인</p>
+            <h2>첫 인계 전에 입력 계약부터 잠그기</h2>
           </div>
 
           <form className="form-grid">
             <label>
-              <span>Topic</span>
+              <span>주제</span>
               <textarea
                 name="topic"
+                aria-label="Topic"
                 value={state.inputs.topic}
                 onChange={(event) => dispatch({
                   type: 'update-input',
@@ -544,9 +621,10 @@ function App() {
             </label>
 
             <label>
-              <span>Audience</span>
+              <span>독자</span>
               <select
                 name="audience"
+                aria-label="Audience"
                 value={state.inputs.audience}
                 onChange={(event) => dispatch({
                   type: 'update-input',
@@ -554,16 +632,17 @@ function App() {
                   value: event.target.value as Audience,
                 })}
               >
-                <option value="beginner">Beginner</option>
-                <option value="practitioner">Practitioner</option>
-                <option value="advanced">Advanced</option>
+                <option value="beginner">입문자</option>
+                <option value="practitioner">실무자</option>
+                <option value="advanced">고급 사용자</option>
               </select>
             </label>
 
             <label>
-              <span>Tone</span>
+              <span>톤</span>
               <select
                 name="tone"
+                aria-label="Tone"
                 value={state.inputs.tone}
                 onChange={(event) => dispatch({
                   type: 'update-input',
@@ -571,16 +650,17 @@ function App() {
                   value: event.target.value as Tone,
                 })}
               >
-                <option value="clear">Clear</option>
-                <option value="pragmatic">Pragmatic</option>
-                <option value="opinionated">Opinionated</option>
+                <option value="clear">명료하게</option>
+                <option value="pragmatic">실무적으로</option>
+                <option value="opinionated">단호하게</option>
               </select>
             </label>
 
             <label>
-              <span>Length</span>
+              <span>분량</span>
               <select
                 name="length"
+                aria-label="Length"
                 value={state.inputs.length}
                 onChange={(event) => dispatch({
                   type: 'update-input',
@@ -588,15 +668,15 @@ function App() {
                   value: event.target.value as Length,
                 })}
               >
-                <option value="short">Short</option>
-                <option value="medium">Medium</option>
-                <option value="long">Long</option>
+                <option value="short">짧게</option>
+                <option value="medium">보통</option>
+                <option value="long">길게</option>
               </select>
             </label>
           </form>
 
           <div className="brief-preview">
-            <strong className="brief-label">Shared input contract</strong>
+            <strong className="brief-label">공유 입력 계약</strong>
             <pre>{JSON.stringify(state.inputs, null, 2)}</pre>
           </div>
         </aside>
@@ -628,27 +708,36 @@ function App() {
 
       <section className="panel-card">
         <div className="section-head">
-          <p className="eyebrow">Pipeline tracker</p>
-          <h2>Research results → Outline → Section drafts → Review notes → Final post</h2>
+          <p className="eyebrow">인계 레일</p>
+          <h2 aria-label="Research results Outline Section drafts Review notes Final post">
+            자료 요약에서 최종 원고까지, 한 번에 한 단계씩 잠그기
+          </h2>
         </div>
 
         <div className="tracker-grid">
-          {roleTracker.map((role) => (
+          {roleTracker.map((role, index) => (
             <button
               key={role.id}
               type="button"
               className="tracker-card-button"
               onClick={() => dispatch({ type: 'select-role', role: role.id })}
             >
-              <article className={`tracker-card tracker-${role.status}`}>
+              <article
+                className={`tracker-card tracker-${role.status}`}
+                aria-label={stageHookLabels[roleStageMap[role.id]]}
+                data-testid={stageHookLabels[roleStageMap[role.id]]}
+              >
                 <div className="tracker-top">
-                  <span className="tracker-badge">{role.label}</span>
+                  <div className="tracker-index-wrap">
+                    <span className="tracker-index">{`0${index + 1}`}</span>
+                    <span className="tracker-badge">{role.label}</span>
+                  </div>
                   <span className={`tracker-status tracker-${role.status}`}>
                     {role.status === 'complete'
-                      ? 'Done'
+                      ? '완료'
                       : role.status === 'current'
-                        ? 'Active'
-                        : 'Pending'}
+                        ? '진행 중'
+                        : '대기'}
                   </span>
                 </div>
                 <h3>{role.stageLabel}</h3>
@@ -679,59 +768,65 @@ function App() {
 
         <article className="panel-card role-panel">
           <div className="section-head">
-            <p className="eyebrow">Checkpoint rail</p>
-            <h2>Current step and next action</h2>
+            <p className="eyebrow">체크포인트 레일</p>
+            <h2>지금 단계와 다음 움직임</h2>
           </div>
 
           <div className="role-meta">
             <div>
-              <strong>Current step</strong>
+              <strong>현재 단계</strong>
               <p>{currentRoleMeta.stageLabel}</p>
             </div>
             <div>
-              <strong>Next action</strong>
+              <strong>다음 행동</strong>
               <p>{actionHint}</p>
             </div>
           </div>
 
           <div className="artifact-list">
             <article className="artifact-card">
-              <h3>Active owner</h3>
+              <h3>활성 담당</h3>
               <p>
                 {state.generation.currentRole
-                  ? `${formatRoleLabel(state.generation.currentRole)} is responsible for the current transition.`
-                  : 'The reviewer handoff is complete and export is now unlocked.'}
+                  ? `${formatRoleLabel(state.generation.currentRole)}가 지금 인계를 닫는 책임을 맡고 있습니다.`
+                  : '리뷰어 인계가 끝나 이제 최종 원고를 바로 복사할 수 있습니다.'}
               </p>
             </article>
 
             <article className="artifact-card">
-              <h3>Handoff pressure</h3>
+              <h3>인계 압력</h3>
               <p>{currentRoleMeta.handoffSummary}</p>
             </article>
 
             <article className="artifact-card">
-              <h3>Export lock</h3>
+              <h3>내보내기 잠금</h3>
               <p>
                 {state.generation.outputs.final_post
-                  ? 'Final post is visible below and ready to copy.'
-                  : 'Final post stays locked until the reviewer pass completes.'}
+                  ? '아래에서 최종 원고를 바로 읽고 복사할 수 있습니다.'
+                  : '리뷰어 단계가 닫히기 전까지 최종 원고는 잠겨 있습니다.'}
               </p>
             </article>
           </div>
         </article>
       </section>
 
-      <section className="panel-card final-panel">
+      <section
+        className="panel-card final-panel"
+        aria-label={stageHookLabels.final}
+        data-testid={stageHookLabels.final}
+      >
         <div className="section-head">
-          <p className="eyebrow">Final post</p>
-          <h2>Reviewer-adjusted Markdown</h2>
+          <p className="eyebrow">최종 원고</p>
+          <h2>리뷰 반영 뒤 잠긴 발행본</h2>
         </div>
 
         {state.generation.status === 'error' ? (
           <div className="error-panel" role="alert">
-            <strong>Pipeline stopped at {stageLabels[roleStageMap[state.generation.currentRole ?? 'researcher']]}.</strong>
+            <strong>
+              {stageLabels[roleStageMap[state.generation.currentRole ?? 'researcher']]} 단계에서 흐름이 멈췄습니다.
+            </strong>
             <p>{state.generation.errorMessage}</p>
-            <p>Use a normal topic brief and rerun the pipeline to validate the happy path.</p>
+            <p>일반 브리프로 다시 생성해 순차 인계의 정상 경로를 확인해 주세요.</p>
           </div>
         ) : state.generation.outputs.final_post ? (
           <>
@@ -740,7 +835,7 @@ function App() {
           </>
         ) : (
           <div className="empty-state">
-            <p>Final Markdown appears only after reviewer edits are applied.</p>
+            <p>리뷰어 수정이 닫혀야만 최종 원고가 여기에 나타납니다.</p>
           </div>
         )}
       </section>
@@ -752,17 +847,17 @@ function App() {
       >
         <summary className="drawer-summary">
           <div>
-            <p className="eyebrow">Benchmark evidence</p>
-            <h2>Open only when you need traces and score context</h2>
+            <p className="eyebrow">보조 근거</p>
+            <h2>추적과 점수 맥락이 필요할 때만 여는 서랍</h2>
           </div>
-          <span>{evidenceOpen ? 'Hide drawer' : 'Show drawer'}</span>
+          <span>{evidenceOpen ? '서랍 닫기' : '서랍 열기'}</span>
         </summary>
 
         <div className="panel-grid evidence-grid">
           <article className="panel-card">
             <div className="section-head">
-              <p className="eyebrow">Handoff ledger</p>
-              <h2>Delivered transitions</h2>
+              <p className="eyebrow">인계 장부</p>
+              <h2>전달된 전환 기록</h2>
             </div>
 
             <div className="handoff-log">
@@ -771,9 +866,9 @@ function App() {
                   <article key={`${handoff.from}-${handoff.to}`} className="handoff-card">
                     <div className="handoff-heading">
                       <strong>
-                        {handoff.from} → {handoff.to}
+                        {formatRoleLabel(handoff.from)} → {formatRoleLabel(handoff.to)}
                       </strong>
-                      <span>{handoff.status}</span>
+                      <span>{handoff.status === 'delivered' ? '전달 완료' : handoff.status}</span>
                     </div>
                     <p>{handoff.inputSummary}</p>
                     <p>{handoff.outputSummary}</p>
@@ -781,7 +876,7 @@ function App() {
                 ))
               ) : (
                 <div className="handoff-empty">
-                  <p>The handoff ledger stays empty until the first role completes.</p>
+                  <p>첫 역할이 닫히기 전까지는 인계 장부가 비어 있습니다.</p>
                 </div>
               )}
             </div>
@@ -789,8 +884,8 @@ function App() {
 
           <article className="panel-card">
             <div className="section-head">
-              <p className="eyebrow">Artifacts and rubric</p>
-              <h2>Required evidence for this run</h2>
+              <p className="eyebrow">산출물과 루브릭</p>
+              <h2>이번 실행에서 남길 근거 묶음</h2>
             </div>
 
             <div className="artifact-list">
@@ -829,19 +924,19 @@ function inputSummaryForRole(
 ) {
   switch (role) {
     case 'researcher':
-      return `Topic: ${inputs.topic} / Audience: ${inputs.audience} / Tone: ${inputs.tone} / Length: ${inputs.length}`
+      return `주제: ${inputs.topic} / 독자: ${audienceUiLabels[inputs.audience]} / 톤: ${toneUiLabels[inputs.tone]} / 분량: ${lengthUiLabels[inputs.length]}`
     case 'outliner':
       return research
-        ? `Received thesis: ${research.thesis}`
-        : 'Waiting for the researcher thesis and key findings.'
+        ? `리서처가 넘긴 중심 논지: ${research.thesis}`
+        : '리서처가 논지와 핵심 발견을 넘기기를 기다리는 중입니다.'
     case 'writer':
       return outline
-        ? `Received ${outline.sections.length} sections and a structure rationale from the outliner.`
-        : 'Waiting for the outliner section order.'
+        ? `아웃라이너가 ${outline.sections.length}개 섹션 구조와 설계 이유를 넘겼습니다.`
+        : '아웃라이너가 섹션 순서를 잠그기를 기다리는 중입니다.'
     case 'reviewer':
       return writerOutput
-        ? 'Received the writer summary and pre-review markdown for editorial tightening.'
-        : 'Waiting for the writer handoff.'
+        ? '라이터 요약과 검토 전 마크다운이 도착해 편집 밀도를 조정할 수 있습니다.'
+        : '라이터 인계를 기다리는 중입니다.'
   }
 }
 
@@ -867,13 +962,13 @@ function handoffNoteForRole(
 function emptyTextForRole(role: PipelineRole) {
   switch (role) {
     case 'researcher':
-      return 'Researcher output will appear after the first brief is processed.'
+      return '첫 브리프가 잠기면 리서처 출력이 이 작업면에 나타납니다.'
     case 'outliner':
-      return 'Outliner output will appear after the research handoff is delivered.'
+      return '자료 요약 인계가 닫히면 아웃라이너 작업면이 열립니다.'
     case 'writer':
-      return 'Writer output will appear after the outline handoff is delivered.'
+      return '구조 설계 인계가 닫히면 라이터 초안이 나타납니다.'
     case 'reviewer':
-      return 'Reviewer output will appear after the writer handoff is delivered.'
+      return '라이터 인계가 닫히면 리뷰어 메모와 수정 기록이 나타납니다.'
   }
 }
 
@@ -937,7 +1032,7 @@ function renderRoleSurface(
             ))}
           </div>
           <details className="inline-details">
-            <summary>Open pre-review markdown</summary>
+            <summary>검토 전 초안 펼치기</summary>
             <div className="markdown-block">
               <pre>{writerOutput.preReviewMarkdown}</pre>
             </div>
@@ -952,7 +1047,7 @@ function renderRoleSurface(
               <article key={note.label} className={`review-note review-${note.severity}`}>
                 <div>
                   <strong>{note.label}</strong>
-                  <span>{note.severity}</span>
+                  <span>{reviewSeverityLabels[note.severity]}</span>
                 </div>
                 <p>{note.detail}</p>
               </article>
@@ -963,10 +1058,10 @@ function renderRoleSurface(
               <article key={edit.label} className="edit-card">
                 <h3>{edit.label}</h3>
                 <p>
-                  <strong>Before:</strong> {edit.before}
+                  <strong>이전:</strong> {edit.before}
                 </p>
                 <p>
-                  <strong>After:</strong> {edit.after}
+                  <strong>이후:</strong> {edit.after}
                 </p>
               </article>
             ))}
@@ -1000,12 +1095,12 @@ function RolePanel(props: {
 
       <div className="role-meta">
         <div>
-          <strong>Input</strong>
+          <strong>받은 입력</strong>
           <p>{props.inputSummary}</p>
         </div>
         <div>
-          <strong>Handoff</strong>
-          <p>{props.handoffNote ?? 'Handoff note will appear after this role completes.'}</p>
+          <strong>다음 인계 메모</strong>
+          <p>{props.handoffNote ?? '이 역할이 닫히면 다음 인계 메모가 여기에 나타납니다.'}</p>
         </div>
       </div>
 
@@ -1014,11 +1109,11 @@ function RolePanel(props: {
       ) : isLoading ? (
         <div className="empty-state loading-state">
           <span className="loading-dot" />
-          <p>{props.title} is the active role right now.</p>
+          <p>{props.title} 작업면이 지금 열려 있으며 산출물을 채우는 중입니다.</p>
         </div>
       ) : isError ? (
         <div className="empty-state error-state">
-          <p>This role failed before it could hand off a valid output.</p>
+          <p>이 역할은 유효한 산출물을 넘기기 전에 중단되었습니다.</p>
         </div>
       ) : (
         <div className="empty-state">
