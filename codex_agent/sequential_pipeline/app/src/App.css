@@ -993,6 +993,7 @@
 
 .role-meta {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
   padding: 18px;
   border-radius: 22px;
@@ -1004,16 +1005,69 @@
   color: #142342;
 }
 
+.surface-lead-card {
+  display: grid;
+  gap: 10px;
+  padding: 20px 22px;
+  border-radius: 24px;
+  background:
+    linear-gradient(145deg, rgba(16, 24, 44, 0.98), rgba(24, 37, 64, 0.96) 68%, rgba(36, 52, 82, 0.94));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 18px 34px rgba(9, 16, 28, 0.16);
+}
+
+.surface-lead-card strong,
+.surface-lead-card p {
+  margin: 0;
+}
+
+.surface-lead-card .signal-label {
+  color: rgba(245, 228, 196, 0.84);
+}
+
+.surface-lead-card strong {
+  color: #fff5e4;
+  font-size: 1.12rem;
+  line-height: 1.38;
+}
+
+.surface-lead-card p {
+  color: rgba(237, 243, 255, 0.78);
+  line-height: 1.66;
+}
+
+.surface-lead-outline {
+  background:
+    linear-gradient(145deg, rgba(23, 35, 60, 0.98), rgba(33, 49, 83, 0.96) 68%, rgba(48, 67, 106, 0.92));
+}
+
+.surface-lead-review {
+  background:
+    linear-gradient(145deg, rgba(15, 24, 43, 0.98), rgba(30, 44, 70, 0.96) 60%, rgba(77, 59, 32, 0.9));
+}
+
 .stack-list,
-.support-list,
-.draft-stack,
-.review-stack,
 .edit-list,
 .artifact-list,
 .preview-grid,
-.lens-list {
+.lens-list,
+.insight-grid,
+.support-grid,
+.draft-board,
+.review-board {
   display: grid;
   gap: 12px;
+}
+
+.insight-grid,
+.support-grid,
+.review-board {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.draft-board {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .chip-row {
@@ -1032,16 +1086,80 @@
   font-weight: 700;
 }
 
-.outline-list {
+.outline-grid {
+  list-style: none;
   margin: 0;
-  padding-left: 18px;
+  padding: 0;
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+}
+
+.insight-card,
+.support-card,
+.outline-card {
+  position: relative;
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.76),
+    0 14px 28px rgba(15, 23, 42, 0.04);
+}
+
+.insight-card p,
+.support-card p,
+.outline-card p {
+  margin: 0;
+  color: #586982;
+  line-height: 1.64;
+}
+
+.outline-step,
+.draft-step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 16px;
+  background: rgba(221, 225, 255, 0.9);
+  color: #24459d;
+  font-size: 0.84rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.outline-card strong {
+  color: #132242;
+  font-size: 1.04rem;
+  line-height: 1.34;
 }
 
 .takeaway {
   font-weight: 700;
   color: #162443;
+}
+
+.draft-card-framed,
+.review-note-framed {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(243, 246, 255, 0.9));
+}
+
+.draft-card-head,
+.review-note-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.draft-card-framed h3,
+.review-note-framed strong {
+  color: #132242;
 }
 
 .markdown-block,
@@ -1262,6 +1380,20 @@
   margin: 0;
 }
 
+.hero-contract-line {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  width: fit-content;
+  padding: 0.58rem 0.9rem;
+  border-radius: 999px;
+  background: rgba(222, 229, 246, 0.9);
+  color: #1b315f;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
 .hero-closing-card {
   position: relative;
   overflow: hidden;
@@ -1407,6 +1539,12 @@
   gap: 14px;
 }
 
+.hero-directive-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
 .hero-ticket-card {
   position: relative;
   overflow: hidden;
@@ -1447,6 +1585,30 @@
   z-index: 1;
   margin: 0;
   color: #54637b;
+  line-height: 1.62;
+}
+
+.hero-directive-card {
+  display: grid;
+  gap: 10px;
+  padding: 18px 20px;
+  border-radius: 22px;
+  border: 1px dashed rgba(33, 55, 101, 0.18);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(243, 246, 255, 0.88)),
+    rgba(255, 255, 255, 0.72);
+}
+
+.hero-directive-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.hero-directive-card p {
+  margin: 0;
+  color: #51617b;
   line-height: 1.62;
 }
 

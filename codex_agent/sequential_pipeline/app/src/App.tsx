@@ -424,22 +424,22 @@ function App() {
     {
       label: '브리프 계약',
       value: briefPressureLabel,
-      note: '네 역할이 같은 기준표를 이어받고, 단계가 바뀌어도 입력 계약은 흔들리지 않습니다.',
+      note: '네 데스크가 같은 입력 계약을 들고 움직이므로 중간에 기준표가 바뀌지 않습니다.',
     },
     {
       label: '지금 압력',
       value: currentRoleMeta.handoffLabel,
       note:
         state.generation.status === 'export-ready'
-          ? '모든 인계가 닫혔으므로 이제 발행본 확인과 복사만 남았습니다.'
+          ? '모든 인계가 닫혀 발행본 확인과 복사만 남은 상태입니다.'
           : actionHint,
     },
     {
       label: '표면 원칙',
       value: '현재 · 다음 · 발행',
       note: state.generation.outputs.final_post
-        ? '긴 본문은 요약 아래에서만 펼치고, 첫 화면은 잠금 완료 상태만 또렷하게 남깁니다.'
-        : '첫 화면은 현재 단계와 다음 인계만 강조하고 긴 산출물은 작업면 안쪽으로 밀어 둡니다.',
+        ? '긴 본문은 요약 뒤에서만 열고 첫 화면에는 발행 상태만 또렷하게 남깁니다.'
+        : '첫 화면은 현재 단계와 다음 인계만 보여주고 긴 산출물은 작업면 안쪽으로 밀어 둡니다.',
     },
   ]
   const routeStations = [
@@ -507,6 +507,20 @@ function App() {
       ? `${nextRoleMeta.label} 책상은 ${nextRoleMeta.stageLabel} 인계를 기다리는 중입니다.`
       : '이제 발행 전 마지막 읽기와 복사만 남았습니다.',
   ]
+  const editorialRules = [
+    {
+      label: '같은 계약 유지',
+      note: '주제, 독자, 톤, 분량은 첫 입력 이후 끝까지 같은 압력으로 전달합니다.',
+    },
+    {
+      label: '현재 데스크만 전면',
+      note: '첫 화면은 지금 닫히는 데스크와 다음 데스크만 보이게 유지합니다.',
+    },
+    {
+      label: '긴 원고는 뒤에',
+      note: '발행 원고와 근거는 요약 뒤 보조 면에서만 열어 첫 스캔을 가볍게 둡니다.',
+    },
+  ] as const
   const manifestPreview: Record<string, unknown> = {
     워크스페이스: '순차 파이프라인',
     현재_단계: currentStageLabel,
@@ -530,6 +544,23 @@ function App() {
     프로세스_준수도: baseScorePreview.process_adherence,
     종합_점수: state.generation.outputs.final_post ? 8.9 : baseScorePreview.overall_score,
   }
+  const readerChecks = [
+    {
+      label: '발행 상태',
+      value: state.generation.outputs.final_post ? '복사 가능' : '리뷰 잠금 전',
+      note: '리뷰어 잠금이 끝난 뒤에만 발행본 복사 버튼이 열립니다.',
+    },
+    {
+      label: '첫 읽기',
+      value: '요약 우선',
+      note: '긴 본문보다 발행 메모와 짧은 요약을 먼저 읽도록 설계했습니다.',
+    },
+    {
+      label: '보조 면',
+      value: '원고 · 근거 서랍',
+      note: '전체 원고와 실행 근거는 필요할 때만 여는 이차 표면으로 분리했습니다.',
+    },
+  ] as const
 
   async function handleGenerate() {
     const runId = runRef.current + 1
@@ -675,15 +706,16 @@ function App() {
           <div className="hero-headline-grid">
             <div className="hero-headline-copy">
               <p className="eyebrow">순차 지휘실</p>
-              <h1>네 개의 데스크가 한 원고를 봉인하는 슬레이트 발행 레일</h1>
+              <h1>한 장의 원고가 네 데스크를 건너 봉인되는 밤판 편집실</h1>
               <p className="lead">
-                리서처, 아웃라이너, 라이터, 리뷰어가 같은 브리프를 차례대로 넘기며 발행 가능한
-                원고를 봉인합니다. 첫 화면에는 긴 산출물 대신 지금 닫히는 데스크, 바로 이어질
-                데스크, 그리고 발행 잠금 상태만 먼저 남겨 판단 속도를 높였습니다.
+                리서처, 아웃라이너, 라이터, 리뷰어가 같은 브리프를 손에서 손으로 넘기며 발행
+                가능한 원고를 봉인합니다. 첫 화면은 긴 산출물 대신 지금 닫히는 데스크, 바로
+                이어질 데스크, 발행 잠금 상태만 남겨 편집 흐름을 먼저 읽히게 했습니다.
               </p>
 
               <p className="hero-contract-line">
-                공통 입력 계약 · {briefPressureLabel}
+                공통 입력 계약 · {briefPressureLabel} · 한 번 잠그면 네 데스크가 같은 기준으로
+                움직입니다.
               </p>
 
               <div className="hero-actions">
@@ -704,12 +736,12 @@ function App() {
               <span className="signal-label">야간 마감 데스크</span>
               <strong>
                 {state.generation.status === 'export-ready'
-                  ? '모든 봉투가 밀봉되어 발행본 확인만 남은 상태'
-                  : `${currentRoleMeta.label} 데스크가 지금 인계 봉투를 닫고 있습니다.`}
+                  ? '모든 봉인지가 닫혀 이제 발행본 확인과 복사만 남았습니다.'
+                  : `${currentRoleMeta.label} 데스크가 지금 인계 봉인지에 마지막 결재를 남기고 있습니다.`}
               </strong>
               <p>
-                긴 본문은 뒤로 물리고, 앞줄에는 현재 데스크와 다음 데스크, 발행 잠금만 남겨
-                첫 스캔에서 흐름이 끊기지 않도록 정리했습니다.
+                긴 본문과 근거는 뒤로 물리고, 앞줄에는 현재 데스크와 다음 데스크, 발행 잠금만
+                남겨 첫 스캔에서 흐름이 끊기지 않도록 정리했습니다.
               </p>
 
               <div className="hero-window-list">
@@ -743,6 +775,18 @@ function App() {
                   <span className="signal-label">{ticket.label}</span>
                   <strong>{ticket.value}</strong>
                   <p>{ticket.note}</p>
+                </article>
+              ))}
+            </div>
+
+            <div className="hero-directive-grid">
+              {editorialRules.map((rule, index) => (
+                <article key={rule.label} className="hero-directive-card">
+                  <div className="hero-directive-head">
+                    <span className="hero-window-step">{`0${index + 1}`}</span>
+                    <span className="signal-label">{rule.label}</span>
+                  </div>
+                  <p>{rule.note}</p>
                 </article>
               ))}
             </div>
@@ -919,7 +963,7 @@ function App() {
             지금 잠근 카드가 다음 책상을 여는 인계 레일
           </h2>
           <p className="tracker-intro">
-            네 단계 전체를 한 번에 읽히게 두되, 먼저 보이는 것은 현재 잠금과 다음 인계뿐입니다.
+            네 단계 전체를 한눈에 읽히게 두되, 처음 보이는 것은 현재 잠금과 다음 인계뿐입니다.
             각 카드는 다음 책상을 여는 전달 메모를 함께 품고 있어 선택 즉시 작업면으로 이어집니다.
           </p>
         </div>
@@ -1117,6 +1161,15 @@ function App() {
                 ) : null}
               </div>
             </div>
+            <div className="reader-command-strip">
+              {readerChecks.map((item) => (
+                <article key={item.label} className="reader-command-card">
+                  <span className="signal-label">{item.label}</span>
+                  <strong>{item.value}</strong>
+                  <p>{item.note}</p>
+                </article>
+              ))}
+            </div>
             <details className="inline-details final-preview-details">
               <summary>전체 원고 펼치기</summary>
               <div className="markdown-block">
@@ -1286,13 +1339,19 @@ function renderRoleSurface(
     case 'researcher':
       return research ? (
         <>
-          <p className="summary-text">{research.angle}</p>
-          <p className="summary-text">{research.thesis}</p>
-          <ul className="stack-list">
-            {research.keyFindings.map((finding) => (
-              <li key={finding}>{finding}</li>
+          <article className="surface-lead-card surface-lead-research">
+            <span className="signal-label">핵심 논지</span>
+            <strong>{research.thesis}</strong>
+            <p>{research.angle}</p>
+          </article>
+          <div className="insight-grid">
+            {research.keyFindings.map((finding, index) => (
+              <article key={finding} className="insight-card">
+                <span className="signal-label">{`발견 0${index + 1}`}</span>
+                <p>{finding}</p>
+              </article>
             ))}
-          </ul>
+          </div>
           <div className="chip-row">
             {research.searchTerms.map((term) => (
               <span key={term} className="chip">
@@ -1300,20 +1359,28 @@ function renderRoleSurface(
               </span>
             ))}
           </div>
-          <ul className="support-list">
+          <div className="support-grid">
             {research.supportingFacts.map((fact) => (
-              <li key={fact}>{fact}</li>
+              <article key={fact} className="support-card">
+                <span className="signal-label">근거 축</span>
+                <p>{fact}</p>
+              </article>
             ))}
-          </ul>
+          </div>
         </>
       ) : null
     case 'outliner':
       return outline ? (
         <>
-          <p className="summary-text">{outline.structureRationale}</p>
-          <ol className="outline-list">
-            {outline.sections.map((section) => (
-              <li key={section.id}>
+          <article className="surface-lead-card surface-lead-outline">
+            <span className="signal-label">구조 설계 원칙</span>
+            <strong>문제 정의에서 체크리스트까지 읽기 압력을 단계적으로 높입니다.</strong>
+            <p>{outline.structureRationale}</p>
+          </article>
+          <ol className="outline-grid">
+            {outline.sections.map((section, index) => (
+              <li key={section.id} className="outline-card">
+                <span className="outline-step">{`0${index + 1}`}</span>
                 <strong>{section.title}</strong>
                 <p>{section.goal}</p>
               </li>
@@ -1324,10 +1391,18 @@ function renderRoleSurface(
     case 'writer':
       return writerOutput ? (
         <>
-          <p className="summary-text">{writerOutput.writerSummary}</p>
-          <div className="draft-stack">
-            {writerOutput.sectionDrafts.map((draft) => (
-              <article key={draft.id} className="draft-card">
+          <article className="surface-lead-card surface-lead-writer">
+            <span className="signal-label">초안 묶음</span>
+            <strong>{writerOutput.writerSummary}</strong>
+            <p>섹션별 초안은 카드로 잘라 검토 전에 필요한 부분만 빠르게 읽을 수 있게 두었습니다.</p>
+          </article>
+          <div className="draft-board">
+            {writerOutput.sectionDrafts.map((draft, index) => (
+              <article key={draft.id} className="draft-card draft-card-framed">
+                <div className="draft-card-head">
+                  <span className="draft-step">{`0${index + 1}`}</span>
+                  <span className="signal-label">섹션 초안</span>
+                </div>
                 <h3>{draft.title}</h3>
                 <p>{draft.summary}</p>
                 <p className="takeaway">{draft.takeaway}</p>
@@ -1345,11 +1420,15 @@ function renderRoleSurface(
     case 'reviewer':
       return reviewerOutput ? (
         <>
-          <p className="summary-text">{reviewerOutput.finalizationNote}</p>
-          <div className="review-stack">
+          <article className="surface-lead-card surface-lead-review">
+            <span className="signal-label">발행 잠금 메모</span>
+            <strong>{reviewerOutput.finalizationNote}</strong>
+            <p>검토 메모는 위험도별 카드로 정리하고, 실제 적용 편집은 별도 접힘 목록으로 분리했습니다.</p>
+          </article>
+          <div className="review-board">
             {reviewerOutput.reviewNotes.map((note) => (
-              <article key={note.label} className={`review-note review-${note.severity}`}>
-                <div>
+              <article key={note.label} className={`review-note review-${note.severity} review-note-framed`}>
+                <div className="review-note-head">
                   <strong>{note.label}</strong>
                   <span>{reviewSeverityLabels[note.severity]}</span>
                 </div>
