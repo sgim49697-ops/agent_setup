@@ -443,15 +443,15 @@ function App() {
           : '짧은 브리프를 봉인하면 다섯 단계가 한 줄 흐름으로 이어집니다.'
   const heroHeadline =
     state.generation.status === 'initial'
-      ? '브리프 한 번으로 최종 원고까지 이어집니다'
+      ? '짧은 브리프로 원고의 첫 리듬을 잠급니다'
       : state.generation.status === 'error'
-        ? '복구 지점만 정리하고 흐름을 다시 잇습니다'
+        ? '복구할 한 지점만 고치고 흐름을 다시 잇습니다'
         : finalPost
-          ? '최종 원고가 잠겼고 복사만 남았습니다'
-          : `${focusStageLabel}만 앞으로 남긴 단일 작성 흐름`
+          ? '출고 직전 원고가 잠겼고 복사만 남았습니다'
+          : `${focusStageLabel}만 전면에 남긴 단일 작성 흐름`
   const heroLead =
     state.generation.status === 'initial'
-      ? '주제, 독자, 톤, 길이만 잠그면 한 명의 작성 흐름이 리서치부터 최종 원고까지 곧게 이어집니다.'
+      ? '주제, 독자, 톤, 길이만 봉인하면 한 명의 작성 흐름이 리서치부터 최종 원고까지 곧게 전개됩니다.'
       : state.generation.status === 'error'
         ? '실패한 흐름 전체를 다시 읽지 않도록, 복구해야 할 단계와 다시 시작 신호만 남겼습니다.'
         : finalPost
@@ -912,7 +912,7 @@ function App() {
           </div>
           <div className="hero-headline hero-headline-tight hero-headline-solo">
             <div className="hero-headline-copy">
-              <p className="section-kicker">작성 현황</p>
+              <p className="section-kicker">단일 작성 흐름</p>
               <h1>{heroHeadline}</h1>
               <p className="hero-deck">{heroLead}</p>
             </div>
@@ -932,7 +932,7 @@ function App() {
           <div className="mission-board">
             <article className="mission-card mission-card-current">
               <div className="mission-card-head">
-                <p className="hero-summary-label">지금 붙드는 단계</p>
+                <p className="hero-summary-label">현재 단계</p>
                 <span className="mission-card-pill">{phasePulseSummary}</span>
               </div>
               <div className="mission-stage-band">
@@ -999,7 +999,7 @@ function App() {
           <article className="rail-card rail-card-dark rail-card-input">
             <div className="rail-section-head">
               <div>
-                <p className="section-kicker">봉인 레일</p>
+                <p className="section-kicker">브리프 레일</p>
                 <h3>브리프 요약</h3>
               </div>
               <p className="brief-inline">
@@ -1175,7 +1175,7 @@ function App() {
           <div className="stage-workbench">
             <section className="stage-rail-shell">
               <div className="stage-rail-head">
-                <p className="panel-hook">마감 레일</p>
+                <p className="panel-hook">단계 레일</p>
                 <h2>지금 볼 작성 단계</h2>
                 <p>{stageRailLead}</p>
               </div>

@@ -54,9 +54,9 @@
   gap: 18px;
   padding: 24px 24px 26px;
   background:
-    radial-gradient(circle at top right, rgba(54, 99, 255, 0.24), transparent 24%),
-    radial-gradient(circle at 14% 82%, rgba(181, 78, 33, 0.18), transparent 20%),
-    linear-gradient(135deg, rgba(15, 26, 49, 0.98), rgba(29, 46, 84, 0.98) 58%, rgba(44, 67, 114, 0.94));
+    radial-gradient(circle at top right, rgba(84, 124, 255, 0.28), transparent 26%),
+    radial-gradient(circle at 18% 84%, rgba(81, 95, 116, 0.2), transparent 22%),
+    linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(20, 32, 58, 0.98) 56%, rgba(34, 53, 92, 0.94));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
     0 28px 60px rgba(9, 16, 31, 0.24);
@@ -114,8 +114,8 @@
 }
 
 .hero-signal-live {
-  background: rgba(255, 121, 72, 0.18);
-  color: #ffe7dc;
+  background: rgba(183, 196, 255, 0.18);
+  color: #eef2ff;
 }
 
 .section-kicker,
@@ -406,16 +406,18 @@
 .hero-ledger-panel {
   position: relative;
   display: grid;
-  gap: 6px;
+  gap: 12px;
   min-height: 100%;
   padding: 18px 18px 18px 22px;
   border-radius: 24px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(242, 243, 255, 0.72)),
+    radial-gradient(circle at top right, rgba(84, 124, 255, 0.12), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(236, 240, 255, 0.78)),
     rgba(255, 255, 255, 0.82);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.82),
     0 14px 28px rgba(19, 27, 46, 0.07);
+  backdrop-filter: blur(18px);
 }
 
 .hero-ledger-panel::before {
@@ -888,13 +890,13 @@
 }
 
 .mission-progress-track span {
-  background: linear-gradient(135deg, #ffb08d, #8cb2ff);
+  background: linear-gradient(135deg, #b7c4ff, #0052ff 72%);
 }
 
 .mission-card-action {
   background:
-    radial-gradient(circle at top right, rgba(255, 167, 117, 0.28), transparent 32%),
-    linear-gradient(160deg, rgba(56, 27, 20, 0.96), rgba(34, 18, 16, 0.92));
+    radial-gradient(circle at top right, rgba(111, 148, 255, 0.28), transparent 34%),
+    linear-gradient(160deg, rgba(11, 19, 36, 0.98), rgba(21, 34, 60, 0.95) 58%, rgba(38, 56, 95, 0.92));
 }
 
 .mission-card-title {
@@ -905,7 +907,7 @@
 }
 
 .mission-card-copy {
-  color: rgba(255, 230, 220, 0.78);
+  color: rgba(222, 229, 255, 0.78);
 }
 
 .mission-action-stack {
@@ -916,16 +918,16 @@
   margin-top: auto;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04)),
-    rgba(255, 244, 238, 0.06);
+    rgba(9, 16, 31, 0.18);
 }
 
 .mission-action-note strong {
-  color: #fff2eb;
+  color: #f4f6ff;
   font-size: 1rem;
 }
 
 .mission-action-note p {
-  color: rgba(255, 229, 219, 0.74);
+  color: rgba(214, 223, 255, 0.74);
 }
 
 .workspace-frame {
