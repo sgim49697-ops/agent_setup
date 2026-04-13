@@ -135,6 +135,52 @@
   line-height: 1.68;
 }
 
+.hero-proof-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.hero-proof-card {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  gap: 10px;
+  padding: 18px 20px;
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgba(255, 248, 241, 0.98), rgba(239, 244, 255, 0.92));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.84),
+    0 14px 28px rgba(15, 23, 42, 0.06);
+}
+
+.hero-proof-card::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 8px;
+  background: linear-gradient(180deg, rgba(243, 182, 103, 0.9), rgba(0, 82, 255, 0.76));
+}
+
+.hero-proof-card strong,
+.hero-proof-card p {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+}
+
+.hero-proof-card strong {
+  color: #152342;
+  font-size: 1.08rem;
+  line-height: 1.34;
+}
+
+.hero-proof-card p {
+  color: #54637b;
+  line-height: 1.62;
+}
+
 .hero-command-strip {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -415,6 +461,55 @@
   margin: 0;
   color: #596983;
   line-height: 1.64;
+}
+
+.route-pulse-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.route-pulse-card {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  gap: 8px;
+  min-height: 148px;
+  padding: 18px;
+  border-radius: 22px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(238, 242, 255, 0.9));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.84),
+    0 14px 26px rgba(15, 23, 42, 0.05);
+}
+
+.route-pulse-card::after {
+  content: '';
+  position: absolute;
+  inset: auto -16% -54% 52%;
+  height: 120px;
+  background: radial-gradient(circle, rgba(0, 82, 255, 0.14), transparent 70%);
+  pointer-events: none;
+}
+
+.route-pulse-card strong,
+.route-pulse-card p {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+}
+
+.route-pulse-card strong {
+  color: #132242;
+  font-size: 1.02rem;
+  line-height: 1.36;
+}
+
+.route-pulse-card p {
+  color: #55657e;
+  line-height: 1.62;
 }
 
 .route-station-active {
@@ -1893,31 +1988,27 @@
   line-height: 1.64;
 }
 
-.checkpoint-rule-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+.checkpoint-fact-grid {
   display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
 
-.checkpoint-rule-list li {
-  position: relative;
-  padding-left: 18px;
-  color: rgba(237, 243, 255, 0.78);
-  line-height: 1.62;
+.checkpoint-fact-card {
+  display: grid;
+  gap: 8px;
+  padding: 16px 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(180deg, rgba(243, 182, 103, 0.1), rgba(255, 255, 255, 0.04)),
+    rgba(255, 255, 255, 0.04);
 }
 
-.checkpoint-rule-list li::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0.56rem;
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #f3b667, #8cb9ff);
-  box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.04);
+.checkpoint-fact-card strong {
+  color: #ffffff;
+  font-size: 0.98rem;
+  line-height: 1.4;
 }
 
 @keyframes pulse {
@@ -1958,10 +2049,13 @@
   .route-board-shell,
   .route-journal,
   .hero-command-strip,
+  .hero-proof-grid,
   .hero-ticket-row,
   .route-station-strip,
+  .route-pulse-grid,
   .hero-sequence,
-  .reader-focus-band {
+  .reader-focus-band,
+  .checkpoint-fact-grid {
     grid-template-columns: 1fr;
   }
 

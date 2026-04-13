@@ -420,26 +420,18 @@ function App() {
           : Math.max(8, completedCount * 25)
   const finalPreview = buildFinalPreview(state.generation.outputs.final_post)
   const briefPressureLabel = `${audienceUiLabels[state.inputs.audience]} · ${toneUiLabels[state.inputs.tone]} · ${lengthUiLabels[state.inputs.length]}`
-  const heroCommands = [
+  const heroProofs = [
     {
-      label: '입력 계약',
+      label: '잠긴 기준표',
       value: briefPressureLabel,
-      note: '첫 잠금 뒤에는 네 데스크가 같은 기준으로만 움직여 중간에 판단축이 흔들리지 않습니다.',
+      note: '한 번 잠그면 네 데스크가 같은 독자, 톤, 분량 압력으로만 움직입니다.',
     },
     {
-      label: '지금 압력',
-      value:
-        state.generation.status === 'export-ready'
-          ? '발행 점검'
-          : `${currentRoleMeta.label} → ${nextRoleMeta?.label ?? '발행 데스크'}`,
-      note: actionHint,
-    },
-    {
-      label: '첫 화면 원칙',
+      label: '첫 화면 규율',
       value: '현재 · 다음 · 발행',
       note: state.generation.outputs.final_post
-        ? '발행 상태와 짧은 요약만 먼저 드러내고 전체 원고와 근거는 뒤쪽 서랍으로 남깁니다.'
-        : '지금 닫히는 데스크와 다음 인계만 전면에 두고 긴 산출물은 작업면 안쪽으로 밀어 둡니다.',
+        ? '긴 본문은 뒤로 접고 발행 요약과 복사 동작만 먼저 보이게 둡니다.'
+        : '지금 닫히는 데스크와 곧 열릴 데스크만 전면에 남겨 손에서 손으로 넘어가는 장면을 먼저 읽힙니다.',
     },
   ] as const
   const relaySignals = [
@@ -498,15 +490,47 @@ function App() {
       tone: nextRoleMeta ? 'next' : 'complete',
     },
   ] as const
-  const relayChecklist = [
-    '브리프는 한 번 잠그면 단계만 이동하고, 기준표는 끝까지 유지합니다.',
-    state.generation.outputs.final_post
-      ? '발행본은 요약을 먼저 읽고, 전체 원고는 필요할 때만 펼칩니다.'
-      : '긴 본문은 작업면 안쪽에서만 읽고 첫 화면에는 잠금 상황만 남깁니다.',
-    nextRoleMeta
-      ? `${nextRoleMeta.label} 책상은 ${nextRoleMeta.stageLabel} 인계를 기다리는 중입니다.`
-      : '이제 발행 전 마지막 읽기와 복사만 남았습니다.',
-  ]
+  const routePulse = [
+    {
+      label: '현재 닫힘',
+      value: `${currentRoleMeta.label} · ${currentRoleMeta.stageLabel}`,
+      note:
+        state.generation.status === 'initial'
+          ? '첫 브리프 잠금 전이라 리서처 데스크가 조용히 대기 중입니다.'
+          : currentRoleMeta.handoffSummary,
+    },
+    {
+      label: '다음 이동',
+      value: nextRoleMeta ? `${nextRoleMeta.label} · ${nextRoleMeta.stageLabel}` : '발행 점검',
+      note:
+        nextRoleMeta?.handoffSummary ??
+        '리뷰 반영 원고가 잠겨 복사와 마지막 읽기만 남았습니다.',
+    },
+    {
+      label: '발행 봉인',
+      value: state.generation.outputs.final_post ? '복사 가능한 발행본' : '리뷰 잠금 후 공개',
+      note: state.generation.outputs.final_post
+        ? '짧은 발행 요약과 복사 동작을 먼저 두고 전체 원고는 접힌 읽기 면 아래에 둡니다.'
+        : '리뷰어 단계가 닫혀야 발행대와 복사 버튼이 함께 열립니다.',
+    },
+  ] as const
+  const checkpointFacts = [
+    {
+      label: '잠긴 입력 계약',
+      value: briefPressureLabel,
+    },
+    {
+      label: '완료 데스크',
+      value:
+        state.generation.status === 'export-ready'
+          ? '4/4 데스크 완료'
+          : `${completedCount}/4 데스크 완료`,
+    },
+    {
+      label: '선택한 작업면',
+      value: `${selectedRoleMeta.label} · ${selectedRoleMeta.stageLabel}`,
+    },
+  ] as const
   const manifestPreview: Record<string, unknown> = {
     워크스페이스: '순차 파이프라인',
     현재_단계: currentStageLabel,
@@ -719,7 +743,7 @@ function App() {
             </div>
 
             <article className="hero-closing-card">
-              <span className="signal-label">야간 마감 데스크</span>
+              <span className="signal-label">봉인 관제석</span>
               <strong>
                 {state.generation.status === 'export-ready'
                   ? '네 데스크가 같은 원고를 끝까지 넘겨 봉인을 마쳤습니다. 이제 발행본 확인과 복사만 남았습니다.'
@@ -760,28 +784,12 @@ function App() {
               <p>{actionHint}</p>
             </article>
 
-            <div className="hero-command-strip">
-              {heroCommands.map((command) => (
-                <article key={command.label} className="hero-command-card">
-                  <span className="signal-label">{command.label}</span>
-                  <strong>{command.value}</strong>
-                  <p>{command.note}</p>
-                </article>
-              ))}
-            </div>
-
-            <div className="hero-sequence" aria-label="순차 인계 단계">
-              {roleTracker.map((role, index) => (
-                <article
-                  key={role.id}
-                  className={`hero-sequence-card hero-sequence-${role.status}`}
-                >
-                  <span className="hero-sequence-index">{`0${index + 1}`}</span>
-                  <div className="hero-sequence-copy">
-                    <strong>{role.label}</strong>
-                    <p>{role.stageLabel}</p>
-                  </div>
-                  <span className="hero-sequence-status">{roleStatusLabel(role.status)}</span>
+            <div className="hero-proof-grid">
+              {heroProofs.map((proof) => (
+                <article key={proof.label} className="hero-proof-card">
+                  <span className="signal-label">{proof.label}</span>
+                  <strong>{proof.value}</strong>
+                  <p>{proof.note}</p>
                 </article>
               ))}
             </div>
@@ -939,7 +947,7 @@ function App() {
         <div className="section-head">
           <p className="eyebrow">인계 레일</p>
           <h2 aria-label="Research results Outline Section drafts Review notes Final post">
-            지금 잠근 카드가 다음 책상을 여는 인계 레일
+            한 장씩 닫히며 다음 책상을 여는 봉인 레일
           </h2>
           <p className="tracker-intro">
             네 단계 전체를 한눈에 읽히게 두되, 처음 보이는 것은 현재 잠금과 다음 인계뿐입니다.
@@ -970,18 +978,12 @@ function App() {
                   ? '리뷰어 잠금까지 끝났으므로 이제 발행본 확인과 복사만 남았습니다.'
                   : actionHint}
             </p>
-            <div className="route-station-strip" aria-label="현재 인계와 다음 움직임">
-              {relaySignals.map((signal, index) => (
-                <article
-                  key={signal.label}
-                  className={`route-station-card route-station-${signal.tone}`}
-                >
-                  <div className="route-station-head">
-                    <span className="route-station-step">{`0${index + 1}`}</span>
-                    <span className="signal-label">{signal.label}</span>
-                  </div>
-                  <strong>{signal.value}</strong>
-                  <p>{signal.note}</p>
+            <div className="route-pulse-grid" aria-label="현재 인계와 다음 움직임">
+              {routePulse.map((item) => (
+                <article key={item.label} className="route-pulse-card">
+                  <span className="signal-label">{item.label}</span>
+                  <strong>{item.value}</strong>
+                  <p>{item.note}</p>
                 </article>
               ))}
             </div>
@@ -1034,17 +1036,6 @@ function App() {
           </div>
 
           <div className="checkpoint-docket">
-            <div className="role-meta checkpoint-meta">
-              <div>
-                <strong>현재 단계</strong>
-                <p>{currentRoleMeta.stageLabel}</p>
-              </div>
-              <div>
-                <strong>다음 행동</strong>
-                <p>{actionHint}</p>
-              </div>
-            </div>
-
             <div className="checkpoint-desk-grid">
               {checkpointHighlights.map((item, index) => (
                 <article
@@ -1070,11 +1061,14 @@ function App() {
               <p>{selectedRoleMeta.handoffSummary}</p>
             </article>
 
-            <ul className="checkpoint-rule-list">
-              {relayChecklist.map((item) => (
-                <li key={item}>{item}</li>
+            <div className="checkpoint-fact-grid">
+              {checkpointFacts.map((item) => (
+                <article key={item.label} className="checkpoint-fact-card">
+                  <span className="signal-label">{item.label}</span>
+                  <strong>{item.value}</strong>
+                </article>
               ))}
-            </ul>
+            </div>
           </div>
         </article>
 
@@ -1099,7 +1093,7 @@ function App() {
       >
         <div className="section-head">
           <p className="eyebrow">최종 원고</p>
-          <h2>리뷰 반영 뒤 잠긴 발행본 미리보기</h2>
+          <h2>검토 봉인 뒤 발행대로 옮긴 최종 원고</h2>
         </div>
 
         {state.generation.status === 'error' ? (
