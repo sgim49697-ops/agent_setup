@@ -1,25 +1,41 @@
 :root {
-  --paper: #eef2ff;
-  --panel: rgba(250, 252, 255, 0.95);
-  --line: rgba(17, 28, 68, 0.12);
-  --ink: #111c44;
-  --muted: #57637d;
-  --accent: #4a74ff;
-  --accent-strong: #3552ad;
-  --accent-cool: #157760;
+  --paper: #faf8ff;
+  --panel: rgba(255, 255, 255, 0.72);
+  --panel-strong: rgba(242, 243, 255, 0.84);
+  --line: rgba(67, 70, 86, 0.12);
+  --ink: #131b2e;
+  --muted: #515f74;
+  --accent: #0052ff;
+  --accent-strong: #003ec7;
+  --accent-cool: #274f97;
+  --accent-warm: #952200;
   --shadow-soft:
-    0 24px 44px rgba(17, 28, 68, 0.09),
-    0 8px 18px rgba(17, 28, 68, 0.05);
-  font-family:
-    'Space Grotesk',
-    'Segoe UI',
+    0 28px 54px rgba(19, 27, 46, 0.08),
+    0 10px 22px rgba(19, 27, 46, 0.04);
+  --shadow-ambient:
+    0 24px 44px rgba(19, 27, 46, 0.06),
+    0 8px 18px rgba(19, 27, 46, 0.03);
+  --font-body:
+    'Noto Sans KR',
+    'Apple SD Gothic Neo',
+    'Malgun Gothic',
     sans-serif;
+  --font-display:
+    'Manrope',
+    'Noto Sans KR',
+    sans-serif;
+  --font-label:
+    'Manrope',
+    'Noto Sans KR',
+    sans-serif;
+  font-family: var(--font-body);
   line-height: 1.5;
   font-weight: 400;
   color: var(--ink);
   background:
-    radial-gradient(circle at top left, rgba(74, 116, 255, 0.14), transparent 28%),
-    linear-gradient(180deg, #f6f8ff, #e8edff);
+    radial-gradient(circle at top left, rgba(0, 82, 255, 0.14), transparent 28%),
+    radial-gradient(circle at right top, rgba(149, 34, 0, 0.08), transparent 24%),
+    linear-gradient(180deg, #faf8ff, #e9eeff);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -45,10 +61,7 @@ button,
 input,
 select,
 textarea {
-  font-family:
-    'Space Grotesk',
-    'Segoe UI',
-    sans-serif;
+  font-family: var(--font-body);
 }
 
 button,
@@ -70,10 +83,7 @@ h1,
 h2,
 h3,
 h4 {
-  font-family:
-    'Fraunces',
-    Georgia,
-    serif;
+  font-family: var(--font-display);
   line-height: 1.05;
   color: var(--ink);
 }

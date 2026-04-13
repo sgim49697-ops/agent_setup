@@ -15,34 +15,34 @@ import type {
 import { checklistLabels, requiredLoops } from './starterData'
 
 const audienceLens: Record<Audience, string> = {
-  beginner: 'first-time builders who need a guided path and explicit signposting',
-  practitioner: 'shipping teams that care about confidence, pace, and predictable quality gates',
-  advanced: 'staff-level readers who expect sharper trade-offs and fewer hand-wavy claims',
+  beginner: '안내 표지와 단계별 맥락이 분명해야 움직일 수 있는 첫 실무 도입 팀',
+  practitioner: '확신, 속도, 예측 가능한 품질 게이트를 함께 챙기는 운영 팀',
+  advanced: '날카로운 트레이드오프와 느슨하지 않은 근거를 기대하는 시니어 독자',
 }
 
 const toneLens: Record<Tone, string> = {
-  clear: 'plainspoken and explanatory',
-  pragmatic: 'delivery-first and operational',
-  opinionated: 'assertive without losing evidence or implementation detail',
+  clear: '설명은 또렷하게, 판단은 차분하게',
+  pragmatic: '실행 우선의 운영 톤으로',
+  opinionated: '단호하되 근거와 구현 맥락은 놓치지 않게',
 }
 
 const lengthLens: Record<Length, string> = {
-  short: 'a concise four-minute read',
-  medium: 'a balanced six-minute read',
-  long: 'a deeper eight-minute read',
+  short: '4분 안에 핵심을 끊어 읽는 짧은 구성',
+  medium: '6분 안에 균형 있게 읽는 중간 구성',
+  long: '8분까지 깊게 파고드는 긴 구성',
 }
 
 const verificationLabels = [
-  'Scaffold validation',
-  'Writer build gate',
-  'Loop 1 full check',
-  'Loop 2 regression check',
-  'Loop 3 comparison pulse',
-  'Loop 4 evaluation pulse',
-  'Loop 5 validation pulse',
-  'Loop 6 comparison pulse',
-  'Loop 7 evaluation pulse',
-  'Loop 8 release confirmation',
+  '스캐폴드 검증',
+  '작성 초안 빌드 게이트',
+  '1차 전체 점검',
+  '2차 회귀 점검',
+  '3차 비교 펄스',
+  '4차 평가 펄스',
+  '5차 검증 펄스',
+  '6차 비교 펄스',
+  '7차 평가 펄스',
+  '8차 출고 확인',
 ]
 
 const verdictThresholds = [
@@ -59,49 +59,49 @@ const verdictThresholds = [
 
 const reviewerNotes = [
   {
-    fail: 'The contract is still too loose: edge-case guarding and input guidance are not convincing yet.',
-    partial: 'The input contract is mostly present, but validation and helper messaging still need a stricter pass.',
-    pass: 'Inputs, labels, helper copy, and edge-case guards now match the benchmark contract cleanly.',
+    fail: '입력 계약이 아직 느슨합니다. 예외 케이스 방어와 입력 가이드가 충분히 설득력 있지 않습니다.',
+    partial: '입력 계약의 뼈대는 잡혔지만, 검증 문구와 보조 안내를 더 엄격하게 다듬어야 합니다.',
+    pass: '입력, 라벨, 도움말, 예외 방어가 benchmark 계약과 자연스럽게 맞물립니다.',
   },
   {
-    fail: 'The stage flow exists, but the transitions still feel implied instead of explicitly staged.',
-    partial: 'The five stages are visible, but the handoff between them needs more confidence and narrative clarity.',
-    pass: 'The stage flow now reads as one dependable pipeline from research to final export.',
+    fail: '단계는 존재하지만 전환이 암시 수준에 머뭅니다. 실제 handoff처럼 읽히지 않습니다.',
+    partial: '다섯 단계는 보이지만, 단계 간 handoff를 더 자신감 있게 설명해야 합니다.',
+    pass: '연구부터 최종 내보내기까지 하나의 견고한 파이프라인으로 읽힙니다.',
   },
   {
-    fail: 'State messaging is too soft: loading, review-complete, and export readiness do not feel distinct enough.',
-    partial: 'Most states are distinct, but the copy and timing still need to feel safer under repeated evaluation.',
-    pass: 'All six states are distinct, narrated, and safe under repeated replay.',
+    fail: '상태 문구가 약합니다. 진행 중, 검토 완료, 내보내기 가능 상태가 또렷하게 갈리지 않습니다.',
+    partial: '대부분의 상태는 구분되지만, 반복 평가를 견디기에는 문구와 타이밍이 더 단단해야 합니다.',
+    pass: '여섯 가지 상태가 모두 또렷하고, 반복 재생에서도 안전하게 읽힙니다.',
   },
   {
-    fail: 'The forced failure path still lacks obvious recovery guidance and a crisp alert treatment.',
-    partial: 'The alert path exists, but the recovery message needs to be more direct for users.',
-    pass: 'The error path is explicit, recoverable, and benchmark-visible through role="alert".',
+    fail: '강제 실패 경로에 복구 안내가 약하고, 경고 처리도 선명하지 않습니다.',
+    partial: '알림 경로는 있으나, 복구 메시지를 사용자 관점에서 더 직설적으로 정리해야 합니다.',
+    pass: '오류 경로가 명확하고 복구 가능하며, role="alert"로 benchmark에도 드러납니다.',
   },
   {
-    fail: 'Copy behavior still feels optimistic: export gating and fallback messaging are not strict enough.',
-    partial: 'Copy is conditionally gated, but the success/failure feedback needs clearer user-facing wording.',
-    pass: 'Export is safely gated and clipboard feedback is visible in both success and fallback cases.',
+    fail: '복사 동작이 아직 낙관적입니다. 내보내기 잠금과 실패 폴백 문구가 충분히 엄격하지 않습니다.',
+    partial: '복사는 조건부로 잠기지만, 성공/실패 피드백을 더 명확한 사용자 언어로 정리해야 합니다.',
+    pass: '내보내기가 안전하게 잠기고, 클립보드 성공/실패 피드백이 모두 선명합니다.',
   },
   {
-    fail: 'The layout survives desktop, but mobile density and card flow still feel crowded.',
-    partial: 'Responsive behavior is serviceable, yet a few dense areas still need better spacing or wrapping.',
-    pass: 'Desktop and mobile both preserve action visibility, hierarchy, and readable density.',
+    fail: '데스크톱은 버티지만 모바일 밀도와 카드 흐름이 여전히 답답합니다.',
+    partial: '반응형 동작은 가능하지만, 몇몇 밀집 구간은 간격과 줄바꿈을 더 손봐야 합니다.',
+    pass: '데스크톱과 모바일 모두에서 행동 유도, 위계, 읽기 밀도를 안정적으로 유지합니다.',
   },
   {
-    fail: 'Semantic controls exist, but live region coverage and keyboard flow still need a harder pass.',
-    partial: 'Accessibility basics are mostly in place, though a few status or focus details still need tightening.',
-    pass: 'aria-live, semantic controls, labels, and keyboard flow all hold up cleanly.',
+    fail: '시맨틱 컨트롤은 있으나, live region 범위와 키보드 흐름을 더 엄격히 다뤄야 합니다.',
+    partial: '접근성 기본기는 대부분 맞지만, 상태 전달과 포커스 흐름의 세부가 아직 느슨합니다.',
+    pass: 'aria-live, 시맨틱 컨트롤, 라벨, 키보드 흐름이 모두 안정적으로 맞물립니다.',
   },
   {
-    fail: 'The page still looks more like a scaffold than a deliberate product surface.',
-    partial: 'The visual system is emerging, but hierarchy and rhythm still need another polish pass.',
-    pass: 'Typography, spacing, palette, and emphasis now feel deliberate and consistent.',
+    fail: '페이지가 아직도 완성된 제품보다 스캐폴드에 가깝게 보입니다.',
+    partial: '시각 시스템은 잡혔지만, 위계와 리듬을 한 번 더 다듬어야 합니다.',
+    pass: '타이포그래피, 간격, 팔레트, 강조 체계가 의도적으로 느껴집니다.',
   },
   {
-    fail: 'The loop exists conceptually, but the proof trail across runtime and artifacts is not strong enough yet.',
-    partial: 'The loop trace is visible, but verification cadence and evidence density can still be stronger.',
-    pass: 'The loop and verification process are visible in both the UI and the workspace artifacts.',
+    fail: '루프 개념은 보이지만 런타임과 아티팩트 전반의 증거 선이 아직 약합니다.',
+    partial: '루프 추적은 보이지만, 검증 리듬과 증거 밀도를 더 강화할 수 있습니다.',
+    pass: '루프와 검증 과정이 UI와 워크스페이스 아티팩트 양쪽에서 함께 드러납니다.',
   },
 ] as const
 
@@ -126,18 +126,18 @@ function isoAt(iteration: number) {
 
 function buildOutline(topic: string, audience: Audience, length: Length, iteration: number) {
   const titles = [
-    `Why ${topic} needs a harder quality bar`,
-    `Signals that should drive the recommendation`,
-    `${audience === 'advanced' ? 'Systems-level' : audience === 'beginner' ? 'First-rollout' : 'Delivery-team'} operating plan`,
-    'What the reviewer keeps blocking until the argument is credible',
-    'How repeated verification turns a draft into a release candidate',
-    'Final release checklist and next moves',
+    `${topic}에 더 엄격한 품질 기준이 필요한 이유`,
+    '추천안을 밀어 올리는 핵심 신호',
+    `${audience === 'advanced' ? '시스템 관점' : audience === 'beginner' ? '첫 도입 관점' : '운영 팀 관점'} 실행 계획`,
+    '주장이 설득력을 얻기 전까지 리뷰어가 계속 막아 세우는 지점',
+    '반복 검증이 초안을 승인 후보로 바꾸는 방식',
+    '최종 출고 체크리스트와 다음 행동',
   ]
 
   const count = length === 'short' ? 3 : length === 'medium' ? 5 : 6
   return titles.slice(0, count).map((title, index) => {
-    if (iteration <= 2 && index === count - 1) return 'Rough close that still needs a stronger release frame'
-    if (iteration <= 5 && index === 0) return title.replace('harder quality bar', 'disciplined quality bar')
+    if (iteration <= 2 && index === count - 1) return '출고 프레임을 더 세게 잡아야 하는 거친 마무리'
+    if (iteration <= 5 && index === 0) return title.replace('더 엄격한 품질 기준', '더 절제된 품질 기준')
     return title
   })
 }
@@ -154,14 +154,14 @@ function buildResearchSummary(
   const lengthSummary = lengthLens[length]
 
   return [
-    `${topic} is being framed for ${audienceSummary}, and each loop trims away claims that do not help that audience act.`,
-    `The tone target remains ${toneSummary}, but the reviewer keeps checking whether confidence is matched by usable specifics.`,
-    `The piece is aiming for ${lengthSummary}, so each iteration forces another pass on density, transitions, and payoff.`,
+    `${topic}은 ${audienceSummary}를 위해 다시 프레이밍되며, 각 루프는 행동에 도움이 되지 않는 주장부터 잘라 냅니다.`,
+    `톤 목표는 ${toneSummary}이며, 리뷰어는 자신감이 실제로 쓸모 있는 구체성으로 이어지는지 계속 확인합니다.`,
+    `글은 ${lengthSummary}을 목표로 하므로, 매 반복마다 밀도, 전환, 결론 설득력을 다시 손봅니다.`,
     iteration < 4
-      ? 'Early loops still tolerate rough edges so the optimizer has real work to do.'
+      ? '초기 루프는 거친 모서리를 일부 남겨 두어 수정자가 실제로 개입할 여지를 확보합니다.'
       : iteration < 8
-        ? 'Middle loops focus on state clarity, mobile density, and removal of leftover scaffold language.'
-        : 'Late loops focus on coherence, polish, and whether the evidence pack matches the runtime story.',
+        ? '중반 루프는 상태 명확성, 모바일 밀도, 남아 있는 스캐폴드 문구 제거에 집중합니다.'
+        : '후반 루프는 일관성, 마감 품질, 증거 팩과 런타임 서사가 같은 방향을 가리키는지에 집중합니다.',
   ]
 }
 
@@ -170,23 +170,23 @@ function buildSectionBody(audience: Audience, tone: Tone, title: string, index: 
   const voice = toneLens[tone]
   const maturityLine =
     iteration <= 2
-      ? 'The opening version still sounds like an internal workshop note.'
+      ? '첫 버전은 아직 내부 워크숍 메모처럼 거칠게 들립니다.'
       : iteration <= 6
-        ? 'The middle loops cut repetition and force each paragraph to prove its place.'
-        : 'The late loops keep only the sections that move the reader closer to a confident decision.'
+        ? '중반 루프는 반복을 덜어 내고, 각 문단이 자기 자리를 증명하도록 밀어붙입니다.'
+        : '후반 루프는 독자를 더 확신 있는 판단으로 이끄는 섹션만 남깁니다.'
 
   const bridgeLine =
     index % 2 === 0
-      ? `For ${readerLens}, that means turning broad curiosity into a sequence of dependable checks.`
-      : `The voice stays ${voice}, so the post feels deliberate instead of decorative.`
+      ? `${readerLens}에게 필요한 것은 막연한 호기심을 신뢰 가능한 점검 순서로 바꾸는 일입니다.`
+      : `문체는 ${voice}을 유지해, 글이 장식적이기보다 의도적으로 느껴지게 합니다.`
 
-  return `${title}. ${maturityLine} ${bridgeLine} The optimizer now treats transitions, evidence, and next-step clarity as one connected problem.`
+  return `${title}. ${maturityLine} ${bridgeLine} 이제 수정자는 전환, 근거, 다음 행동의 명확성을 하나의 연결된 문제로 다룹니다.`
 }
 
 function buildTakeaway(iteration: number) {
-  if (iteration <= 3) return 'Leave obvious roughness visible so the reviewer can meaningfully intervene.'
-  if (iteration <= 7) return 'Use the loop to convert structural criticism into concrete UI and content fixes.'
-  return 'Only export the post when the runtime and the artifact trail both support the same release story.'
+  if (iteration <= 3) return '리뷰어가 실제로 개입할 수 있도록 눈에 띄는 거침을 일부 남겨 둡니다.'
+  if (iteration <= 7) return '구조적 비판을 실제 UI 수정과 본문 수정으로 바꾸는 데 루프를 사용합니다.'
+  return '런타임과 아티팩트 선이 같은 출고 서사를 지지할 때만 내보냅니다.'
 }
 
 function buildSectionDrafts(audience: Audience, tone: Tone, outline: string[], iteration: number) {
@@ -200,24 +200,24 @@ function buildSectionDrafts(audience: Audience, tone: Tone, outline: string[], i
 function buildReviewNotes(topic: string, iteration: number) {
   if (iteration <= 2) {
     return [
-      `${topic} has the right skeleton, but it still feels like a rough pass that the evaluator does not yet trust.`,
-      'The reviewer wants clearer state semantics, stronger release framing, and safer export behavior.',
-      'Visual direction exists, but it is still closer to a harness scaffold than a fully intentional surface.',
+      `${topic}은 뼈대는 맞지만, 평가자가 아직 신뢰하지 않는 거친 초안에 더 가깝습니다.`,
+      '리뷰어는 더 선명한 상태 의미, 더 강한 출고 프레이밍, 더 안전한 내보내기 동작을 요구합니다.',
+      '시각 방향성은 보이지만, 완성된 제품 표면보다 하네스 스캐폴드에 더 가깝습니다.',
     ]
   }
 
   if (iteration <= 6) {
     return [
-      `${topic} is getting more credible as the flow tightens and benchmark selectors remain stable.`,
-      'The reviewer focus has shifted from missing structure to weak clarity, dense cards, and softer transitions.',
-      'Repeated evaluation is now exposing smaller issues, which is a good sign that the core flow is stable.',
+      `${topic}은 흐름이 조여지고 benchmark 셀렉터가 안정되면서 점점 더 설득력을 얻고 있습니다.`,
+      '리뷰 포인트는 구조 부재에서 벗어나, 약한 명확성, 과밀한 카드, 무른 전환으로 이동했습니다.',
+      '반복 평가가 더 작은 문제를 드러내기 시작했다는 점은 핵심 흐름이 안정됐다는 신호입니다.',
     ]
   }
 
   return [
-    `${topic} now reads like a publishable article, not a collection of promising notes.`,
-    'The reviewer is mostly watching for regressions: mobile density, aria-live fidelity, and export safety.',
-    'The evidence pack and the visible runtime loop now reinforce the same quality story.',
+    `${topic}은 이제 가능성 있는 메모 묶음이 아니라 실제로 출고 가능한 글처럼 읽힙니다.`,
+    '리뷰어는 이제 모바일 밀도, aria-live 충실도, 내보내기 안전성 같은 회귀만 주시합니다.',
+    '증거 팩과 화면의 런타임 루프가 이제 같은 품질 서사를 강화합니다.',
   ]
 }
 
@@ -236,16 +236,16 @@ function buildVerdictRows(iteration: number): ChecklistRow[] {
 
 function buildOptimizerChanges(iteration: number) {
   const library = [
-    'Rebuilt the starter into a visible gauntlet timeline with ten loop checkpoints.',
-    'Separated state messaging so initial, loading, populated, review-complete, export-ready, and error all speak differently.',
-    'Strengthened error gating and recovery copy for fail/error-prefixed topics.',
-    'Locked Copy markdown behind the release gate and added explicit fallback feedback.',
-    'Expanded the responsive grid so timeline, review, and evidence surfaces remain usable on mobile.',
-    'Tightened typography, spacing rhythm, and card contrast to reduce scaffold feel.',
-    'Aligned runtime copy with reviewer counts so the visible loop does not overclaim progress.',
-    'Added a verification gauntlet surface so compare/evaluate/validate pressure is visible in the UI.',
-    'Refined final article transitions and the close so the post feels like one argument.',
-    'Locked the release candidate to the tenth loop and promoted only the all-PASS verdict table.',
+    '시작 화면을 10개 루프 체크포인트가 드러나는 건틀릿 타임라인으로 재구성했습니다.',
+    '시작 전, 진행 중, 중간 검토, 검토 완료, 내보내기 가능, 오류 상태가 서로 다른 목소리로 읽히도록 분리했습니다.',
+    'fail/error 접두 토픽에 대한 오류 잠금과 복구 문구를 강화했습니다.',
+    '마크다운 복사를 최종 승인 게이트 뒤로 잠그고 실패 폴백 피드백을 분명히 추가했습니다.',
+    '타임라인, 리뷰, 증거 표면이 모바일에서도 무너지지 않도록 반응형 그리드를 넓혔습니다.',
+    '스캐폴드 느낌을 줄이기 위해 타이포그래피, 간격 리듬, 카드 대비를 다듬었습니다.',
+    '화면의 런타임 카피가 리뷰어 판정 수와 어긋나지 않도록 정렬했습니다.',
+    '비교, 평가, 검증 압력이 UI에 보이도록 별도의 검증 건틀릿 표면을 추가했습니다.',
+    '최종 원고의 전환과 맺음을 다듬어, 글이 하나의 주장처럼 읽히게 만들었습니다.',
+    '열 번째 루프만 승인 후보가 되도록 고정하고, 전부 PASS인 판정표만 최종 승격했습니다.',
   ]
 
   const count = Math.min(3 + Math.floor(iteration / 2), library.length)
@@ -254,12 +254,12 @@ function buildOptimizerChanges(iteration: number) {
 
 function buildIterationMarkdown(topic: string, iteration: number, outline: string[], reviewNotes: string[]) {
   return [
-    `## Iteration ${iteration} snapshot`,
+    `## ${iteration}차 반복 스냅샷`,
     '',
-    `- Topic: ${topic}`,
-    `- Active outline nodes: ${outline.length}`,
-    `- Review focus: ${reviewNotes[0]}`,
-    `- Release status: ${iteration >= requiredLoops ? 'final gate cleared' : 'still under review'}`,
+    `- 주제: ${topic}`,
+    `- 활성 개요 수: ${outline.length}`,
+    `- 현재 리뷰 초점: ${reviewNotes[0]}`,
+    `- 출고 상태: ${iteration >= requiredLoops ? '최종 게이트 통과' : '아직 검토 중'}`,
   ].join('\n')
 }
 
@@ -275,10 +275,10 @@ function buildFinalArticle(
   const sizeLabel = lengthLens[length]
   const mergedSections = buildSectionDrafts(audience, tone, outline, requiredLoops)
 
-  const intro = `${topic} becomes easier to trust when the article shows how rough drafts, reviewer pressure, and repeated verification work together instead of pretending a first answer is already release-ready. This version is tuned for ${audienceSummary} and keeps the voice ${toneSummary} while staying close to ${sizeLabel}.`
+  const intro = `${topic}은 첫 답변을 곧바로 출고 가능한 결과처럼 포장하지 않고, 거친 초안과 리뷰 압력, 반복 검증이 어떻게 함께 움직이는지 보여 줄 때 더 신뢰를 얻습니다. 이 버전은 ${audienceSummary}를 기준으로 맞췄고, ${toneSummary}의 목소리를 유지하면서 ${sizeLabel}에 가까운 밀도로 정리했습니다.`
 
   const closing =
-    'The durable lesson is simple: do not trust a promising draft until the runtime, the review table, and the artifact trail all say the same thing. Repeated evaluation is not ceremony — it is what turns a plausible explanation into a dependable release candidate.'
+    '오래 남는 교훈은 단순합니다. 런타임, 리뷰 표, 아티팩트 선이 모두 같은 말을 하기 전까지는 그럴듯한 초안을 신뢰하지 마십시오. 반복 평가는 의식적인 절차가 아니라, 가능성 있는 설명을 실제 승인 후보로 바꾸는 과정입니다.'
 
   const markdown = [
     `# ${topic}`,
@@ -293,7 +293,7 @@ function buildFinalArticle(
       `> ${section.takeaway}`,
       '',
     ]),
-    '## Closing',
+    '## 마무리',
     '',
     closing,
   ].join('\n')
@@ -310,12 +310,12 @@ function buildVerificationCycles(): VerificationCycle[] {
     evaluate: 'pass',
     delta:
       index === 0
-        ? 'Workspace structure exists and the gauntlet scaffold is wired into the repo.'
+        ? '워크스페이스 구조가 준비되었고, 건틀릿 스캐폴드가 저장소 흐름에 연결되었습니다.'
         : index < 4
-          ? 'Early loops still expose real defects, but structure and baseline behavior stay intact.'
+          ? '초기 루프는 여전히 실제 결함을 드러내지만, 구조와 기본 동작은 안정적으로 유지됩니다.'
           : index < 8
-            ? 'Mid-loop evaluations confirm smoke/build stability while subjective quality rises.'
-            : 'Late-loop verification shows the release candidate surviving repeated compare/evaluate/validate pressure.',
+            ? '중반 평가에서는 smoke/build 안정성이 유지되는 가운데 주관 점수가 올라갑니다.'
+            : '후반 검증은 승인 후보가 반복 비교·평가·검증 압력을 견디는지 보여 줍니다.',
   }))
 }
 
@@ -343,7 +343,12 @@ export function generatePipelineOutputs(inputs: BlogGeneratorInputs): PipelineOu
       partialCount: counts.partialCount,
       failCount: counts.failCount,
       optimizerChanges: buildOptimizerChanges(iteration),
-      buildStatus: iteration === 1 ? 'rough build verified' : iteration < requiredLoops ? `loop ${iteration} build verified` : 'release build verified',
+      buildStatus:
+        iteration === 1
+          ? '거친 초안 빌드 확인'
+          : iteration < requiredLoops
+            ? `${iteration}차 루프 빌드 확인`
+            : '출고 후보 빌드 확인',
       needsAnotherLoop: iteration < requiredLoops,
       researchSummary: buildResearchSummary(topic, inputs.audience, inputs.tone, inputs.length, iteration),
       outline,

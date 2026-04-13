@@ -2,6 +2,14 @@
 // smoke_flow.md + ui_contract.md 에 정의된 필수 요소를 기계적으로 검증한다.
 import { test, expect } from '@playwright/test'
 
+const stageTestIds = {
+  research: 'stage-research',
+  outline: 'stage-outline',
+  drafts: 'stage-drafts',
+  review: 'stage-review',
+  final: 'stage-final',
+} as const
+
 // ─── L1-1: 필수 입력 필드 존재 ───
 
 test('입력 필드: Topic이 존재한다', async ({ page }) => {
@@ -51,21 +59,12 @@ test('플로우: Generate → 5단계 산출물이 모두 나타난다', async (
   const generateBtn = page.getByRole('button', { name: /generate post/i })
   await generateBtn.click()
 
-  // 각 단계 영역에 콘텐츠가 채워지는지 확인 (최대 15초 대기)
-  // Research results
-  await expect(page.getByText('Research results').first()).toBeVisible({ timeout: 15_000 })
-
-  // Outline
-  await expect(page.getByText('Outline').first()).toBeVisible({ timeout: 15_000 })
-
-  // Section drafts
-  await expect(page.getByText('Section drafts').first()).toBeVisible({ timeout: 15_000 })
-
-  // Review notes
-  await expect(page.getByText('Review notes').first()).toBeVisible({ timeout: 15_000 })
-
-  // Final post
-  await expect(page.getByText('Final post').first()).toBeVisible({ timeout: 15_000 })
+  // 각 단계 영역이 안정적 test hook으로 유지되는지 확인 (최대 15초 대기)
+  await expect(page.getByTestId(stageTestIds.research)).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByTestId(stageTestIds.outline)).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByTestId(stageTestIds.drafts)).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByTestId(stageTestIds.review)).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByTestId(stageTestIds.final)).toBeVisible({ timeout: 15_000 })
 })
 
 test('플로우: 최종 포스트가 비어있지 않다', async ({ page }) => {
