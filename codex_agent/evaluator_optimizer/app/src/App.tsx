@@ -72,11 +72,11 @@ const phaseCopy: Record<IterationPhase, string> = {
 }
 
 const statusBadgeCopy: Record<GenerationStatus, string> = {
-  initial: '대기',
-  loading: '재생 중',
+  initial: '시작 전',
+  loading: '진행 중',
   populated: '검토 중',
-  'review-complete': '리뷰 완료',
-  'export-ready': '내보내기 가능',
+  'review-complete': '검토 완료',
+  'export-ready': '복사 가능',
   error: '복구 필요',
 }
 
@@ -222,6 +222,7 @@ function App() {
   const [readerSurface, setReaderSurface] = useState<ReaderSurface>('research')
   const runTokenRef = useRef(0)
   const readerTabRefs = useRef<Array<HTMLButtonElement | null>>([])
+  const iterationButtonRefs = useRef<Array<HTMLButtonElement | null>>([])
 
   useEffect(() => {
     return () => {
@@ -238,6 +239,9 @@ function App() {
     state.outputs && state.revealedIterations >= 3 ? state.outputs.final_article : null
   const hasLoopStarted = state.status !== 'initial'
   const repairRows = selectedIteration?.verdictRows.filter((row) => row.verdict !== 'PASS') ?? []
+  const heroLead = hasLoopStarted
+    ? '첫 화면에는 지금 상태와 다음 할 일만 남기고, 반복별 문제와 수정 응답은 아래 기록 영역으로 분리했습니다.'
+    : '긴 리포트 대신 지금 상태, 브리프, 복사 가능 시점만 남긴 교정 데스크입니다. 세 번의 반복이 끝난 뒤에만 승인본이 열립니다.'
   const loopStatus =
     state.status === 'initial'
       ? '아직 첫 초안이 시작되지 않았습니다.'
@@ -250,28 +254,28 @@ function App() {
             : `${selectedIteration?.iteration ?? 0}차 루프가 현재 화면에 열려 있습니다.`
   const currentGateTitle =
     state.status === 'initial'
-      ? '브리프 정렬'
+      ? '브리프 확인'
       : state.status === 'loading' && state.revealedIterations === 0
-        ? '1차 초안 생성'
+        ? '1차 초안 작성 중'
         : state.status === 'loading'
-          ? `${Math.min(state.revealedIterations + 1, 3)}차 리뷰 게이트`
+          ? `${Math.min(state.revealedIterations + 1, 3)}차 검토 진행 중`
           : state.status === 'error'
-            ? '브리프 복구'
+            ? '브리프 수정 필요'
             : state.status === 'export-ready'
-              ? '출시 승인'
-              : `${state.revealedIterations}차 루프 고정`
+              ? '최종 원고 검토'
+              : `${state.revealedIterations}차 수정 확인`
   const currentGateBody =
     state.status === 'initial'
-      ? '브리프를 좁혀 첫 초안을 열기 전, 주제와 독자 방향을 맞추는 단계입니다.'
+      ? '첫 초안을 열기 전에 주제와 독자 방향을 맞추는 단계입니다.'
       : state.status === 'loading' && state.revealedIterations === 0
-        ? '작성자가 1차 초안을 세우는 중이라 아직 리뷰 이력 레일이 열리지 않았습니다.'
+        ? '작성자가 1차 초안을 만들고 있어 아직 반복 기록이 열리지 않았습니다.'
         : state.status === 'loading'
-          ? `${Math.min(state.revealedIterations + 1, 3)}차 리뷰 게이트에서 남은 막힘 항목을 순서대로 닫는 중입니다.`
+          ? `${Math.min(state.revealedIterations + 1, 3)}차에서 남은 문제를 순서대로 정리하는 중입니다.`
           : state.status === 'error'
-            ? '토픽 분류에서 루프가 멈췄습니다. 브리프를 정리한 뒤 다시 실행해 복구해야 합니다.'
+            ? '토픽 분류에서 멈췄습니다. 브리프를 고친 뒤 다시 시작해야 합니다.'
             : state.status === 'export-ready'
-              ? '승인 게이트가 닫혀 이제는 수정보다 최종 검토와 복사 판단이 중심입니다.'
-              : `${selectedIteration?.iteration ?? state.revealedIterations}차 반복의 막힘 항목과 수정 응답을 대조하는 구간입니다.`
+              ? '수정보다 최종 원고 흐름과 복사 시점 확인이 중심입니다.'
+              : `${selectedIteration?.iteration ?? state.revealedIterations}차에서 막힘 항목과 수정 응답을 대조하는 중입니다.`
   const nextActionTitle =
     state.status === 'initial'
       ? '첫 루프 시작'
@@ -281,55 +285,55 @@ function App() {
           ? '토픽 수정 후 재실행'
           : state.status === 'export-ready'
             ? '원고 검토 또는 복사'
-            : `${selectedIteration?.iteration ?? state.revealedIterations}차 확인`
+            : `${selectedIteration?.iteration ?? state.revealedIterations}차 내용 확인`
   const nextActionBody =
     state.status === 'initial'
       ? '브리프를 확인한 뒤 생성 버튼을 눌러 작성자-리뷰어-수정자 루프를 시작하세요.'
       : state.status === 'loading'
         ? '지금은 리뷰어와 수정자가 같은 브리프를 이어받아 수정을 쌓는 중입니다.'
-        : state.status === 'error'
+      : state.status === 'error'
           ? '주제 앞의 강제 실패 접두어를 제거하고 다시 생성해 복구하세요.'
         : state.status === 'export-ready'
-            ? '승인 게이트가 열렸으니 이제는 수리보다 내보내기와 최종 검토가 중심입니다.'
-            : '보이는 루프를 선택하고 막힘 항목을 읽은 뒤, 수정 응답이 충분한지 확인하세요.'
+            ? '복사 경로가 열렸으니 최종 원고를 읽고 바로 복사하면 됩니다.'
+            : '반복 기록에서 원하는 차수를 선택한 뒤, 수정 응답이 충분한지 확인하세요.'
   const remainingLoops = Math.max(3 - state.revealedIterations, 0)
   const exportLockTitle =
     finalArticle || state.status === 'export-ready'
-      ? '내보내기 열림'
-      : `${remainingLoops}회 남음`
+      ? '지금 복사 가능'
+      : `${remainingLoops}회 더 필요`
   const exportLockBody =
     finalArticle || state.status === 'export-ready'
-      ? `3차 반복이 ${state.outputs?.loop_summary.lastIterationPassCount ?? 0}/9 게이트를 통과해 복사 경로를 열었습니다.`
-      : '3차 반복이 승인 게이트를 닫기 전까지는 내보내기가 잠긴 상태로 유지됩니다.'
+      ? `3차 반복이 ${state.outputs?.loop_summary.lastIterationPassCount ?? 0}/9 기준을 통과해 복사 경로를 열었습니다.`
+      : '세 번째 반복이 끝나기 전까지는 복사와 승인 원고 공개가 잠긴 상태로 유지됩니다.'
   const gateCards = [
     {
       id: 'current',
-      label: '현재 게이트',
+      label: '현재 상태',
       title: currentGateTitle,
       body: currentGateBody,
       note: loopStatus,
     },
     {
       id: 'action',
-      label: '다음 행동',
+      label: '다음 할 일',
       title: nextActionTitle,
       body: nextActionBody,
       note: state.isGenerating
         ? '작성자, 리뷰어, 수정자가 같은 브리프를 이어받아 순차적으로 재생합니다.'
-        : '루프를 열기 전까지는 브리프와 첫 행동만 남겨 첫 화면 밀도를 낮춥니다.',
+        : '브리프를 확인하고 첫 생성을 누르면 반복 기록이 열립니다.',
     },
   ] as const
   const approvalDeskCards = [
     ...gateCards,
     {
       id: 'export',
-      label: '승인 잠금',
+      label: '복사 가능 시점',
       title: exportLockTitle,
       body: exportLockBody,
       note:
         state.status === 'export-ready'
-          ? '승인된 3차 반복만 복사 경로를 열고, 그 이전 기록은 참고 장부로만 남깁니다.'
-          : '3차 승인 게이트가 닫히기 전까지는 복사와 출시 판단을 잠근 상태로 유지합니다.',
+          ? '세 번째 승인본만 복사 경로를 열고, 이전 반복은 참고 기록으로만 남깁니다.'
+          : '세 번째 반복이 끝나기 전까지는 복사와 최종 공개가 잠겨 있습니다.',
     },
   ] as const
   const readerTabs = [
@@ -338,72 +342,28 @@ function App() {
     { id: 'drafts', label: '섹션 초안' },
     { id: 'review', label: '리뷰 메모' },
   ] as const
-  const loopPreview = [
-    { step: '1차', label: '초안 세움' },
-    { step: '2차', label: '수정 압축' },
-    { step: '3차', label: '승인 잠금' },
-  ] as const
+  const iterationSteps = [1, 2, 3] as const
   const heroSignals = [
     {
-      label: '승인 잠금',
+      label: '복사 가능 시점',
       value: exportLockTitle,
       note: finalArticle ? '3차 승인본에서만 복사가 열립니다.' : '승인 전에는 복사 경로가 잠겨 있습니다.',
     },
     {
-      label: '집중 루프',
+      label: '현재 진행',
       value: selectedIteration ? `${selectedIteration.iteration}차 반복` : '첫 루프 대기',
       note: selectedIteration ? formatCounts(selectedIteration) : '브리프를 맞춘 뒤 첫 초안을 엽니다.',
     },
   ] as const
-  const proofDeskTitle =
-    state.status === 'initial'
-      ? '첫 승인판을 여는 준비'
-      : state.status === 'loading'
-        ? '편집실이 현재 루프를 정리 중입니다'
-        : state.status === 'export-ready'
-          ? '출시 직전 승인판'
-          : `${selectedIteration?.iteration ?? state.revealedIterations}차 승인판 검토`
-  const proofDeskBody =
-    state.status === 'initial'
-      ? '브리프, 다음 행동, 승인 잠금을 한 장의 편집 데스크로 모아 첫 루프 진입 전 판단만 남겼습니다.'
-      : repairRows.length > 0
-        ? '리뷰어가 막는 항목과 수정자가 되받아친 응답을 한 덩어리의 승인 카드 안에서 비교하도록 재구성했습니다.'
-        : '열린 수리 항목이 없어 이제는 승인본 검토와 복사 판단만 남아 있습니다.'
-  const deskMemoLabel =
-    repairRows.length > 0 ? '이번 반복 메모' : state.status === 'export-ready' ? '승인 메모' : '준비 메모'
-  const deskMemoTitle =
-    repairRows.length > 0
-      ? '현재 막힘 요약'
-      : state.status === 'export-ready'
-        ? '승인 직전 확인'
-        : '첫 루프 전 확인'
-  const deskMemoItems =
-    repairRows.length > 0
-      ? repairRows.slice(0, 2).map((row) => ({
-          label: `체크 ${row.index}`,
-          body: row.note,
-        }))
-      : [
-          {
-            label: state.status === 'export-ready' ? '승인 기준' : '준비 기준',
-            body:
-              state.status === 'export-ready'
-                ? '승인 게이트가 닫혔으니 이제는 최종 원고의 흐름과 복사 시점만 확인하면 됩니다.'
-                : '첫 루프를 열면 이번 반복에서 막는 메모와 수정 응답이 이 패널에 바로 쌓입니다.',
-          },
-        ]
-  const deskUpdateLabel = selectedIteration ? `${selectedIteration.iteration}차 반영 메모` : '루프 운영 규칙'
-  const deskUpdateTitle = selectedIteration ? '이번 반복에 남긴 수정 응답' : '승인 원고 공개 규칙'
-  const deskUpdateItems =
-    selectedIteration?.optimizerChanges.slice(0, 2).map((item, index) => ({
-      label: `반영 ${index + 1}`,
-      body: item,
-    })) ?? [
-      {
-        label: '공개 규칙',
-        body: '최종 원고와 복사 동작은 3차 승인 게이트가 닫힌 뒤에만 열립니다.',
-      },
-    ]
+  const selectedLoopLabel = selectedIteration ? `${selectedIteration.iteration}차 반복 선택됨` : '첫 반복 대기'
+  const selectedLoopTitle = selectedIteration
+    ? repairRows.length > 0
+      ? `${repairRows.length}개 막힘 항목을 우선 검토 중입니다.`
+      : '열린 막힘 항목 없이 승인 검토만 남았습니다.'
+    : '브리프를 맞춘 뒤 첫 반복을 열면 여기에서 현재 반복을 확인할 수 있습니다.'
+  const selectedLoopBody = selectedIteration
+    ? `${selectedIteration.optimizerChanges.length}개 수정 응답과 ${formatCounts(selectedIteration)}를 한 묶음으로 읽게 했습니다.`
+    : '1차 초안, 2차 리뷰 압축, 3차 승인 완료 순서로 아래 기록이 단계적으로 채워집니다.'
 
   function updateField<Key extends keyof BlogGeneratorInputs>(
     field: Key,
@@ -429,6 +389,51 @@ function App() {
     const nextTab = readerTabs[safeIndex]
     setReaderSurface(nextTab.id)
     readerTabRefs.current[safeIndex]?.focus()
+  }
+
+  function activateIterationButton(index: number) {
+    const nextIteration = iterationSteps[index]
+    const hasRecord = visibleIterations.some((item) => item.iteration === nextIteration)
+
+    if (!hasRecord) {
+      return
+    }
+
+    dispatch({ type: 'select_iteration', iteration: nextIteration })
+    iterationButtonRefs.current[index]?.focus()
+  }
+
+  function handleIterationSelectorKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
+    const enabledIndexes = iterationSteps
+      .map((iterationNumber, iterationIndex) => ({
+        iterationIndex,
+        hasRecord: visibleIterations.some((item) => item.iteration === iterationNumber),
+      }))
+      .filter((item) => item.hasRecord)
+      .map((item) => item.iterationIndex)
+
+    if (enabledIndexes.length === 0) {
+      return
+    }
+
+    const currentEnabledIndex = Math.max(enabledIndexes.indexOf(index), 0)
+
+    if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
+      event.preventDefault()
+      const nextEnabled = enabledIndexes[(currentEnabledIndex + 1) % enabledIndexes.length]
+      activateIterationButton(nextEnabled)
+    } else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
+      event.preventDefault()
+      const nextEnabled =
+        enabledIndexes[(currentEnabledIndex - 1 + enabledIndexes.length) % enabledIndexes.length]
+      activateIterationButton(nextEnabled)
+    } else if (event.key === 'Home') {
+      event.preventDefault()
+      activateIterationButton(enabledIndexes[0])
+    } else if (event.key === 'End') {
+      event.preventDefault()
+      activateIterationButton(enabledIndexes[enabledIndexes.length - 1])
+    }
   }
 
   function handleReaderTabKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
@@ -540,82 +545,65 @@ function App() {
     <main className="loop-shell">
       <section className="hero-grid">
         <article className="hero-card">
-          <div className="hero-frame">
-            <div className="hero-copy-block">
-              <p className="eyebrow">승인 데스크 워크스페이스</p>
-              <h1>기술 블로그 승인 데스크</h1>
-              <p className="hero-lead">
-                수정 이력을 길게 펼친 리포트 대신, 지금 닫아야 할 게이트와 다음 행동을 한눈에
-                붙잡는 편집실 표면으로 재구성했습니다. 승인 근거와 평가 표는 뒤쪽 레이어로
-                밀어 현재 루프의 판단 밀도만 남깁니다.
-              </p>
-              <div className="hero-status-line">
-                <span>현재 루프 상태</span>
-                <strong>{loopStatus}</strong>
-              </div>
-              <div className="hero-actions">
-                <button
-                  type="button"
-                  className="primary-button"
-                  aria-label="Generate post"
-                  data-testid="generate-post-button"
-                  onClick={handleGenerate}
-                  disabled={state.isGenerating}
-                >
-                  {state.isGenerating ? '루프 재생 중...' : '초안 생성 시작'}
-                </button>
-                <button
-                  type="button"
-                  className="secondary-button"
-                  aria-label="Copy markdown"
-                  data-testid="copy-markdown-button"
-                  onClick={handleCopyMarkdown}
-                  disabled={state.status !== 'export-ready'}
-                >
-                  승인 원고 복사
-                </button>
-              </div>
-              <div className={`status-banner is-${state.status}`} aria-live="polite">
-                <strong>{statusBadgeCopy[state.status]}</strong>
-                <span>{state.statusMessage}</span>
-              </div>
+          <div className="hero-copy-block">
+            <p className="eyebrow">현재 상태 요약</p>
+            <h1>기술 블로그 교정 데스크</h1>
+            <p className="hero-lead">{heroLead}</p>
+            <div className="hero-actions">
+              <button
+                type="button"
+                className="primary-button"
+                aria-label="승인 루프 시작"
+                data-testid="generate-post-button"
+                onClick={handleGenerate}
+                disabled={state.isGenerating}
+              >
+                {state.isGenerating ? '루프 재생 중...' : '승인 루프 시작'}
+              </button>
+              <button
+                type="button"
+                className="secondary-button"
+                aria-label="승인 원고 복사"
+                data-testid="copy-markdown-button"
+                onClick={handleCopyMarkdown}
+                disabled={state.status !== 'export-ready'}
+              >
+                승인 원고 복사
+              </button>
             </div>
+            <div className={`status-banner is-${state.status}`} aria-live="polite">
+              <strong>{statusBadgeCopy[state.status]}</strong>
+              <span>{state.statusMessage}</span>
+            </div>
+          </div>
 
-            <aside className="hero-proof-card">
-              <p className="panel-label">{hasLoopStarted ? '반복 메모' : '승인 데스크'}</p>
-              <h2>{proofDeskTitle}</h2>
-              <p>{proofDeskBody}</p>
-              {!hasLoopStarted ? (
-                <div className="proof-grid" aria-label="승인 데스크 신호대">
-                  {heroSignals.map((signal) => (
-                    <article key={signal.label} className="metric-chip proof-chip">
-                      <span>{signal.label}</span>
-                      <strong>{signal.value}</strong>
-                      <small>{signal.note}</small>
-                    </article>
-                  ))}
-                </div>
-              ) : null}
-              <div className="proof-memo">
-                <span className="meta-pill">{deskMemoLabel}</span>
-                <strong>{deskMemoTitle}</strong>
-                <ul className="proof-note-list">
-                  {deskMemoItems.map((item) => (
-                    <li key={`${item.label}-${item.body}`}>
-                      <span>{item.label}</span>
-                      <p>{item.body}</p>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </aside>
+          <div
+            className={`hero-priority-grid ${hasLoopStarted ? 'is-live' : 'is-prelaunch'}`}
+            aria-label={hasLoopStarted ? '승인 우선순위' : '승인 준비 신호'}
+          >
+            {hasLoopStarted
+              ? approvalDeskCards.map((card) => (
+                  <article key={card.id} className={`panel gate-card is-${card.id}`}>
+                    <p className="panel-label">{card.label}</p>
+                    <strong>{card.title}</strong>
+                    <p>{card.body}</p>
+                    <span className="gate-note">{card.note}</span>
+                  </article>
+                ))
+              : heroSignals.map((signal) => (
+                  <article key={signal.label} className="metric-chip hero-signal">
+                    <span>{signal.label}</span>
+                    <strong>{signal.value}</strong>
+                    <small>{signal.note}</small>
+                  </article>
+                ))}
           </div>
         </article>
 
-        <aside className="input-card">
+        <aside className="input-card editorial-rail">
           <div className="section-head">
             <p className="panel-label">브리프 입력</p>
-            <h2>이번 승인판 브리프</h2>
+            <h2>이번 글 브리프</h2>
             <p>첫 화면에서는 방향만 확인하고, 세부 조정은 접힌 입력 레이어 안에서만 엽니다.</p>
           </div>
           <details className="brief-drawer">
@@ -636,7 +624,7 @@ function App() {
                 <textarea
                   id="topic"
                   name="topic"
-                  aria-label="Topic"
+                  data-testid="topic-field"
                   rows={4}
                   value={state.inputs.topic}
                   disabled={state.isGenerating}
@@ -648,7 +636,7 @@ function App() {
                 <select
                   id="audience"
                   name="audience"
-                  aria-label="Audience"
+                  data-testid="audience-field"
                   value={state.inputs.audience}
                   disabled={state.isGenerating}
                   onChange={(event) => updateField('audience', event.target.value as Audience)}
@@ -663,7 +651,7 @@ function App() {
                 <select
                   id="tone"
                   name="tone"
-                  aria-label="Tone"
+                  data-testid="tone-field"
                   value={state.inputs.tone}
                   disabled={state.isGenerating}
                   onChange={(event) => updateField('tone', event.target.value as Tone)}
@@ -678,7 +666,7 @@ function App() {
                 <select
                   id="length"
                   name="length"
-                  aria-label="Length"
+                  data-testid="length-field"
                   value={state.inputs.length}
                   disabled={state.isGenerating}
                   onChange={(event) => updateField('length', event.target.value as Length)}
@@ -693,79 +681,11 @@ function App() {
           <p className="copy-feedback">
             {state.copyFeedback ||
               (hasLoopStarted
-                ? '복사 가능 여부와 승인 잠금 변화는 이 레일에서 바로 알려줍니다.'
+                ? '세부 입력은 펼쳤을 때만 조정하고, 현재 상태와 복사 가능 시점은 상단 카드에서 확인합니다.'
                 : '브리프를 확인한 뒤 첫 루프를 시작하세요.')}
           </p>
         </aside>
       </section>
-
-      {hasLoopStarted ? (
-        <>
-          <section className="approval-stage">
-            <article className="panel approval-board">
-              <div className="section-head">
-                <p className="panel-label">승인 신호</p>
-                <h2>지금 닫아야 할 승인 데스크</h2>
-                <p>
-                  현재 게이트, 다음 행동, 승인 잠금을 한 보드에 묶어 첫 화면의 판단 흐름이
-                  흩어지지 않게 붙였습니다.
-                </p>
-              </div>
-              <div className="approval-grid" aria-label="현재 진행 신호">
-                {approvalDeskCards.map((card) => (
-                  <article key={card.id} className={`panel gate-card is-${card.id}`}>
-                    <p className="panel-label">{card.label}</p>
-                    <strong>{card.title}</strong>
-                    <p>{card.body}</p>
-                    <span className="gate-note">{card.note}</span>
-                  </article>
-                ))}
-              </div>
-              <div className="approval-note-band">
-                <div className="approval-note-head">
-                  <span className="meta-pill">{deskUpdateLabel}</span>
-                  <strong>{deskUpdateTitle}</strong>
-                </div>
-                <ul className="approval-note-list">
-                  {deskUpdateItems.map((item) => (
-                    <li key={`${item.label}-${item.body}`}>
-                      <span>{item.label}</span>
-                      <p>{item.body}</p>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </article>
-
-            <article className="panel approval-rail">
-              <div className="section-head">
-                <p className="panel-label">반복 진행 레일</p>
-                <h2>세 번의 승인 레일</h2>
-                <p>각 반복을 세로 레일로 세워 현재 어디까지 닫혔는지 빠르게 읽게 만듭니다.</p>
-              </div>
-              <div className="loop-preview-strip" aria-label="반복 구조 미리보기">
-                {loopPreview.map((item, index) => {
-                  const previewState =
-                    state.status === 'export-ready'
-                      ? 'is-complete'
-                      : index < state.revealedIterations
-                        ? 'is-complete'
-                        : index === Math.min(state.revealedIterations, loopPreview.length - 1)
-                          ? 'is-active'
-                          : 'is-waiting'
-
-                  return (
-                    <article key={item.step} className={`loop-preview-card ${previewState}`}>
-                      <span>{item.step}</span>
-                      <strong>{item.label}</strong>
-                    </article>
-                  )
-                })}
-              </div>
-            </article>
-          </section>
-        </>
-      ) : null}
 
       {hasLoopStarted ? (
         <section className="supporting-grid">
@@ -778,7 +698,7 @@ function App() {
               </div>
               <span>4개 프리셋</span>
             </summary>
-            <div className="preset-strip" aria-label="Benchmark topics">
+            <div className="preset-strip" aria-label="프리셋 브리프 목록">
               {topicPresets.map((preset) => (
                 <button
                   key={preset.title}
@@ -804,7 +724,7 @@ function App() {
               </div>
               <span>필수 5단계</span>
             </summary>
-            <div className="workflow-strip" aria-label="Required stages">
+            <div className="workflow-strip" aria-label="필수 단계 계약">
               {workflowStages.map((stage, index) => {
                 const stateClass = stageState(index, state.status, state.revealedIterations)
                 return (
@@ -825,15 +745,29 @@ function App() {
           <section className="workbench-grid">
             <article className="panel workbench-panel">
               <div className="section-head">
-                <p className="panel-label">현재 루프</p>
-                <h2>반복 장부</h2>
+                <p className="panel-label">반복 기록</p>
+                <h2>반복별 막힘 항목과 수정 응답</h2>
                 <p>
-                  이 영역은 보고서가 아니라 지금 닫아야 할 반복을 고르는 용도입니다. 막힘
-                  항목과 수정 응답만 앞으로 당기고, 상세 표는 접힘 레이어 안으로 밀었습니다.
+                  첫 화면의 전역 승인 카드와 분리해, 여기서는 반복 하나만 골라 막힘 항목과 수정
+                  응답을 함께 읽게 만들었습니다. 상세 표는 접힌 레이어에만 남깁니다.
                 </p>
               </div>
-              <div className="timeline-grid">
-                {[1, 2, 3].map((iterationNumber) => {
+              <article className="history-note-card">
+                <div className="brief-pills">
+                  <span className="meta-pill">{selectedLoopLabel}</span>
+                  <span className="meta-pill">
+                    {selectedIteration ? formatCounts(selectedIteration) : '첫 생성 후 열림'}
+                  </span>
+                </div>
+                <h3>{selectedLoopTitle}</h3>
+                <p>{selectedLoopBody}</p>
+              </article>
+              <p className="timeline-selector-note">
+                열린 반복만 선택되며, 키보드에서는 위아래 화살표와 Home, End로 바로 이동할 수
+                있습니다.
+              </p>
+              <div className="timeline-grid" role="group" aria-label="반복 기록 선택">
+                {iterationSteps.map((iterationNumber, index) => {
                   const record =
                     visibleIterations.find((item) => item.iteration === iterationNumber) ?? null
                   const isSelected = selectedIteration?.iteration === iterationNumber
@@ -843,24 +777,45 @@ function App() {
                     <button
                       key={iterationNumber}
                       type="button"
+                      id={`iteration-button-${iterationNumber}`}
+                      ref={(node) => {
+                        iterationButtonRefs.current[index] = node
+                      }}
                       className={`timeline-card ${isSelected ? 'is-selected' : ''} ${
                         isRevealed ? 'is-revealed' : 'is-queued'
                       }`}
                       aria-pressed={isSelected}
                       aria-current={isSelected ? 'step' : undefined}
+                      aria-controls={`iteration-panel-${iterationNumber}`}
+                      data-testid={`iteration-selector-${iterationNumber}`}
+                      onKeyDown={(event) => handleIterationSelectorKeyDown(event, index)}
                       onClick={() =>
                         record && dispatch({ type: 'select_iteration', iteration: iterationNumber })
                       }
                       disabled={!record}
                     >
                       <div className="timeline-head">
-                        <div>
+                        <div className="timeline-title-block">
                           <p className="timeline-kicker">{iterationNumber}차 반복</p>
                           <strong>{record ? record.buildStatus : '리뷰 대기 중'}</strong>
+                          <p className="timeline-summary-copy">
+                            {record
+                              ? iterationNumber === 1
+                                ? '초안의 빈틈과 첫 실패 항목을 빠르게 수집하는 차수입니다.'
+                                : iterationNumber === 2
+                                  ? '막힘 항목을 줄이며 구조와 근거 밀도를 다시 맞추는 차수입니다.'
+                                  : '승인 조건을 잠그고 내보내기 시점을 여는 마지막 차수입니다.'
+                              : '이전 반복이 끝나면 이 보드가 자동으로 열립니다.'}
+                          </p>
                         </div>
                         {isSelected ? <span className="meta-pill current-loop-pill">현재 루프</span> : null}
                       </div>
-                      <p className="timeline-counts">{formatCounts(record)}</p>
+                      <div className="timeline-meta-row">
+                        <p className="timeline-counts">{formatCounts(record)}</p>
+                        <span className={`phase-pill is-${record?.phase ?? 'writer'}`}>
+                          {record ? phaseCopy[record.phase] : '대기'}
+                        </span>
+                      </div>
                       <div className="phase-track" aria-hidden="true">
                         {['작성', '리뷰', '수정'].map((label, index) => {
                           const depth = !record ? 0 : iterationNumber === 1 ? 1 : iterationNumber === 2 ? 2 : 3
@@ -879,21 +834,6 @@ function App() {
                           )
                         })}
                       </div>
-                      <div>
-                        <p className="timeline-kicker">{iterationNumber}차 반복</p>
-                        <strong>
-                          {record
-                            ? iterationNumber === 1
-                              ? '리뷰 지시를 정리 중'
-                              : iterationNumber === 2
-                                ? '수정 응답을 반영 중'
-                                : '승인 잠금을 마침'
-                            : '다음 루프 대기'}
-                        </strong>
-                      </div>
-                      <span className={`phase-pill is-${record?.phase ?? 'writer'}`}>
-                        {record ? phaseCopy[record.phase] : '대기'}
-                      </span>
                     </button>
                   )
                 })}
@@ -909,7 +849,12 @@ function App() {
                     </span>
                   </div>
 
-                  <div className="workbench-signal-grid">
+                  <div
+                    className="workbench-signal-grid"
+                    role="region"
+                    id={`iteration-panel-${selectedIteration.iteration}`}
+                    aria-labelledby={`iteration-button-${selectedIteration.iteration}`}
+                  >
                     <article className="subpanel review-signal-panel">
                       <p className="panel-label">리뷰어 신호</p>
                       <h3>{repairRows.length > 0 ? '아직 막고 있는 항목' : '승인 게이트 통과'}</h3>
@@ -992,15 +937,15 @@ function App() {
 
             <article className="panel reader-panel">
               <div className="section-head">
-                <p className="panel-label">읽기 표면</p>
-                <h2>이번 반복의 단일 원고면</h2>
+                <p className="panel-label">원고 보기</p>
+                <h2>이번 반복에서 읽을 원고</h2>
                 <p>
                   현재 단계에 맞는 읽기 결과만 한 장씩 보여 줘서, 사용자가 다음 수정 포인트를
                   놓치지 않게 붙잡아 둡니다.
                 </p>
               </div>
 
-              <div className="reader-tabs" role="tablist" aria-label="Loop surfaces">
+              <div className="reader-tabs" role="tablist" aria-label="원고 표면 선택">
                 {readerTabs.map((tab, index) => (
                   <button
                     key={tab.id}
@@ -1018,7 +963,6 @@ function App() {
                     onClick={() => setReaderSurface(tab.id)}
                   >
                     <span className="reader-tab-copy">{tab.label}</span>
-                    <span className="hook-chip">{tab.label}</span>
                   </button>
                 ))}
               </div>
@@ -1033,8 +977,8 @@ function App() {
                   <div className="reader-heading">
                     <p className="reader-kicker">
                       {selectedIteration.iteration === 3
-                        ? '승인 후보 표면'
-                        : `${selectedIteration.iteration}차 작업 표면`}
+                        ? '승인 후보 원고'
+                        : `${selectedIteration.iteration}차 작업 원고`}
                     </p>
                     <span className="hook-chip">
                       {readerTabs.find((tab) => tab.id === readerSurface)?.label}
@@ -1166,11 +1110,22 @@ function App() {
                       </div>
                     </div>
                   </details>
-                  <div className="markdown-heading">
-                    <p className="panel-label">내보내기 원문</p>
-                    <span className="hook-chip">마크다운 복사</span>
-                  </div>
-                  <pre className="markdown-export">{finalArticle.markdown}</pre>
+                  <details className="panel detail-drawer export-drawer">
+                    <summary>
+                      <div>
+                        <p className="panel-label">내보내기 원문</p>
+                        <h2>복사용 마크다운 열기</h2>
+                        <p>
+                          기본 화면에서는 승인 요약과 복사 행동만 남기고, 실제 마크다운은 필요할
+                          때만 펼쳐 확인합니다.
+                        </p>
+                      </div>
+                      <span>마크다운</span>
+                    </summary>
+                    <div className="detail-body">
+                      <pre className="markdown-export">{finalArticle.markdown}</pre>
+                    </div>
+                  </details>
                 </>
               ) : (
                 <div className="empty-state">최종 원고는 3차 루프가 끝나기 전까지 잠겨 있습니다.</div>
