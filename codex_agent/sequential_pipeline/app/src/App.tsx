@@ -382,6 +382,17 @@ function App() {
           status: 'complete',
         }
       : selectedRoleMeta)
+  const nextRoleMeta =
+    state.generation.status === 'export-ready'
+      ? null
+      : state.generation.status === 'review-complete'
+        ? {
+            label: '발행 데스크',
+            stageLabel: '최종 원고',
+            handoffSummary:
+              '리뷰 반영 원고를 확인한 뒤 복사와 공유 전 마지막 읽기 흐름만 정리합니다.',
+          }
+        : roleTracker.find((role) => role.status === 'pending') ?? null
   const statusLabel = statusLabels[state.generation.status]
   const currentStageLabel = state.generation.currentStage
     ? stageLabels[state.generation.currentStage]
@@ -422,23 +433,51 @@ function App() {
         : '리뷰어 단계가 닫히면 발행본 미리보기가 바로 열립니다.',
     },
   ]
+  const deskMoments = [
+    {
+      label: '현재 데스크',
+      value: `${currentRoleMeta.label} · ${currentRoleMeta.stageLabel}`,
+      note:
+        state.generation.status === 'initial'
+          ? '브리프가 잠기면 첫 요약 메모가 이 자리에서 켜집니다.'
+          : currentRoleMeta.handoffSummary,
+    },
+    {
+      label: '다음 인계',
+      value: nextRoleMeta ? `${nextRoleMeta.label} · ${nextRoleMeta.stageLabel}` : '발행 준비 완료',
+      note:
+        nextRoleMeta?.handoffSummary ??
+        '최종 원고가 잠겨 있어 이제 복사와 마지막 확인만 남았습니다.',
+    },
+    {
+      label: '브리프 압력',
+      value: `${audienceUiLabels[state.inputs.audience]} · ${toneUiLabels[state.inputs.tone]}`,
+      note: `${lengthUiLabels[state.inputs.length]} 길이 기준으로 네 역할이 같은 계약을 이어받습니다.`,
+    },
+  ]
 
   const manifestPreview: Record<string, unknown> = {
-    harness: 'sequential_pipeline',
-    current_stage: state.generation.currentStage ?? 'research',
-    status: state.generation.status,
-    completed_roles: state.generation.completedRoles,
+    워크스페이스: '순차 파이프라인',
+    현재_단계: currentStageLabel,
+    상태: statusLabel,
+    완료_역할: state.generation.completedRoles.map((role) => formatRoleLabel(role)),
   }
-  const artifactPreview: ArtifactIndex = {
-    screenshots: state.generation.status === 'export-ready' ? ['desktop.png', 'mobile.png'] : [],
-    final_urls: state.generation.outputs.final_post ? ['/final-post'] : [],
-    notes: [actionHint],
-    deliverables: deliverables.map((item) => item.title),
+  const artifactPreview: Record<string, unknown> = {
+    준비된_화면:
+      state.generation.status === 'export-ready' ? ['데스크톱 미리보기', '모바일 미리보기'] : [],
+    발행_상태: state.generation.outputs.final_post ? ['최종 원고 잠금 해제'] : ['리뷰 잠금 전'],
+    다음_메모: [actionHint],
+    남길_묶음: deliverables.map((item) => item.title),
   }
-  const scorePreview: Scorecard = {
-    ...baseScorePreview,
-    ux_score: state.generation.outputs.final_post ? 9 : baseScorePreview.ux_score,
-    overall_score: state.generation.outputs.final_post ? 8.9 : baseScorePreview.overall_score,
+  const scorePreview: Record<string, number> = {
+    과업_적합도: baseScorePreview.task_success,
+    경험_선명도: state.generation.outputs.final_post ? 9 : baseScorePreview.ux_score,
+    흐름_가독성: baseScorePreview.flow_clarity,
+    시각_완성도: baseScorePreview.visual_quality,
+    반응형_준비도: baseScorePreview.responsiveness,
+    접근성_기본점수: baseScorePreview.a11y_score,
+    프로세스_준수도: baseScorePreview.process_adherence,
+    종합_점수: state.generation.outputs.final_post ? 8.9 : baseScorePreview.overall_score,
   }
 
   async function handleGenerate() {
@@ -589,6 +628,24 @@ function App() {
             가능한 원고를 잠급니다. 첫 화면은 긴 산출물 더미 대신 지금 닫히는 단계,
             다음 인계 압력, 그리고 잠긴 발행본의 접근 경로만 읽히도록 다듬었습니다.
           </p>
+
+          <div className="hero-storyband">
+            <article className="hero-bulletin">
+              <span className="signal-label">데스크 메모</span>
+              <strong>{currentRoleMeta.stageLabel}</strong>
+              <p>{actionHint}</p>
+            </article>
+
+            <div className="hero-metric-grid">
+              {deskMoments.map((moment) => (
+                <article key={moment.label} className="hero-metric-card">
+                  <span className="signal-label">{moment.label}</span>
+                  <strong>{moment.value}</strong>
+                  <p>{moment.note}</p>
+                </article>
+              ))}
+            </div>
+          </div>
 
           <div className="hero-actions">
             <button
@@ -763,12 +820,16 @@ function App() {
           </p>
         </div>
 
-        <div className="route-overview">
-          <article className="route-progress-card">
+        <div className="route-board-shell">
+          <article className="route-progress-card route-spotlight">
             <div className="route-progress-top">
               <div>
                 <span className="signal-label">잠금 진행도</span>
-                <strong>{state.generation.status === 'export-ready' ? '모든 인계 잠금 완료' : `${completedCount}/4 인계 잠금`}</strong>
+                <strong>
+                  {state.generation.status === 'export-ready'
+                    ? '모든 인계 잠금 완료'
+                    : `${completedCount}/4 인계 잠금`}
+                </strong>
               </div>
               <span className="route-progress-value">{Math.round(progressPercent)}%</span>
             </div>
@@ -782,71 +843,70 @@ function App() {
                   ? '리뷰어 잠금까지 끝났으므로 이제 발행본 확인과 복사만 남았습니다.'
                   : actionHint}
             </p>
+
+            <div className="route-note-list">
+              {deskMoments.map((moment) => (
+                <article key={moment.label} className="route-note-card">
+                  <span className="signal-label">{moment.label}</span>
+                  <strong>{moment.value}</strong>
+                  <p>{moment.note}</p>
+                </article>
+              ))}
+            </div>
           </article>
 
-          <div className="route-signal-grid">
-            {routeSignals.map((signal) => (
-              <article key={signal.label} className="route-signal-card">
-                <span className="signal-label">{signal.label}</span>
-                <strong>{signal.value}</strong>
-                <p>{signal.note}</p>
-              </article>
-            ))}
-          </div>
-        </div>
+          <div className="route-stage-column">
+            <div className="tracker-grid">
+              {roleTracker.map((role, index) => (
+                <button
+                  key={role.id}
+                  type="button"
+                  className="tracker-card-button"
+                  onClick={() => dispatch({ type: 'select-role', role: role.id })}
+                >
+                  <article
+                    className={`tracker-card tracker-${role.status}`}
+                    aria-label={stageHookLabels[roleStageMap[role.id]]}
+                    data-testid={stageHookLabels[roleStageMap[role.id]]}
+                  >
+                    <div className="tracker-top">
+                      <div className="tracker-index-wrap">
+                        <span className="tracker-index">{`0${index + 1}`}</span>
+                        <span className="tracker-badge">{role.label}</span>
+                      </div>
+                      <span className={`tracker-status tracker-${role.status}`}>
+                        {role.status === 'complete'
+                          ? '완료'
+                          : role.status === 'current'
+                            ? '진행 중'
+                            : '대기'}
+                      </span>
+                    </div>
+                    <h3>{role.stageLabel}</h3>
+                    <p>{role.description}</p>
+                    <div className="tracker-footer">
+                      <strong>{role.handoffLabel}</strong>
+                      <span>{role.handoffSummary}</span>
+                    </div>
+                  </article>
+                </button>
+              ))}
+            </div>
 
-        <div className="tracker-grid">
-          {roleTracker.map((role, index) => (
-            <button
-              key={role.id}
-              type="button"
-              className="tracker-card-button"
-              onClick={() => dispatch({ type: 'select-role', role: role.id })}
-            >
-              <article
-                className={`tracker-card tracker-${role.status}`}
-                aria-label={stageHookLabels[roleStageMap[role.id]]}
-                data-testid={stageHookLabels[roleStageMap[role.id]]}
-              >
-                <div className="tracker-top">
-                  <div className="tracker-index-wrap">
-                    <span className="tracker-index">{`0${index + 1}`}</span>
-                    <span className="tracker-badge">{role.label}</span>
-                  </div>
-                  <span className={`tracker-status tracker-${role.status}`}>
-                    {role.status === 'complete'
-                      ? '완료'
-                      : role.status === 'current'
-                        ? '진행 중'
-                        : '대기'}
-                  </span>
-                </div>
-                <h3>{role.stageLabel}</h3>
-                <p>{role.description}</p>
-                <div className="tracker-footer">
-                  <strong>{role.handoffLabel}</strong>
-                  <span>{role.handoffSummary}</span>
-                </div>
-              </article>
-            </button>
-          ))}
+            <div className="route-journal">
+              {routeSignals.map((signal) => (
+                <article key={signal.label} className="route-journal-card">
+                  <span className="signal-label">{signal.label}</span>
+                  <strong>{signal.value}</strong>
+                  <p>{signal.note}</p>
+                </article>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
       <section className="workspace-grid">
-        <RolePanel
-          title={selectedRoleMeta.label}
-          stageLabel={selectedRoleMeta.stageLabel}
-          status={state.generation.status}
-          activeRole={state.generation.currentRole}
-          role={selectedRoleMeta.id}
-          inputSummary={inputSummaryForRole(state.inputs, selectedRoleMeta.id, research, outline, writerOutput)}
-          handoffNote={handoffNoteForRole(selectedRoleMeta.id, research, outline, writerOutput, reviewerOutput)}
-          emptyText={emptyTextForRole(selectedRoleMeta.id)}
-        >
-          {renderRoleSurface(selectedRoleMeta.id, research, outline, writerOutput, reviewerOutput)}
-        </RolePanel>
-
         <article className="panel-card role-panel checkpoint-panel">
           <div className="section-head">
             <p className="eyebrow">체크포인트 레일</p>
@@ -864,8 +924,8 @@ function App() {
             </div>
           </div>
 
-          <div className="artifact-list">
-            <article className="artifact-card">
+          <div className="artifact-list checkpoint-stack">
+            <article className="artifact-card checkpoint-card">
               <h3>활성 담당</h3>
               <p>
                 {state.generation.currentRole
@@ -874,12 +934,12 @@ function App() {
               </p>
             </article>
 
-            <article className="artifact-card">
+            <article className="artifact-card checkpoint-card">
               <h3>인계 압력</h3>
               <p>{currentRoleMeta.handoffSummary}</p>
             </article>
 
-            <article className="artifact-card">
+            <article className="artifact-card checkpoint-card">
               <h3>내보내기 잠금</h3>
               <p>
                 {state.generation.outputs.final_post
@@ -889,6 +949,19 @@ function App() {
             </article>
           </div>
         </article>
+
+        <RolePanel
+          title={selectedRoleMeta.label}
+          stageLabel={selectedRoleMeta.stageLabel}
+          status={state.generation.status}
+          activeRole={state.generation.currentRole}
+          role={selectedRoleMeta.id}
+          inputSummary={inputSummaryForRole(state.inputs, selectedRoleMeta.id, research, outline, writerOutput)}
+          handoffNote={handoffNoteForRole(selectedRoleMeta.id, research, outline, writerOutput, reviewerOutput)}
+          emptyText={emptyTextForRole(selectedRoleMeta.id)}
+        >
+          {renderRoleSurface(selectedRoleMeta.id, research, outline, writerOutput, reviewerOutput)}
+        </RolePanel>
       </section>
 
       <section
@@ -1014,9 +1087,21 @@ function App() {
             </ul>
 
             <div className="preview-grid">
-              <PreviewBlock title="run_manifest.json" payload={manifestPreview} />
-              <PreviewBlock title="artifact_index.json" payload={artifactPreview} />
-              <PreviewBlock title="scorecard.json" payload={scorePreview} />
+              <PreviewBlock
+                title="실행 장부 미리보기"
+                hookLabel="run_manifest.json"
+                payload={manifestPreview}
+              />
+              <PreviewBlock
+                title="산출물 묶음 미리보기"
+                hookLabel="artifact_index.json"
+                payload={artifactPreview}
+              />
+              <PreviewBlock
+                title="점수 카드 미리보기"
+                hookLabel="scorecard.json"
+                payload={scorePreview}
+              />
             </div>
           </article>
         </div>
@@ -1238,10 +1323,11 @@ function RolePanel(props: {
   )
 }
 
-function PreviewBlock(props: { title: string; payload: unknown }) {
+function PreviewBlock(props: { title: string; hookLabel: string; payload: unknown }) {
   return (
-    <article className="preview-block">
+    <article className="preview-block" aria-label={props.hookLabel} data-testid={props.hookLabel}>
       <h3>{props.title}</h3>
+      <span className="sr-only">{props.hookLabel}</span>
       <pre>{JSON.stringify(props.payload, null, 2)}</pre>
     </article>
   )

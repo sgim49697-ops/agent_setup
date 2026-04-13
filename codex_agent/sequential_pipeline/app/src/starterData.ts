@@ -37,22 +37,22 @@ export const deliverables: DeliverableCard[] = [
   {
     id: 'manifest',
     title: '실행 기록',
-    description: '`run_manifest.json`에 시작·종료 시각, 하네스 이름, 상태를 남긴다.',
+    description: '시작·종료 시각, 하네스 이름, 상태를 한 장부로 남긴다.',
   },
   {
     id: 'artifacts',
     title: '산출물 목록',
-    description: '`artifact_index.json`에 스크린샷, final URL, 결과 파일 목록을 모은다.',
+    description: '스크린샷, 최종 보기 경로, 결과 파일 묶음을 한 번에 모은다.',
   },
   {
     id: 'review',
     title: '검토 보고',
-    description: '`review_report.md`에 구현 요약, 리스크, 남은 이슈를 남긴다.',
+    description: '구현 요약, 리스크, 남은 이슈를 검토 문서로 정리한다.',
   },
   {
     id: 'scorecard',
     title: '점수 카드',
-    description: '`scorecard.json`에 기능, UX, visual, a11y, process 점수를 저장한다.',
+    description: '기능, UX, 시각 품질, 접근성, 프로세스 점수를 함께 남긴다.',
   },
 ]
 
