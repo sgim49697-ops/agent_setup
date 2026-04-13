@@ -4,6 +4,7 @@ ROOT=/home/user/projects/agent_setup/codex_agent
 export PYTHONPATH="$ROOT/scripts:${PYTHONPATH:-}"
 LOG="$ROOT/.omx/logs/master-ux-benchmark-v2.log"
 LAST="$ROOT/.omx/logs/master-ux-benchmark-v2.last.txt"
+FORENSICS_DIR="$ROOT/.omx/logs/forensics"
 STATE="$ROOT/.omx/state/master-ux-loop.json"
 CYCLE_MARKER="$ROOT/.omx/logs/master-ux-benchmark-v2-cycle-complete.md"
 PROJECT_FINAL_MARKER="$ROOT/.omx/logs/master-ux-benchmark-v2-project-final.md"
@@ -20,6 +21,7 @@ update_state() {
 }
 
 mkdir -p "$ROOT/.omx/logs" "$ROOT/.omx/state"
+mkdir -p "$FORENSICS_DIR"
 if [[ "${MASTER_LOOP_SAFE_MODE_BYPASS:-0}" != "1" ]]; then
   if python3 - <<'PY'
 from master_loop_state import safe_mode_enabled
@@ -37,6 +39,37 @@ printf '[%s] Detached tmux worker starting codex exec master loop\n' "$(date -u 
 
 FINISH_REASON="unknown"
 FINAL_STATUS="unknown"
+write_forensics() {
+  local event="$1"
+  local ts file ppid
+  ts="$(date +"%Y-%m-%dT%H:%M:%S%z")"
+  file="$FORENSICS_DIR/worker-${ts//:/}-${event}.log"
+  ppid="$(ps -o ppid= -p $$ | tr -d ' ' || true)"
+  {
+    echo "event=$event"
+    echo "timestamp=$ts"
+    echo "pid=$$"
+    echo "ppid=$ppid"
+    echo "cwd=$PWD"
+    echo "cycle=${CURRENT_CYCLE:-unknown}"
+    echo "harness=${ACTIVE_HARNESS:-unknown}"
+    echo "phase=${CURRENT_PHASE:-unknown}"
+    echo "finish_reason=${FINISH_REASON:-unknown}"
+    echo "final_status=${FINAL_STATUS:-unknown}"
+    echo
+    echo "=== self ==="
+    ps -o pid,ppid,pgid,sid,stat,etimes,cmd -p $$ || true
+    echo
+    echo "=== parent ==="
+    [ -n "$ppid" ] && ps -o pid,ppid,pgid,sid,stat,etimes,cmd -p "$ppid" || true
+    echo
+    echo "=== filtered process snapshot ==="
+    ps -eo pid,ppid,pgid,sid,stat,etimes,cmd | grep -E 'run_master_ux_worker|master_loop_orchestrator|codex exec|stitch-mcp|playwright-mcp|tmux|openclaw_master_loop_watchdog' | grep -v grep || true
+    echo
+    echo "=== pstree ==="
+    pstree -sap $$ 2>/dev/null || true
+  } >"$file" 2>&1
+}
 cleanup_children() {
   # Kill entire subprocess tree (orchestrator python + codex) so signal arrival
   # does not orphan them. Without this, watchdog's tmux kill-window + our HUP
@@ -52,15 +85,16 @@ cleanup_children() {
 on_exit() {
   local ts
   ts="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+  write_forensics exit || true
   cleanup_children
   python3 "$STATE_HELPER" "$STATE" last_worker_finish_at "$ts" 2>/dev/null || true
   python3 "$STATE_HELPER" "$STATE" last_worker_exit_status "$FINAL_STATUS" 2>/dev/null || true
   python3 "$STATE_HELPER" "$STATE" last_worker_finish_reason "$FINISH_REASON" 2>/dev/null || true
   printf '[%s] Wrapper EXIT trap fired (status=%s reason=%s)\n' "$ts" "$FINAL_STATUS" "$FINISH_REASON" >> "$LOG"
 }
-trap 'FINISH_REASON=signal-term; FINAL_STATUS=143; cleanup_children; exit 143' TERM
-trap 'FINISH_REASON=signal-hup;  FINAL_STATUS=129; cleanup_children; exit 129' HUP
-trap 'FINISH_REASON=signal-int;  FINAL_STATUS=130; cleanup_children; exit 130' INT
+trap 'FINISH_REASON=signal-term; FINAL_STATUS=143; write_forensics signal-term || true; cleanup_children; exit 143' TERM
+trap 'FINISH_REASON=signal-hup;  FINAL_STATUS=129; write_forensics signal-hup || true; cleanup_children; exit 129' HUP
+trap 'FINISH_REASON=signal-int;  FINAL_STATUS=130; write_forensics signal-int || true; cleanup_children; exit 130' INT
 trap on_exit EXIT
 
 readarray -t CONTEXT < <(python3 - <<'PY'

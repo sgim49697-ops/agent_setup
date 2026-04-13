@@ -39,6 +39,7 @@ RUNNER_WINDOW = 'runner'
 LOG_WINDOW = 'log'
 HEARTBEAT_WINDOW = 'heartbeat10'
 ARCHIVE_ROOT = ROOT / '.omx/logs/archive'
+FORENSICS_DIR = ROOT / '.omx/logs/forensics'
 BLOCKER_AUTO_CLEAR_MINUTES = 10
 STALL_TIMEOUT_MINUTES = 18
 TRACE_RESTART_THRESHOLD = 2
@@ -114,6 +115,7 @@ def pkill_runner_tree() -> None:
 
 
 def kill_runner_window(reason: str) -> None:
+    write_watchdog_forensics('pre-kill', reason)
     mark_runner_kill(reason)
     pkill_runner_tree()
     run(['tmux', 'kill-window', '-t', f'{SESSION}:{RUNNER_WINDOW}'])
@@ -136,6 +138,24 @@ def log(msg: str) -> None:
     LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
     with LOG_PATH.open('a', encoding='utf-8') as fh:
         fh.write(f'[{utc_now()}] watchdog: {msg}\n')
+
+
+def write_watchdog_forensics(event: str, reason: str = '') -> None:
+    FORENSICS_DIR.mkdir(parents=True, exist_ok=True)
+    ts = utc_now()
+    payload = {
+        'event': event,
+        'reason': reason,
+        'timestamp': ts,
+        'state': read_state(),
+        'metrics': collect_runtime_metrics(),
+        'process_snapshot': process_snapshot(),
+    }
+    path = FORENSICS_DIR / f"watchdog-{ts.replace(':', '')}-{event}.json"
+    try:
+        path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
+    except Exception:
+        pass
 
 
 def write_report(path: Path, payload: dict[str, Any]) -> None:
@@ -416,6 +436,27 @@ def step_pipeline_in_progress(state: dict[str, Any], metrics: dict[str, int]) ->
     return bool(metrics.get('orchestrator') or metrics.get('codex_exec'))
 
 
+def record_active_observation(state: dict[str, Any], metrics: dict[str, int], issue: str | None = None) -> dict[str, Any]:
+    state['status'] = 'running'
+    state['cycle_status'] = 'running'
+    state['last_seen_running_at'] = utc_now()
+    state['active_orchestrator_count'] = metrics['orchestrator']
+    state['active_worker_count'] = metrics['worker']
+    state['active_codex_exec_count'] = metrics['codex_exec']
+    state['active_stitch_mcp_count'] = metrics['stitch_mcp']
+    state['active_playwright_mcp_count'] = metrics['playwright_mcp']
+    state['active_automation_process_count'] = metrics['automation_total']
+    if issue:
+        state['runtime_guard_active'] = True
+        state['runtime_guard_reason'] = f'observe-only:{issue}'
+        state['runtime_guard_last_triggered_at'] = utc_now()
+        state['last_progress_summary'] = (
+            f'watchdog observe-only mode during active step; runtime budget issue noted ({issue}) '
+            f'but no cleanup/relaunch performed'
+        )
+    return state
+
+
 def defer_active_harness(state: dict[str, Any], reason: str) -> dict[str, Any]:
     current = str(state.get('current_harness') or '').strip()
     remaining = normalize_remaining_harnesses(state.get('remaining_harnesses'))
@@ -538,6 +579,8 @@ def main() -> int:
         return 0
 
     state = read_state()
+    session_exists = tmux_has_session()
+    runner_active = runner_alive() if session_exists else False
     metrics = collect_runtime_metrics()
     state['active_orchestrator_count'] = metrics['orchestrator']
     state['active_worker_count'] = metrics['worker']
@@ -546,7 +589,28 @@ def main() -> int:
     state['active_playwright_mcp_count'] = metrics['playwright_mcp']
     state['active_automation_process_count'] = metrics['automation_total']
     issue = runtime_budget_issue(metrics)
+    if runner_active and step_pipeline_in_progress(state, metrics):
+        progress_age = last_progress_age_minutes(state)
+        if progress_age is not None and progress_age > STALL_TIMEOUT_MINUTES:
+            write_watchdog_forensics('active-step-stall-observe', f'{progress_age:.1f}m')
+            state = record_active_observation(state, metrics, issue)
+            state['status'] = 'stalled'
+            state['cycle_status'] = 'stalled'
+            state['last_progress_summary'] = (
+                f'watchdog observe-only: active step exceeded {STALL_TIMEOUT_MINUTES}m '
+                f'({progress_age:.1f}m) but no kill/relaunch performed'
+            )
+            write_state(state)
+            log(f'active step stale for {progress_age:.1f}m; observe-only mode left runner untouched')
+            return 0
+
+        state = record_active_observation(state, metrics, issue)
+        write_state(state)
+        log('runner active with step pipeline in progress; watchdog stayed observe-only')
+        return 0
+
     if issue:
+        write_watchdog_forensics('runtime-budget', issue)
         cleanup_runtime_budget_excess(issue)
         state['runtime_guard_active'] = True
         state['runtime_guard_reason'] = issue
@@ -561,7 +625,7 @@ def main() -> int:
     state['runtime_guard_active'] = False
     state['runtime_guard_reason'] = ''
 
-    if not tmux_has_session():
+    if not session_exists:
         ensure_tmux_base()
 
     state, cleared = try_clear_transient_blocker(state)
@@ -602,7 +666,6 @@ def main() -> int:
         log('completion marker detected; watchdog exiting without restart')
         return 0
 
-    runner_active = runner_alive()
     if runner_active:
         if step_pipeline_in_progress(state, metrics):
             progress_age = last_progress_age_minutes(state)
