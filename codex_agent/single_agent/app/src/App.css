@@ -1577,13 +1577,34 @@
   color: var(--ink);
 }
 
-.support-drawer summary {
+.support-drawer summary,
+.reader-drawer summary {
   cursor: pointer;
 }
 
 .support-drawer summary::-webkit-details-marker,
 .reader-drawer summary::-webkit-details-marker {
   display: none;
+}
+
+.support-drawer summary::marker,
+.reader-drawer summary::marker {
+  content: '';
+}
+
+.support-drawer summary::after,
+.reader-drawer summary::after {
+  content: '⌄';
+  margin-left: auto;
+  font-size: 1rem;
+  font-weight: 700;
+  color: currentColor;
+  transition: transform 180ms ease;
+}
+
+.support-drawer[open] summary::after,
+.reader-drawer[open] summary::after {
+  transform: rotate(180deg);
 }
 
 .support-drawer[open] summary,
@@ -1707,13 +1728,16 @@
     radial-gradient(circle at top right, rgba(0, 82, 255, 0.18), transparent 34%),
     linear-gradient(180deg, rgba(225, 231, 255, 0.98), rgba(255, 255, 255, 1));
   box-shadow:
-    inset 0 0 0 1px rgba(0, 82, 255, 0.18),
+    inset 0 0 0 2px rgba(0, 82, 255, 0.28),
     0 18px 34px rgba(19, 27, 46, 0.16);
 }
 
 .stage-chip.complete {
   opacity: 0.94;
   background: linear-gradient(180deg, rgba(239, 248, 245, 0.98), rgba(250, 252, 255, 0.94));
+  box-shadow:
+    inset 0 0 0 1px rgba(38, 135, 98, 0.14),
+    0 12px 22px rgba(7, 12, 24, 0.06);
 }
 
 .stage-chip.is-selected {
@@ -1776,11 +1800,35 @@
 }
 
 .stage-chip-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
   font-size: 0.84rem;
   font-weight: 700;
   color: var(--muted-strong);
   align-self: center;
   white-space: nowrap;
+}
+
+.stage-chip-status-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.9rem;
+  font-size: 0.92rem;
+  line-height: 1;
+}
+
+.primary-action:focus-visible,
+.secondary-action:focus-visible,
+.inline-action:focus-visible,
+.stage-chip:focus-visible,
+.preset-tile:focus-visible,
+.support-drawer summary:focus-visible,
+.reader-drawer summary:focus-visible {
+  outline: 3px solid rgba(0, 55, 184, 0.78);
+  outline-offset: 4px;
+  box-shadow: 0 0 0 6px rgba(0, 82, 255, 0.16);
 }
 
 .hero-progress-band-light {
