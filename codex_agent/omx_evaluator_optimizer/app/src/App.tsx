@@ -44,6 +44,46 @@ type Action =
   | { type: 'select_iteration'; iteration: number }
   | { type: 'set_copy_feedback'; feedback: string }
 
+const audienceCopy: Record<Audience, string> = {
+  beginner: '입문자',
+  practitioner: '실무자',
+  advanced: '고급 독자',
+}
+
+const toneCopy: Record<Tone, string> = {
+  clear: '명료한 설명',
+  pragmatic: '실무 중심',
+  opinionated: '단호한 주장',
+}
+
+const lengthCopy: Record<Length, string> = {
+  short: '짧은 압축본',
+  medium: '균형형 초안',
+  long: '심화 원고',
+}
+
+const phaseCopy = {
+  writer: '초안 작성',
+  reviewer: '판정 압박',
+  optimizer: '수정 반영',
+  ready: '승인 직전',
+} as const
+
+const statusBadgeCopy: Record<GenerationStatus, string> = {
+  initial: '대기 중',
+  loading: '건틀릿 재생 중',
+  populated: '루프 점검 중',
+  'review-complete': '리뷰 압박 완료',
+  'export-ready': '승인 잠금 해제',
+  error: '복구 필요',
+}
+
+const verdictCopy = {
+  PASS: '통과',
+  PARTIAL: '보류',
+  FAIL: '실패',
+} as const
+
 const initialInputs: BlogGeneratorInputs = {
   topic: topicPresets[1].title,
   audience: 'advanced',
@@ -318,6 +358,55 @@ function App() {
   const completedStageCount = stagedWorkflow.filter((stage) => stage.stateClass === 'complete').length
   const activeStageLabel =
     stagedWorkflow.find((stage) => stage.stateClass === 'active')?.label ?? workflowStages[0].label
+  const controlSignals = [
+    {
+      label: '독자 프레임',
+      value: audienceCopy[state.inputs.audience],
+      note: '얼마나 깊게 압박할지 정합니다.',
+    },
+    {
+      label: '문장 온도',
+      value: toneCopy[state.inputs.tone],
+      note: '리뷰 기준의 공격성을 맞춥니다.',
+    },
+    {
+      label: '분량 계약',
+      value: lengthCopy[state.inputs.length],
+      note: '초안 밀도와 수정 폭을 잠급니다.',
+    },
+    {
+      label: '출고 기준',
+      value: `${requiredLoops}회 루프`,
+      note: `${requiredLoops}회 검증 뒤에만 복사를 엽니다.`,
+    },
+  ] as const
+  const focusChecklist = [
+    `필수 단계 ${completedStageCount}/${workflowStages.length} 통과`,
+    `현재 표면은 ${activeStageLabel} 중심으로 고정됩니다.`,
+    state.outputs
+      ? `마지막 루프에서 ${state.outputs.loop_summary.lastIterationPassCount}/9 게이트를 통과했습니다.`
+      : '첫 루프 전까지는 승인 후보를 열지 않습니다.',
+  ]
+  const reviewSignals = [
+    {
+      label: '선택 루프',
+      value: selectedIteration ? `${selectedIteration.iteration}차` : '생성 전',
+      note: selectedIteration ? selectedIteration.startedAt : '아직 노출된 반복이 없습니다.',
+    },
+    {
+      label: '현재 위상',
+      value: selectedIteration ? phaseCopy[selectedIteration.phase] : '초안 대기',
+      note: selectedIteration ? selectedIteration.buildStatus : '첫 초안을 시작하면 위상이 열립니다.',
+    },
+    {
+      label: '열린 수정',
+      value: repairRows.length > 0 ? `${repairRows.length}건` : '없음',
+      note:
+        repairRows.length > 0
+          ? '출고를 막는 항목만 남겨 두었습니다.'
+          : '현재 선택 루프에는 추가 수정 압박이 없습니다.',
+    },
+  ] as const
 
   function updateField<Key extends keyof BlogGeneratorInputs>(
     field: Key,
@@ -438,10 +527,10 @@ function App() {
       <section className="hero-grid">
         <article className="hero-card">
           <p className="eyebrow">품질 관제실 · OMX 검수 건틀릿</p>
-          <h1>초안을 바로 믿지 않는 출고 관제실</h1>
+          <h1>초안 낙관을 꺾는 출고 관제실</h1>
           <p className="hero-lead">
-            기본 화면은 현재 게이트, 다음 행동, 출고 잠금만 먼저 드러냅니다. 긴 증거 표와
-            반복 로그는 뒤쪽으로 밀어 두고, 지금 무엇을 고쳐야 하는지만 선명하게 남깁니다.
+            기본 화면은 현재 게이트, 다음 행동, 출고 잠금만 전면에 남깁니다. 증거와 반복 로그는
+            뒤쪽 서랍으로 밀고, 지금 어떤 원고를 얼마나 더 밀어붙여야 하는지만 차갑게 보여 줍니다.
           </p>
           <div className="hero-loop-rail" aria-label="품질 관제 흐름">
             {heroRail.map((item, index) => (
@@ -489,11 +578,20 @@ function App() {
         <aside className="input-card">
           <div className="section-head">
             <p className="panel-label">브리프 입력 레일</p>
-            <h2>작성자에게 넘길 첫 지시를 잠급니다</h2>
+            <h2>가혹한 루프를 버틸 초안 조건을 먼저 잠급니다</h2>
             <p>
-              OMX 변형은 같은 제품 계약을 지키되, 이른 시점의 “이 정도면 됐다”를 허용하지
-              않습니다. 브리프가 분명해야 루프 압박도 제대로 걸립니다.
+              이 rail은 좁지만 냉정해야 합니다. 독자 수준, 주장 강도, 분량 계약을 먼저 고정해야
+              작성자와 리뷰어가 같은 기준으로 서로를 압박할 수 있습니다.
             </p>
+          </div>
+          <div className="control-signal-grid" aria-label="브리프 고정 신호">
+            {controlSignals.map((signal) => (
+              <article key={signal.label} className="control-signal">
+                <span>{signal.label}</span>
+                <strong>{signal.value}</strong>
+                <small>{signal.note}</small>
+              </article>
+            ))}
           </div>
           <form className="input-grid" onSubmit={(event) => event.preventDefault()}>
             <label htmlFor="topic">
@@ -586,10 +684,27 @@ function App() {
       </section>
 
       <section className="focus-strip">
-        <article className="focus-card is-primary">
+        <article className="focus-card is-primary focus-card-hero">
           <p className="panel-label">현재 게이트</p>
-          <h2>{currentGateTitle}</h2>
-          <p>{loopStatus}</p>
+          <div className="focus-hero-head">
+            <div>
+              <h2>{currentGateTitle}</h2>
+              <p>{loopStatus}</p>
+            </div>
+            <div className="focus-meter" aria-hidden="true">
+              {stagedWorkflow.map((stage) => (
+                <span
+                  key={stage.id}
+                  className={`focus-meter-bar is-${stage.stateClass}`}
+                />
+              ))}
+            </div>
+          </div>
+          <ul className="focus-checklist">
+            {focusChecklist.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
           <div className="focus-meta">
             <span className="meta-pill">
               화면 노출 {state.revealedIterations}/{requiredLoops}
@@ -597,26 +712,28 @@ function App() {
             <span className="meta-pill">직전 통과 {state.outputs?.loop_summary.lastIterationPassCount ?? 0}/9</span>
           </div>
         </article>
-        <article className="focus-card">
-          <p className="panel-label">다음 행동</p>
-          <h2>{nextActionTitle}</h2>
-          <p>{nextActionBody}</p>
-          <div className="focus-meta">
-            <span className="meta-pill">
-              검증 {visibleVerificationCycles.length}/{requiredLoops}
-            </span>
-          </div>
-        </article>
-        <article className="focus-card">
-          <p className="panel-label">출고 잠금</p>
-          <h2>{exportLockTitle}</h2>
-          <p>{exportLockBody}</p>
-          <div className="focus-meta">
-            <span className="meta-pill">
-              승인 상태 {state.outputs?.loop_summary.readyForExport ? '열림' : '잠김'}
-            </span>
-          </div>
-        </article>
+        <div className="focus-stack">
+          <article className="focus-card">
+            <p className="panel-label">다음 행동</p>
+            <h2>{nextActionTitle}</h2>
+            <p>{nextActionBody}</p>
+            <div className="focus-meta">
+              <span className="meta-pill">
+                검증 {visibleVerificationCycles.length}/{requiredLoops}
+              </span>
+            </div>
+          </article>
+          <article className="focus-card">
+            <p className="panel-label">출고 잠금</p>
+            <h2>{exportLockTitle}</h2>
+            <p>{exportLockBody}</p>
+            <div className="focus-meta">
+              <span className="meta-pill">
+                승인 상태 {state.outputs?.loop_summary.readyForExport ? '열림' : '잠김'}
+              </span>
+            </div>
+          </article>
+        </div>
       </section>
 
       <section className="journey-strip" aria-label="Required stages">
@@ -695,6 +812,15 @@ function App() {
                 <span className="meta-pill">
                   추가 반복 {selectedIteration.needsAnotherLoop ? '필요' : '불필요'}
                 </span>
+              </div>
+              <div className="review-signal-grid">
+                {reviewSignals.map((signal) => (
+                  <article key={signal.label} className="signal-card">
+                    <span>{signal.label}</span>
+                    <strong>{signal.value}</strong>
+                    <p>{signal.note}</p>
+                  </article>
+                ))}
               </div>
               <div className="current-loop-grid">
                 <article className="subpanel">

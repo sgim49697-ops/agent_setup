@@ -9,6 +9,10 @@
   --accent-strong: #003ec7;
   --accent-cool: #274f97;
   --accent-warm: #952200;
+  --ink-inverse: #eef0ff;
+  --muted-inverse: rgba(238, 240, 255, 0.76);
+  --rail-panel: rgba(19, 27, 46, 0.92);
+  --rail-panel-strong: rgba(28, 40, 74, 0.98);
   --shadow-soft:
     0 28px 54px rgba(19, 27, 46, 0.08),
     0 10px 22px rgba(19, 27, 46, 0.04);
