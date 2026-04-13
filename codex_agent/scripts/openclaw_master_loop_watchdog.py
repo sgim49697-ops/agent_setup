@@ -44,7 +44,7 @@ STALL_TIMEOUT_MINUTES = 18
 TRACE_RESTART_THRESHOLD = 2
 PROCESS_BUDGET_BACKOFF_MINUTES = 5
 MAX_ORCHESTRATOR_PROCS = 1
-MAX_CODEX_EXEC_PROCS = 1
+MAX_CODEX_EXEC_PROCS = 3
 MAX_STITCH_MCP_PROCS = 3
 MAX_PLAYWRIGHT_MCP_PROCS = 3
 MAX_AUTOMATION_TOTAL_PROCS = 10
@@ -219,7 +219,7 @@ def cleanup_orphan_mcp_proxies() -> None:
 
 
 def cleanup_runtime_budget_excess(issue: str | None = None) -> None:
-    if issue and issue.startswith(('stitch_mcp', 'playwright_mcp')):
+    if issue and issue.startswith(('stitch_mcp', 'playwright_mcp', 'codex_exec')):
         cleanup_orphan_mcp_proxies()
         return
     pkill_runner_tree()
