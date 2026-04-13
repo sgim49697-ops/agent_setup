@@ -25,6 +25,7 @@ export interface BlogGeneratorInputs {
 export interface WorkflowStage {
   id: 'research' | 'outline' | 'drafts' | 'review' | 'final'
   label: string
+  hookLabel: string
   output: string
   description: string
 }
