@@ -420,35 +420,35 @@ function App() {
           : Math.max(8, completedCount * 25)
   const finalPreview = buildFinalPreview(state.generation.outputs.final_post)
   const briefPressureLabel = `${audienceUiLabels[state.inputs.audience]} · ${toneUiLabels[state.inputs.tone]} · ${lengthUiLabels[state.inputs.length]}`
-  const heroTickets = [
+  const heroCommands = [
     {
-      label: '브리프 계약',
+      label: '입력 계약',
       value: briefPressureLabel,
-      note: '네 데스크가 같은 입력 계약을 들고 움직이므로 중간에 기준표가 바뀌지 않습니다.',
+      note: '첫 잠금 뒤에는 네 데스크가 같은 기준으로만 움직여 중간에 판단축이 흔들리지 않습니다.',
     },
     {
       label: '지금 압력',
-      value: currentRoleMeta.handoffLabel,
-      note:
+      value:
         state.generation.status === 'export-ready'
-          ? '모든 인계가 닫혀 발행본 확인과 복사만 남은 상태입니다.'
-          : actionHint,
+          ? '발행 점검'
+          : `${currentRoleMeta.label} → ${nextRoleMeta?.label ?? '발행 데스크'}`,
+      note: actionHint,
     },
     {
-      label: '표면 원칙',
+      label: '첫 화면 원칙',
       value: '현재 · 다음 · 발행',
       note: state.generation.outputs.final_post
-        ? '긴 본문은 요약 뒤에서만 열고 첫 화면에는 발행 상태만 또렷하게 남깁니다.'
-        : '첫 화면은 현재 단계와 다음 인계만 보여주고 긴 산출물은 작업면 안쪽으로 밀어 둡니다.',
+        ? '발행 상태와 짧은 요약만 먼저 드러내고 전체 원고와 근거는 뒤쪽 서랍으로 남깁니다.'
+        : '지금 닫히는 데스크와 다음 인계만 전면에 두고 긴 산출물은 작업면 안쪽으로 밀어 둡니다.',
     },
-  ]
-  const routeStations = [
+  ] as const
+  const relaySignals = [
     {
-      label: '지금 닫는 구간',
+      label: '지금 봉인',
       value: `${currentRoleMeta.label} · ${currentRoleMeta.stageLabel}`,
       note:
         state.generation.status === 'initial'
-          ? '브리프 잠금 전이라 첫 인계 대기 중입니다.'
+          ? '첫 브리프 잠금 전이라 리서처 데스크가 조용히 대기 중입니다.'
           : currentRoleMeta.handoffSummary,
       tone:
         state.generation.status === 'export-ready'
@@ -459,18 +459,18 @@ function App() {
     },
     {
       label: '다음 인계',
-      value: nextRoleMeta ? `${nextRoleMeta.label} · ${nextRoleMeta.stageLabel}` : '발행 준비 완료',
+      value: nextRoleMeta ? `${nextRoleMeta.label} · ${nextRoleMeta.stageLabel}` : '복사와 마지막 읽기',
       note:
         nextRoleMeta?.handoffSummary ??
-        '최종 원고가 잠겨 있어 이제 복사와 마지막 확인만 남았습니다.',
+        '최종 원고가 잠겨 복사와 마지막 읽기만 남았습니다.',
       tone: nextRoleMeta ? 'next' : 'complete',
     },
     {
-      label: '최종 잠금',
-      value: state.generation.outputs.final_post ? '복사 가능한 발행본' : '리뷰 잠금 대기',
+      label: '발행 봉인',
+      value: state.generation.outputs.final_post ? '복사 가능한 발행본' : '리뷰 잠금 뒤 공개',
       note: state.generation.outputs.final_post
-        ? '발행본 요약을 먼저 읽고 필요할 때만 전체 원고를 펼칩니다.'
-        : '리뷰어 단계가 닫히면 발행본 미리보기가 바로 열립니다.',
+        ? '발행 요약을 먼저 읽고 전체 원고는 필요할 때만 펼칩니다.'
+        : '리뷰어 단계가 닫히면 발행본 요약과 복사 버튼이 바로 열립니다.',
       tone: state.generation.outputs.final_post ? 'complete' : 'pending',
     },
   ] as const
@@ -507,20 +507,6 @@ function App() {
       ? `${nextRoleMeta.label} 책상은 ${nextRoleMeta.stageLabel} 인계를 기다리는 중입니다.`
       : '이제 발행 전 마지막 읽기와 복사만 남았습니다.',
   ]
-  const editorialRules = [
-    {
-      label: '같은 계약 유지',
-      note: '주제, 독자, 톤, 분량은 첫 입력 이후 끝까지 같은 압력으로 전달합니다.',
-    },
-    {
-      label: '현재 데스크만 전면',
-      note: '첫 화면은 지금 닫히는 데스크와 다음 데스크만 보이게 유지합니다.',
-    },
-    {
-      label: '긴 원고는 뒤에',
-      note: '발행 원고와 근거는 요약 뒤 보조 면에서만 열어 첫 스캔을 가볍게 둡니다.',
-    },
-  ] as const
   const manifestPreview: Record<string, unknown> = {
     워크스페이스: '순차 파이프라인',
     현재_단계: currentStageLabel,
@@ -706,11 +692,11 @@ function App() {
           <div className="hero-headline-grid">
             <div className="hero-headline-copy">
               <p className="eyebrow">순차 지휘실</p>
-              <h1>한 장의 원고가 네 데스크를 건너 봉인되는 밤판 편집실</h1>
+              <h1>원고 한 장이 네 데스크를 지나 봉인되는 야간 편집 레일</h1>
               <p className="lead">
-                리서처, 아웃라이너, 라이터, 리뷰어가 같은 브리프를 손에서 손으로 넘기며 발행
-                가능한 원고를 봉인합니다. 첫 화면은 긴 산출물 대신 지금 닫히는 데스크, 바로
-                이어질 데스크, 발행 잠금 상태만 남겨 편집 흐름을 먼저 읽히게 했습니다.
+                리서처부터 리뷰어까지 한 장의 원고가 순서대로 잠기며 이동합니다. 첫 화면은 긴
+                산출물 대신 지금 닫히는 데스크, 바로 이어질 데스크, 마지막 발행 봉인만 남겨
+                인계 리듬이 먼저 읽히도록 눌렀습니다.
               </p>
 
               <p className="hero-contract-line">
@@ -736,16 +722,17 @@ function App() {
               <span className="signal-label">야간 마감 데스크</span>
               <strong>
                 {state.generation.status === 'export-ready'
-                  ? '모든 봉인지가 닫혀 이제 발행본 확인과 복사만 남았습니다.'
-                  : `${currentRoleMeta.label} 데스크가 지금 인계 봉인지에 마지막 결재를 남기고 있습니다.`}
+                  ? '네 데스크가 같은 원고를 끝까지 넘겨 봉인을 마쳤습니다. 이제 발행본 확인과 복사만 남았습니다.'
+                  : `${currentRoleMeta.label} 데스크가 인계 봉인을 닫고 있고, 다음 책상은 같은 원고를 받을 준비를 마쳤습니다.`}
               </strong>
               <p>
-                긴 본문과 근거는 뒤로 물리고, 앞줄에는 현재 데스크와 다음 데스크, 발행 잠금만
-                남겨 첫 스캔에서 흐름이 끊기지 않도록 정리했습니다.
+                검토 로그와 전체 근거는 뒤로 물리고, 앞줄에는 현재 데스크와 다음 데스크,
+                발행 봉인만 남겨 첫 스캔에서 손에서 손으로 넘어가는 움직임이 먼저 읽히게
+                정리했습니다.
               </p>
 
               <div className="hero-window-list">
-                {routeStations.map((signal, index) => (
+                {relaySignals.map((signal, index) => (
                   <article
                     key={signal.label}
                     className={`hero-window-card hero-window-${signal.tone}`}
@@ -764,29 +751,21 @@ function App() {
 
           <div className="hero-storyband">
             <article className="hero-bulletin">
-              <span className="signal-label">데스크 메모</span>
-              <strong>{currentRoleMeta.stageLabel}</strong>
+              <span className="signal-label">봉인 메모</span>
+              <strong>
+                {state.generation.status === 'initial'
+                  ? '첫 인계를 열기 전 브리프 잠금'
+                  : `${currentRoleMeta.label} 데스크가 지금 닫는 장면`}
+              </strong>
               <p>{actionHint}</p>
             </article>
 
-            <div className="hero-ticket-row">
-              {heroTickets.map((ticket) => (
-                <article key={ticket.label} className="hero-ticket-card">
-                  <span className="signal-label">{ticket.label}</span>
-                  <strong>{ticket.value}</strong>
-                  <p>{ticket.note}</p>
-                </article>
-              ))}
-            </div>
-
-            <div className="hero-directive-grid">
-              {editorialRules.map((rule, index) => (
-                <article key={rule.label} className="hero-directive-card">
-                  <div className="hero-directive-head">
-                    <span className="hero-window-step">{`0${index + 1}`}</span>
-                    <span className="signal-label">{rule.label}</span>
-                  </div>
-                  <p>{rule.note}</p>
+            <div className="hero-command-strip">
+              {heroCommands.map((command) => (
+                <article key={command.label} className="hero-command-card">
+                  <span className="signal-label">{command.label}</span>
+                  <strong>{command.value}</strong>
+                  <p>{command.note}</p>
                 </article>
               ))}
             </div>
@@ -991,6 +970,21 @@ function App() {
                   ? '리뷰어 잠금까지 끝났으므로 이제 발행본 확인과 복사만 남았습니다.'
                   : actionHint}
             </p>
+            <div className="route-station-strip" aria-label="현재 인계와 다음 움직임">
+              {relaySignals.map((signal, index) => (
+                <article
+                  key={signal.label}
+                  className={`route-station-card route-station-${signal.tone}`}
+                >
+                  <div className="route-station-head">
+                    <span className="route-station-step">{`0${index + 1}`}</span>
+                    <span className="signal-label">{signal.label}</span>
+                  </div>
+                  <strong>{signal.value}</strong>
+                  <p>{signal.note}</p>
+                </article>
+              ))}
+            </div>
           </article>
 
           <div className="route-stage-column">
