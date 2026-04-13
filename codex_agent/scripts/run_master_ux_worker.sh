@@ -20,6 +20,52 @@ update_state() {
   python3 "$STATE_HELPER" "$STATE" "$@"
 }
 
+run_final_closure() {
+  printf '[%s] Final closure mode: remaining_harnesses empty, running full-project rescan.\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> "$LOG"
+  python3 "$VALIDATOR" --rewrite --quiet || true
+  python3 "$TRACE_SANITY" --quiet || true
+  python3 "$BASELINE" --quiet || true
+  local quality_rc=0
+  python3 "$QUALITY_GATE" --enforce --quiet || quality_rc=$?
+  update_state quality_gate_status "$quality_rc"
+
+  local remaining_after
+  remaining_after=$(python3 - <<'PY'
+import json
+from pathlib import Path
+from master_loop_state import normalize_remaining_harnesses
+state = json.loads(Path('/home/user/projects/agent_setup/codex_agent/.omx/state/master-ux-loop.json').read_text(encoding='utf-8'))
+print(json.dumps(normalize_remaining_harnesses(state.get('remaining_harnesses')), ensure_ascii=False))
+PY
+)
+
+  if [[ "$quality_rc" -eq 0 && "$remaining_after" == "[]" ]]; then
+    cat > "$PROJECT_FINAL_MARKER" <<EOF
+# master-ux-benchmark-v2-project-final
+
+project is complete
+completed_at: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+EOF
+    update_state project_status project_completed
+    update_state status completed
+    update_state cycle_status completed
+    update_state current_harness quality_gate
+    update_state current_phase quality-gate
+    update_state next_cycle_required __false__
+    update_state last_progress_summary "full-project rescan passed with remaining_harnesses empty; project marked complete"
+    return 0
+  fi
+
+  update_state status idle
+  update_state project_status in_progress
+  update_state cycle_status failed
+  update_state current_harness quality_gate
+  update_state current_phase quality-gate
+  update_state next_cycle_required __true__
+  update_state last_progress_summary "full-project rescan found regressed harnesses; queued another cycle"
+  return 20
+}
+
 mkdir -p "$ROOT/.omx/logs" "$ROOT/.omx/state"
 mkdir -p "$FORENSICS_DIR"
 if [[ "${MASTER_LOOP_SAFE_MODE_BYPASS:-0}" != "1" ]]; then
@@ -105,8 +151,11 @@ root=Path('/home/user/projects/agent_setup/codex_agent')
 state=load_state(root / '.omx/state/master-ux-loop.json')
 cycle = int(state.get('cycle', 0)) + 1
 remaining = normalize_remaining_harnesses(state.get('remaining_harnesses'))
-current = str(state.get('current_harness') or '').strip()
-current = resolve_harness_token(current, state) if current else ''
+raw_current = str(state.get('current_harness') or '').strip()
+if not remaining:
+    current = 'quality_gate'
+else:
+    current = resolve_harness_token(raw_current, state) if raw_current else ''
 if not current or current == 'benchmark_foundation':
     current = preferred_remaining_harness(state)
 deferred = set(normalize_remaining_harnesses(state.get('deferred_harnesses')))
@@ -224,6 +273,19 @@ update_state current_harness "$ACTIVE_HARNESS"
 update_state last_worker_start_at "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 update_state last_progress_at "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 update_state last_progress_summary "cycle-$CURRENT_CYCLE launched for $ACTIVE_HARNESS"
+
+if [[ "$ACTIVE_HARNESS" == "quality_gate" && "$REMAINING_JSON" == "[]" ]]; then
+  set +e
+  run_final_closure
+  STATUS=$?
+  set -e
+  FINAL_STATUS="$STATUS"
+  FINISH_REASON="natural-exit"
+  printf '[%s] Detached tmux worker exited with status %s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$STATUS" >> "$LOG"
+  update_state last_worker_exit_status "$STATUS"
+  update_state last_worker_finish_at "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+  exit "$STATUS"
+fi
 
 PROMPT=$(cat <<PROMPT_EOF
 Continue one bounded UX benchmark cycle in /home/user/projects/agent_setup/codex_agent.

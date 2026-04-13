@@ -145,10 +145,12 @@ def normalize_remaining_harnesses(value: Any) -> list[str]:
 
 def resolve_quality_gate_target(state: dict[str, Any] | None = None) -> str:
     if state:
+        remaining = normalize_remaining_harnesses(state.get("remaining_harnesses"))
+        if not remaining:
+            return QUALITY_GATE_ALIAS
         current = str(state.get("current_harness") or "").strip()
         if current in HARNESSES:
             return current
-        remaining = normalize_remaining_harnesses(state.get("remaining_harnesses"))
         for harness in remaining:
             if harness in HARNESSES:
                 return harness
@@ -163,7 +165,7 @@ def resolve_quality_gate_target(state: dict[str, Any] | None = None) -> str:
         if active in HARNESSES:
             return active
 
-    return HARNESSES[0]
+    return QUALITY_GATE_ALIAS
 
 
 def resolve_harness_token(harness: str, state: dict[str, Any] | None = None) -> str:
@@ -200,18 +202,18 @@ def infer_current_harness(state: dict[str, Any]) -> str:
     if remaining:
         return remaining[0]
 
-    return "benchmark_foundation"
+    return QUALITY_GATE_ALIAS
 
 
 def preferred_remaining_harness(state: dict[str, Any], include_deferred: bool = False) -> str:
     remaining = normalize_remaining_harnesses(state.get("remaining_harnesses"))
     deferred = set(normalize_remaining_harnesses(state.get("deferred_harnesses")))
     if include_deferred:
-        return remaining[0] if remaining else "benchmark_foundation"
+        return remaining[0] if remaining else QUALITY_GATE_ALIAS
     for harness in remaining:
         if harness not in deferred:
             return harness
-    return remaining[0] if remaining else "benchmark_foundation"
+    return remaining[0] if remaining else QUALITY_GATE_ALIAS
 
 
 def coerce_field(key: str, value: Any) -> Any:

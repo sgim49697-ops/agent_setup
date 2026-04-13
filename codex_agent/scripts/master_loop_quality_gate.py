@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from master_loop_artifact_freshness import latest_artifact_mtime
-from master_loop_state import HARNESSES, load_state, normalize_remaining_harnesses, resolve_harness_token, save_state
+from master_loop_state import HARNESSES, QUALITY_GATE_ALIAS, load_state, normalize_remaining_harnesses, resolve_harness_token, save_state
 from master_loop_trace_sanity import analyze_trace, read_progress_events
 from master_loop_ui_language_gate import scan_harness
 from master_loop_validator import build_report as build_validator_report
@@ -38,6 +38,8 @@ def active_harness(state: dict, arg: str | None) -> str:
     if arg:
         return resolve_harness_token(arg, state)
     current = str(state.get('current_harness') or '').strip()
+    if current == QUALITY_GATE_ALIAS and not normalize_remaining_harnesses(state.get('remaining_harnesses')):
+        return HARNESSES[0]
     if current:
         resolved_current = resolve_harness_token(current, state)
         if resolved_current in set(HARNESSES):

@@ -11,6 +11,14 @@ QUALITY_REPORT="$ROOT/.omx/state/master-loop-quality-gate.json"
 export RUNNER_ELAPSED=$(ps -eo etimes,cmd | grep -E "run_master_ux_worker\.sh" | grep -v grep | head -n1 | awk "{print \$1}" || true)
 
 python3 "$ROOT/scripts/master_loop_validator.py" --quiet >/dev/null || true
+STATE_PROJECT_STATUS=$(python3 - <<'PY'
+import json
+from pathlib import Path
+state = json.loads(Path('/home/user/projects/agent_setup/codex_agent/.omx/state/master-ux-loop.json').read_text(encoding='utf-8'))
+print(state.get('project_status', 'in_progress'))
+PY
+)
+if [[ "$STATE_PROJECT_STATUS" != "project_completed" ]]; then
 python3 "$ROOT/scripts/master_loop_trace_sanity.py" --quiet >/dev/null || true
 python3 "$ROOT/scripts/master_loop_baseline_metrics.py" --quiet >/dev/null || true
 python3 "$ROOT/scripts/master_loop_quality_gate.py" --active-harness "$(python3 - <<'INNER'
@@ -25,6 +33,7 @@ else:
     print(remaining[0] if remaining else 'single_agent')
 INNER
 )" --quiet >/dev/null || true
+fi
 
 python3 - <<'PY'
 import json, os, subprocess

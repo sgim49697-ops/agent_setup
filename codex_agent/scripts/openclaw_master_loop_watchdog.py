@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from master_loop_state import load_state, normalize_remaining_harnesses, parse_bool, preferred_remaining_harness, read_safe_mode, save_state
+from master_loop_state import QUALITY_GATE_ALIAS, load_state, normalize_remaining_harnesses, parse_bool, preferred_remaining_harness, read_safe_mode, save_state
 from master_loop_trace_sanity import analyze_trace, read_progress_events
 from master_loop_validator import build_report as build_validator_report
 
@@ -744,7 +744,9 @@ def main() -> int:
         state['status'] = 'idle'
         state['cycle_status'] = 'idle'
         state['current_phase'] = 'next_cycle_pending'
-        state['current_harness'] = normalize_remaining_harnesses(state.get('remaining_harnesses'))[0] if normalize_remaining_harnesses(state.get('remaining_harnesses')) else 'benchmark_foundation'
+        next_remaining = normalize_remaining_harnesses(state.get('remaining_harnesses'))
+        state['current_harness'] = next_remaining[0] if next_remaining else QUALITY_GATE_ALIAS
+        state['current_phase'] = 'quality-gate' if not next_remaining else 'next_cycle_pending'
         state = launch_runner(state, 'next-cycle-required')
         write_state(state)
         checkpoint_git()
