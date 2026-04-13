@@ -482,6 +482,35 @@ function App() {
       : state.generation.status === 'error'
         ? '실패 조건을 걷어낸 뒤 다시 시작하면 리서치부터 최종 원고까지 같은 흐름으로 복구됩니다.'
         : '주제, 독자, 톤, 길이만 고정하면 한 줄 작성 흐름이 차례대로 켜집니다.'
+  const isPreflightDocket =
+    state.generation.status === 'initial' || state.generation.status === 'error'
+  const docketStatusLabel =
+    state.generation.status === 'initial'
+      ? '준비 전'
+      : state.generation.status === 'error'
+        ? '복구 필요'
+        : finalPost
+          ? '출고 직전'
+          : '작성 중'
+  const docketLead = finalPost
+    ? finalOutlineLead
+    : state.generation.status === 'error'
+      ? '브리프를 다듬으면 현재 단계부터 원고 흐름을 다시 이어갈 수 있습니다.'
+      : '긴 초안 대신 현재 단계, 다음 단계, 진행률만 먼저 보여 주는 상태 카드입니다.'
+  const docketHighlights = [
+    {
+      label: '현재 단계',
+      value: focusStageLabel,
+    },
+    {
+      label: '다음 단계',
+      value: nextActionLabel,
+    },
+    {
+      label: finalPost ? '원고 구조' : '진행률',
+      value: finalPost ? finalStructureLabel : completionSummary,
+    },
+  ]
   const stagePanelMessage =
     state.generation.status === 'initial'
       ? selectedStage === 'research'
@@ -917,14 +946,41 @@ function App() {
               <p className="hero-deck">{heroLead}</p>
             </div>
           </div>
-          <ul className="hero-ledger-strip" aria-label="브리프 요약">
+          <ul
+            aria-label="브리프와 원고 상태"
+            className={`hero-ledger-strip ${isPreflightDocket ? 'hero-ledger-strip-preflight' : ''}`.trim()}
+          >
             <li className="hero-ledger-panel hero-ledger-panel-spotlight">
-              <span>브리프 요약</span>
+              <span>봉인한 브리프</span>
               <strong>{topicSnapshot}</strong>
               <p>{briefSummaryLine}</p>
               <div className="hero-ledger-meta">
                 <span className="summary-chip">{briefSealState}</span>
                 <span className="summary-chip">{focusProgressLabel}</span>
+              </div>
+            </li>
+            <li
+              className={`hero-ledger-panel hero-ledger-panel-manuscript ${isPreflightDocket ? 'hero-ledger-panel-manuscript-soft' : ''}`.trim()}
+            >
+              <div className="hero-docket-head">
+                <div>
+                  <span>원고 상태</span>
+                  <strong>{finalTitle}</strong>
+                </div>
+                <b className="hero-docket-status">{docketStatusLabel}</b>
+              </div>
+              <p className="hero-docket-lead">{docketLead}</p>
+              <ul className="hero-docket-preview" aria-label="핵심 정보">
+                {docketHighlights.map((item) => (
+                  <li key={item.label}>
+                    <span>{item.label}</span>
+                    <strong>{item.value}</strong>
+                  </li>
+                ))}
+              </ul>
+              <div className="hero-ledger-meta hero-docket-meta">
+                <span className="summary-chip">{commandPulseLabel}</span>
+                <span className="summary-chip">{exportStateLabel}</span>
               </div>
             </li>
           </ul>
