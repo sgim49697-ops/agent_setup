@@ -240,8 +240,8 @@ function App() {
   const hasLoopStarted = state.status !== 'initial'
   const repairRows = selectedIteration?.verdictRows.filter((row) => row.verdict !== 'PASS') ?? []
   const heroLead = hasLoopStarted
-    ? '첫 화면에는 지금 상태와 다음 할 일만 남기고, 반복별 문제와 수정 응답은 아래 기록 영역으로 분리했습니다.'
-    : '긴 리포트 대신 지금 상태, 브리프, 복사 가능 시점만 남긴 교정 데스크입니다. 세 번의 반복이 끝난 뒤에만 승인본이 열립니다.'
+    ? '지금은 기준 수정본 하나와 승인 게이트만 먼저 보이게 두고, 반복별 근거와 수정 이력은 아래 승인 리본으로 넘겼습니다.'
+    : '브리프, 승인 루프, 복사 잠금만 먼저 보여 주는 편집 데스크입니다. 세 번째 승인본이 닫히기 전까지는 최종 원고가 열리지 않습니다.'
   const loopStatus =
     state.status === 'initial'
       ? '아직 첫 초안이 시작되지 않았습니다.'
@@ -322,18 +322,15 @@ function App() {
         ? '작성자, 리뷰어, 수정자가 같은 브리프를 이어받아 순차적으로 재생합니다.'
         : '브리프를 확인하고 첫 생성을 누르면 반복 기록이 열립니다.',
     },
-  ] as const
-  const approvalDeskCards = [
-    ...gateCards,
     {
       id: 'export',
-      label: '복사 가능 시점',
+      label: '복사 잠금',
       title: exportLockTitle,
       body: exportLockBody,
       note:
-        state.status === 'export-ready'
-          ? '세 번째 승인본만 복사 경로를 열고, 이전 반복은 참고 기록으로만 남깁니다.'
-          : '세 번째 반복이 끝나기 전까지는 복사와 최종 공개가 잠겨 있습니다.',
+        finalArticle || state.status === 'export-ready'
+          ? '승인 요약과 마크다운 원문이 모두 열렸습니다.'
+          : '세 번째 반복이 닫히기 전에는 승인 원고와 복사 경로가 잠깁니다.',
     },
   ] as const
   const readerTabs = [
@@ -355,15 +352,55 @@ function App() {
       note: selectedIteration ? formatCounts(selectedIteration) : '브리프를 맞춘 뒤 첫 초안을 엽니다.',
     },
   ] as const
-  const selectedLoopLabel = selectedIteration ? `${selectedIteration.iteration}차 반복 선택됨` : '첫 반복 대기'
+  const loopRailSteps = iterationSteps.map((iterationNumber) => {
+    const record = visibleIterations.find((item) => item.iteration === iterationNumber) ?? null
+    const stateClass = !record
+      ? 'queued'
+      : selectedIteration?.iteration === iterationNumber
+        ? 'selected'
+        : state.status === 'export-ready' || iterationNumber < state.revealedIterations
+          ? 'complete'
+          : 'revealed'
+
+    return {
+      iterationNumber,
+      stateClass,
+      label:
+        iterationNumber === 1
+          ? '거친 초안'
+          : iterationNumber === 2
+            ? '리뷰 압축'
+            : '승인 잠금',
+      note: record ? formatCounts(record) : '이전 반복이 끝나면 열립니다.',
+    }
+  })
+  const deliverableSurfaceCopy: Record<string, { eyebrow: string; scent: string }> = {
+    'iteration-log': {
+      eyebrow: '반복 로그 장부',
+      scent: '작성 · 리뷰 · 수정 누적 기록',
+    },
+    manifest: {
+      eyebrow: '실행 식별 묶음',
+      scent: '런 ID · 시각 · 종료 상태',
+    },
+    scorecard: {
+      eyebrow: '세부 채점 묶음',
+      scent: 'UX · 접근성 · 프로세스 점수',
+    },
+    evaluation: {
+      eyebrow: '통합 판정 리포트',
+      scent: 'L1 · L2 · L3 최종 결과',
+    },
+  }
+  const selectedLoopLabel = selectedIteration ? `기준 수정본 · ${selectedIteration.iteration}차` : '기준 수정본 대기'
   const selectedLoopTitle = selectedIteration
     ? repairRows.length > 0
-      ? `${repairRows.length}개 막힘 항목을 우선 검토 중입니다.`
-      : '열린 막힘 항목 없이 승인 검토만 남았습니다.'
-    : '브리프를 맞춘 뒤 첫 반복을 열면 여기에서 현재 반복을 확인할 수 있습니다.'
+      ? `${repairRows.length}개 막힘 항목이 아직 남아 있습니다.`
+      : '승인 게이트를 막는 항목이 없습니다.'
+    : '브리프를 맞춘 뒤 첫 반복을 열면 여기에서 기준 수정본이 고정됩니다.'
   const selectedLoopBody = selectedIteration
-    ? `${selectedIteration.optimizerChanges.length}개 수정 응답과 ${formatCounts(selectedIteration)}를 한 묶음으로 읽게 했습니다.`
-    : '1차 초안, 2차 리뷰 압축, 3차 승인 완료 순서로 아래 기록이 단계적으로 채워집니다.'
+    ? `${selectedIteration.optimizerChanges.length}개 수정 응답과 ${formatCounts(selectedIteration)}를 한 묶음으로 먼저 읽도록 압축했습니다.`
+    : '1차 초안, 2차 리뷰 압축, 3차 승인 완료 순서로 기준 수정본이 단계적으로 채워집니다.'
 
   function updateField<Key extends keyof BlogGeneratorInputs>(
     field: Key,
@@ -547,8 +584,24 @@ function App() {
         <article className="hero-card">
           <div className="hero-copy-block">
             <p className="eyebrow">현재 상태 요약</p>
-            <h1>기술 블로그 교정 데스크</h1>
+            <h1>반복 수정 데스크</h1>
             <p className="hero-lead">{heroLead}</p>
+            <div className="hero-loop-rail" aria-label="승인 루프 진행">
+              {loopRailSteps.map((step) => (
+                <article key={step.iterationNumber} className={`loop-rail-step is-${step.stateClass}`}>
+                  <span className="loop-rail-index">{step.iterationNumber}차</span>
+                  <div className="loop-rail-copy">
+                    <strong>{step.label}</strong>
+                    <span>{step.note}</span>
+                  </div>
+                </article>
+              ))}
+            </div>
+            <div className="brief-pills hero-brief-pills" aria-label="현재 브리프 요약">
+              <span className="meta-pill">독자 {audienceCopy[state.inputs.audience]}</span>
+              <span className="meta-pill">톤 {toneCopy[state.inputs.tone]}</span>
+              <span className="meta-pill">분량 {lengthCopy[state.inputs.length]}</span>
+            </div>
             <div className="hero-actions">
               <button
                 type="button"
@@ -582,14 +635,18 @@ function App() {
             aria-label={hasLoopStarted ? '승인 우선순위' : '승인 준비 신호'}
           >
             {hasLoopStarted
-              ? approvalDeskCards.map((card) => (
-                  <article key={card.id} className={`panel gate-card is-${card.id}`}>
-                    <p className="panel-label">{card.label}</p>
-                    <strong>{card.title}</strong>
-                    <p>{card.body}</p>
-                    <span className="gate-note">{card.note}</span>
-                  </article>
-                ))
+              ? (
+                  <>
+                    {gateCards.map((card) => (
+                      <article key={card.id} className={`panel gate-card is-${card.id}`}>
+                        <p className="panel-label">{card.label}</p>
+                        <strong>{card.title}</strong>
+                        <p>{card.body}</p>
+                        <span className="gate-note">{card.note}</span>
+                      </article>
+                    ))}
+                  </>
+                )
               : heroSignals.map((signal) => (
                   <article key={signal.label} className="metric-chip hero-signal">
                     <span>{signal.label}</span>
@@ -688,71 +745,18 @@ function App() {
       </section>
 
       {hasLoopStarted ? (
-        <section className="supporting-grid">
-          <details className="panel supporting-panel">
-            <summary>
-              <div>
-                <p className="panel-label">프리셋 브리프</p>
-                <h2>되돌려 쓰는 브리프 묶음</h2>
-                <p>첫 루프가 열린 뒤에는 보조 레이어에서만 다시 꺼내 봅니다.</p>
-              </div>
-              <span>4개 프리셋</span>
-            </summary>
-            <div className="preset-strip" aria-label="프리셋 브리프 목록">
-              {topicPresets.map((preset) => (
-                <button
-                  key={preset.title}
-                  type="button"
-                  className="preset-chip"
-                  onClick={() =>
-                    applyPreset(preset.title, preset.audience, preset.tone, preset.length)
-                  }
-                >
-                  <strong>{preset.title}</strong>
-                  <span>{preset.rationale}</span>
-                </button>
-              ))}
-            </div>
-          </details>
-
-          <details className="panel supporting-panel">
-            <summary>
-              <div>
-                <p className="panel-label">단계 계약</p>
-                <h2>승인에 도달하는 단계</h2>
-                <p>{workflowStages.map((stage) => stage.label).join(' · ')}</p>
-              </div>
-              <span>필수 5단계</span>
-            </summary>
-            <div className="workflow-strip" aria-label="필수 단계 계약">
-              {workflowStages.map((stage, index) => {
-                const stateClass = stageState(index, state.status, state.revealedIterations)
-                return (
-                  <article key={stage.id} className={`workflow-card is-${stateClass}`}>
-                    <p className="workflow-step">0{index + 1}</p>
-                    <h3>{stage.label}</h3>
-                    <p>{stage.description}</p>
-                  </article>
-                )
-              })}
-            </div>
-          </details>
-        </section>
-      ) : null}
-
-      {hasLoopStarted ? (
         <>
-          <section className="workbench-grid">
+          <section className="loop-stage">
             <article className="panel workbench-panel">
               <div className="section-head">
-                <p className="panel-label">반복 기록</p>
-                <h2>반복별 막힘 항목과 수정 응답</h2>
+                <p className="panel-label">승인 루프 이력</p>
+                <h2>반복 선택 기록</h2>
                 <p>
-                  첫 화면의 전역 승인 카드와 분리해, 여기서는 반복 하나만 골라 막힘 항목과 수정
-                  응답을 함께 읽게 만들었습니다. 상세 표는 접힌 레이어에만 남깁니다.
+                  카드 모음처럼 나열하지 않고, 지금 선택한 수정본 하나만 기준으로 막힘 항목과 수정
+                  응답을 이어서 읽게 만들었습니다. 근거 표는 접힘 레이어에만 남깁니다.
                 </p>
               </div>
-              <article className="history-note-card">
+              <article className="revision-snapshot">
                 <div className="brief-pills">
                   <span className="meta-pill">{selectedLoopLabel}</span>
                   <span className="meta-pill">
@@ -763,10 +767,10 @@ function App() {
                 <p>{selectedLoopBody}</p>
               </article>
               <p className="timeline-selector-note">
-                열린 반복만 선택되며, 키보드에서는 위아래 화살표와 Home, End로 바로 이동할 수
-                있습니다.
+                열린 수정본만 선택되며, 키보드에서는 위아래 화살표와 Home, End로 기준 수정본을
+                바로 바꿀 수 있습니다.
               </p>
-              <div className="timeline-grid" role="group" aria-label="반복 기록 선택">
+              <div className="timeline-grid" role="group" aria-label="승인 루프 선택">
                 {iterationSteps.map((iterationNumber, index) => {
                   const record =
                     visibleIterations.find((item) => item.iteration === iterationNumber) ?? null
@@ -786,7 +790,6 @@ function App() {
                       }`}
                       aria-pressed={isSelected}
                       aria-current={isSelected ? 'step' : undefined}
-                      aria-controls={`iteration-panel-${iterationNumber}`}
                       data-testid={`iteration-selector-${iterationNumber}`}
                       onKeyDown={(event) => handleIterationSelectorKeyDown(event, index)}
                       onClick={() =>
@@ -803,12 +806,12 @@ function App() {
                               ? iterationNumber === 1
                                 ? '초안의 빈틈과 첫 실패 항목을 빠르게 수집하는 차수입니다.'
                                 : iterationNumber === 2
-                                  ? '막힘 항목을 줄이며 구조와 근거 밀도를 다시 맞추는 차수입니다.'
-                                  : '승인 조건을 잠그고 내보내기 시점을 여는 마지막 차수입니다.'
+                                  ? '막힘 항목을 줄이며 구조와 근거 밀도를 다시 조이는 차수입니다.'
+                                  : '승인 조건을 잠그고 복사 시점을 여는 마지막 차수입니다.'
                               : '이전 반복이 끝나면 이 보드가 자동으로 열립니다.'}
                           </p>
                         </div>
-                        {isSelected ? <span className="meta-pill current-loop-pill">현재 루프</span> : null}
+                        {isSelected ? <span className="meta-pill current-loop-pill">기준 수정본</span> : null}
                       </div>
                       <div className="timeline-meta-row">
                         <p className="timeline-counts">{formatCounts(record)}</p>
@@ -840,7 +843,12 @@ function App() {
               </div>
 
               {selectedIteration ? (
-                <>
+                <div
+                  className="inline-detail-bay"
+                  role="region"
+                  id={`iteration-panel-${selectedIteration.iteration}`}
+                  aria-labelledby={`iteration-button-${selectedIteration.iteration}`}
+                >
                   <div className="iteration-meta">
                     <span className="meta-pill">시작 시각 {selectedIteration.startedAt}</span>
                     <span className="meta-pill">{formatCounts(selectedIteration)}</span>
@@ -849,12 +857,7 @@ function App() {
                     </span>
                   </div>
 
-                  <div
-                    className="workbench-signal-grid"
-                    role="region"
-                    id={`iteration-panel-${selectedIteration.iteration}`}
-                    aria-labelledby={`iteration-button-${selectedIteration.iteration}`}
-                  >
+                  <div className="workbench-signal-grid">
                     <article className="subpanel review-signal-panel">
                       <p className="panel-label">리뷰어 신호</p>
                       <h3>{repairRows.length > 0 ? '아직 막고 있는 항목' : '승인 게이트 통과'}</h3>
@@ -890,7 +893,7 @@ function App() {
                     <summary>
                       <div>
                         <p className="panel-label">체크리스트 근거</p>
-                        <h2>전체 리뷰 판정 표</h2>
+                        <h2>근거 표 열기</h2>
                         <p>
                           통과·보류·실패 매트릭스는 필요할 때만 펼쳐 보고, 기본 화면에서는
                           막힘 항목과 응답만 남겨 정보 밀도를 낮춥니다.
@@ -927,7 +930,7 @@ function App() {
                       </div>
                     </div>
                   </details>
-                </>
+                </div>
               ) : (
                 <div className="empty-state">
                   첫 초안을 생성하면 리뷰 신호와 수정 응답이 여기에 쌓입니다.
@@ -937,10 +940,10 @@ function App() {
 
             <article className="panel reader-panel">
               <div className="section-head">
-                <p className="panel-label">원고 보기</p>
-                <h2>이번 반복에서 읽을 원고</h2>
+                <p className="panel-label">이 수정본의 원고</p>
+                <h2>현재 원고 보기</h2>
                 <p>
-                  현재 단계에 맞는 읽기 결과만 한 장씩 보여 줘서, 사용자가 다음 수정 포인트를
+                  가운데 리본에서 고른 수정본 하나만 오른쪽 작업면에 고정해, 다음 수정 포인트를
                   놓치지 않게 붙잡아 둡니다.
                 </p>
               </div>
@@ -1037,6 +1040,57 @@ function App() {
                 <div className="empty-state">첫 초안을 생성하면 현재 읽기 표면이 열립니다.</div>
               )}
             </article>
+
+            <aside className="side-rail" aria-label="승인 루프 보조 레일">
+              <details className="panel supporting-panel rail-panel">
+                <summary>
+                  <div>
+                    <p className="panel-label">보조 정보</p>
+                    <h2>되돌려 쓰는 브리프 묶음</h2>
+                    <p>기준 수정본을 유지한 채 보조 레일에서만 다시 꺼내 봅니다.</p>
+                  </div>
+                  <span>4개 프리셋</span>
+                </summary>
+                <div className="preset-strip" aria-label="프리셋 브리프 목록">
+                  {topicPresets.map((preset) => (
+                    <button
+                      key={preset.title}
+                      type="button"
+                      className="preset-chip"
+                      onClick={() =>
+                        applyPreset(preset.title, preset.audience, preset.tone, preset.length)
+                      }
+                    >
+                      <strong>{preset.title}</strong>
+                      <span>{preset.rationale}</span>
+                    </button>
+                  ))}
+                </div>
+              </details>
+
+              <details className="panel supporting-panel rail-panel">
+                <summary>
+                  <div>
+                    <p className="panel-label">승인 루프 규칙</p>
+                    <h2>승인에 도달하는 단계</h2>
+                    <p>{workflowStages.map((stage) => stage.label).join(' · ')}</p>
+                  </div>
+                  <span>필수 5단계</span>
+                </summary>
+                <div className="workflow-strip" aria-label="필수 단계 계약">
+                  {workflowStages.map((stage, index) => {
+                    const stateClass = stageState(index, state.status, state.revealedIterations)
+                    return (
+                      <article key={stage.id} className={`workflow-card is-${stateClass}`}>
+                        <p className="workflow-step">0{index + 1}</p>
+                        <h3>{stage.label}</h3>
+                        <p>{stage.description}</p>
+                      </article>
+                    )
+                  })}
+                </div>
+              </details>
+            </aside>
           </section>
 
           <section className="final-layout">
@@ -1135,8 +1189,8 @@ function App() {
             <details className="panel readiness-drawer">
               <summary>
                 <div>
-                  <p className="panel-label">평가 준비</p>
-                  <h2>평가 준비 자료</h2>
+                  <p className="panel-label">최종 승인 뒤 참고 자료</p>
+                  <h2>참고 자료 묶음</h2>
                   <p>
                     산출물과 점수는 승인 원고가 먼저 보인 뒤에만 열리도록 뒤쪽 보조 레이어에
                     격리합니다.
@@ -1147,7 +1201,14 @@ function App() {
               <div className="deliverable-grid">
                 {deliverables.map((item) => (
                   <article key={item.id} className="deliverable-card">
-                    <p className="deliverable-path">{item.path}</p>
+                    <div className="deliverable-meta-row">
+                      <p className="deliverable-path" aria-label={`파일 경로 ${item.path}`}>
+                        {deliverableSurfaceCopy[item.id]?.eyebrow ?? '참고 자료'}
+                      </p>
+                      <span className="meta-pill">
+                        {deliverableSurfaceCopy[item.id]?.scent ?? '보조 자료'}
+                      </span>
+                    </div>
                     <h3>{item.title}</h3>
                     <p>{item.description}</p>
                   </article>
@@ -1179,6 +1240,7 @@ function App() {
               </div>
             </details>
           </section>
+
         </>
       ) : null}
 
