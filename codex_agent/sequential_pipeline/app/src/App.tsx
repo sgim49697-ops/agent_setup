@@ -474,6 +474,30 @@ function App() {
       tone: state.generation.outputs.final_post ? 'complete' : 'pending',
     },
   ] as const
+  const checkpointHighlights = [
+    {
+      label: '현재 데스크',
+      value: `${currentRoleMeta.label} · ${currentRoleMeta.stageLabel}`,
+      note:
+        state.generation.status === 'initial'
+          ? '첫 브리프 잠금 전이라 리서처 데스크가 대기 중입니다.'
+          : currentRoleMeta.handoffSummary,
+      tone:
+        state.generation.status === 'export-ready'
+          ? 'complete'
+          : state.generation.status === 'error'
+            ? 'pending'
+            : 'current',
+    },
+    {
+      label: nextRoleMeta ? '다음 데스크' : '발행 데스크',
+      value: nextRoleMeta ? `${nextRoleMeta.label} · ${nextRoleMeta.stageLabel}` : '복사와 마지막 읽기',
+      note:
+        nextRoleMeta?.handoffSummary ??
+        '리뷰 반영 원고가 잠겨 복사와 마지막 읽기만 남았습니다.',
+      tone: nextRoleMeta ? 'next' : 'complete',
+    },
+  ] as const
   const relayChecklist = [
     '브리프는 한 번 잠그면 단계만 이동하고, 기준표는 끝까지 유지합니다.',
     state.generation.outputs.final_post
@@ -651,11 +675,11 @@ function App() {
           <div className="hero-headline-grid">
             <div className="hero-headline-copy">
               <p className="eyebrow">순차 지휘실</p>
-              <h1>한 줄 레일 위에서 네 번의 인계를 잠그는 발행 데스크</h1>
+              <h1>네 개의 데스크가 한 원고를 봉인하는 슬레이트 발행 레일</h1>
               <p className="lead">
-                리서처, 아웃라이너, 라이터, 리뷰어가 같은 브리프를 순서대로 넘기며 발행 가능한
-                원고를 잠급니다. 첫 화면은 긴 산출물 대신 지금 닫히는 단계와 다음 인계,
-                발행 잠금 상태만 먼저 읽히도록 정리했습니다.
+                리서처, 아웃라이너, 라이터, 리뷰어가 같은 브리프를 차례대로 넘기며 발행 가능한
+                원고를 봉인합니다. 첫 화면에는 긴 산출물 대신 지금 닫히는 데스크, 바로 이어질
+                데스크, 그리고 발행 잠금 상태만 먼저 남겨 판단 속도를 높였습니다.
               </p>
 
               <p className="hero-contract-line">
@@ -677,15 +701,15 @@ function App() {
             </div>
 
             <article className="hero-closing-card">
-              <span className="signal-label">마감 창구</span>
+              <span className="signal-label">야간 마감 데스크</span>
               <strong>
                 {state.generation.status === 'export-ready'
-                  ? '모든 창구가 닫혀 발행본 확인만 남은 상태'
-                  : `${currentRoleMeta.label} 책상이 지금 인계를 닫고 있습니다.`}
+                  ? '모든 봉투가 밀봉되어 발행본 확인만 남은 상태'
+                  : `${currentRoleMeta.label} 데스크가 지금 인계 봉투를 닫고 있습니다.`}
               </strong>
               <p>
-                레일 전체를 한눈에 보여 주되, 가장 앞줄에는 지금 닫히는 창구와 이어질 창구,
-                발행 창구만 남겨 첫 판단을 빠르게 만듭니다.
+                긴 본문은 뒤로 물리고, 앞줄에는 현재 데스크와 다음 데스크, 발행 잠금만 남겨
+                첫 스캔에서 흐름이 끊기지 않도록 정리했습니다.
               </p>
 
               <div className="hero-window-list">
@@ -960,22 +984,6 @@ function App() {
                 </button>
               ))}
             </div>
-
-            <div className="route-station-strip">
-              {routeStations.map((signal, index) => (
-                <article
-                  key={signal.label}
-                  className={`route-station-card route-station-${signal.tone}`}
-                >
-                  <div className="route-station-head">
-                    <span className="route-station-step">{`0${index + 1}`}</span>
-                    <span className="signal-label">{signal.label}</span>
-                  </div>
-                  <strong>{signal.value}</strong>
-                  <p>{signal.note}</p>
-                </article>
-              ))}
-            </div>
           </div>
         </div>
       </section>
@@ -999,21 +1007,30 @@ function App() {
               </div>
             </div>
 
-            <div className="checkpoint-window-list">
-              {routeStations.map((signal, index) => (
+            <div className="checkpoint-desk-grid">
+              {checkpointHighlights.map((item, index) => (
                 <article
-                  key={signal.label}
-                  className={`checkpoint-window checkpoint-window-${signal.tone}`}
+                  key={item.label}
+                  className={`checkpoint-desk-card checkpoint-desk-${item.tone}`}
                 >
-                  <div className="checkpoint-window-head">
+                  <div className="checkpoint-desk-head">
                     <span className="checkpoint-window-step">{`0${index + 1}`}</span>
-                    <span className="signal-label">{signal.label}</span>
+                    <span className="signal-label">{item.label}</span>
                   </div>
-                  <strong>{signal.value}</strong>
-                  <p>{signal.note}</p>
+                  <strong>{item.value}</strong>
+                  <p>{item.note}</p>
                 </article>
               ))}
             </div>
+
+            <article className="checkpoint-note-sheet">
+              <span className="signal-label">선택한 작업면</span>
+              <strong>
+                {selectedRoleMeta.label} · {selectedRoleMeta.stageLabel}
+              </strong>
+              <p>{selectedRoleMeta.description}</p>
+              <p>{selectedRoleMeta.handoffSummary}</p>
+            </article>
 
             <ul className="checkpoint-rule-list">
               {relayChecklist.map((item) => (
