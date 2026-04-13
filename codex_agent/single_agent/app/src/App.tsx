@@ -290,11 +290,6 @@ function App() {
   const currentStageNumber = state.generation.status === 'initial' ? 0 : currentStageIndex + 1
   const briefSummary = [audienceLabel, toneLabel, lengthLabel].filter(Boolean).join(' · ')
   const briefTags = [audienceLabel || '독자 미정', toneLabel || '톤 미정', lengthLabel || '길이 미정']
-  const briefGlanceItems = [
-    { label: '독자', value: audienceLabel || '미정' },
-    { label: '톤', value: toneLabel || '미정' },
-    { label: '길이', value: lengthLabel || '미정' },
-  ]
   const topicPreview = state.inputs.topic.trim() || '주제를 입력해 주세요'
   const topicSnapshot =
     topicPreview.length > 58 ? `${topicPreview.slice(0, 58).trimEnd()}…` : topicPreview
@@ -340,6 +335,14 @@ function App() {
       : state.generation.status === 'error'
         ? '브리프를 다듬으면 같은 흐름을 처음부터 다시 시작합니다.'
         : stageVisibleHooks[currentStage.id]
+  const deskMemoLead =
+    state.generation.status === 'initial'
+      ? '첫 화면은 현재 단계와 다음 행동만 남깁니다'
+      : state.generation.status === 'error'
+        ? '복구 지점만 다시 열고 같은 흐름을 재시작합니다'
+        : finalPost
+          ? '복사 직전 확인면만 남기고 긴 기록은 접었습니다'
+          : '지금은 이 단계와 다음 연결만 보면 충분합니다'
   const focusProgressLabel =
     state.generation.status === 'initial' ? '브리프 봉인 전' : `${currentStageNumber} / 5 단계`
   const progressSummary =
@@ -435,6 +438,23 @@ function App() {
             ? '이미 닫은 단계의 결과를 다시 읽으며 문장 밀도와 논지 흐름을 점검하는 면입니다.'
             : `현재 생성 흐름은 ${focusStageLabel} 단계에 머물러 있고, 이 카드는 다음에 열릴 산출물을 미리 조망하는 면입니다.`
   const selectedStageOrderLabel = String(selectedStageIndex + 1).padStart(2, '0')
+  const focusStageOrderLabel = String(state.generation.status === 'initial' ? 0 : currentStageNumber).padStart(2, '0')
+  const briefSealState =
+    state.generation.status === 'loading'
+      ? '봉인 유지 중'
+      : state.generation.status === 'error'
+        ? '봉인 재정비'
+        : finalPost
+          ? '출고 대기 봉인'
+          : '입력 봉인 준비'
+  const briefSealDescription =
+    state.generation.status === 'loading'
+      ? '작성 흐름이 움직이는 동안 입력은 이 레일에 고정되고 오른쪽 작업면만 앞으로 남습니다.'
+      : state.generation.status === 'error'
+        ? '실패 조건을 덜어낸 뒤 다시 봉인하면 같은 레일이 처음부터 다시 켜집니다.'
+        : finalPost
+          ? '브리프는 그대로 유지한 채 최종 원고와 복사 준비만 확인하면 됩니다.'
+          : '짧은 브리프를 봉인하면 다섯 단계가 한 줄 흐름으로 이어집니다.'
   const heroHeadline =
     state.generation.status === 'initial'
       ? '브리프 한 번으로 최종 원고까지 이어집니다'
@@ -445,12 +465,12 @@ function App() {
           : `${focusStageLabel}만 앞으로 남긴 단일 작성 흐름`
   const heroLead =
     state.generation.status === 'initial'
-      ? '주제, 독자, 톤, 길이만 잠그면 한 명의 작성 흐름이 리서치, 개요, 초안, 검토, 최종 원고까지 이어집니다. 첫 화면에는 지금 단계와 다음 작업만 남기고 긴 기록은 뒤 레이어로 밀었습니다.'
+      ? '주제, 독자, 톤, 길이만 잠그면 한 명의 작성 흐름이 리서치부터 최종 원고까지 곧게 이어집니다.'
       : state.generation.status === 'error'
         ? '실패한 흐름 전체를 다시 읽지 않도록, 복구해야 할 단계와 다시 시작 신호만 남겼습니다.'
         : finalPost
           ? '최종 원고가 잠겼습니다. 지금은 제목, 섹션 흐름, 복사 준비만 먼저 확인하면 됩니다.'
-          : '작성 흐름이 이미 움직이고 있습니다. 현재 단계와 다음 작업만 앞으로 두고, 긴 기록과 전문은 뒤쪽 서랍으로 물렸습니다.'
+          : '작성 흐름이 움직이는 동안 첫 화면에는 현재 단계와 다음 작업만 남깁니다.'
   const supportSurfaceDescription = finalPost
     ? '최종 원고가 열리면 보조 기록을 펼치지 않아도 복사 직전 확인만 끝낼 수 있습니다.'
     : '검토 메모와 산출물은 뒤쪽 서랍에 남기고, 첫 화면에는 현재 단계와 다음 행동만 남겼습니다.'
@@ -904,67 +924,58 @@ function App() {
               {commandPulseLabel} · {statusLabel(state.generation.status)}
             </span>
           </div>
-          <div className="hero-headline">
-            <div>
+          <div className="hero-headline hero-headline-tight">
+            <div className="hero-headline-copy">
               <p className="section-kicker">야간 원고 데스크</p>
               <h1>{heroHeadline}</h1>
+              <p className="hero-deck">{heroLead}</p>
             </div>
-            <p className="hero-lead">{heroLead}</p>
-          </div>
-
-          <div className="hero-stage-reel" aria-hidden="true">
-            {heroStageReel.map((stage) => (
-              <article
-                className={`hero-stage-reel-card hero-stage-reel-card-${stage.tone}`}
-                key={stage.id}
-              >
-                <div className="hero-stage-reel-head">
-                  <span>{stage.index}</span>
-                  <strong>{stage.stateLabel}</strong>
-                </div>
-                <div className="hero-stage-reel-copy">
-                  <strong>{stage.label}</strong>
-                  <p>{stage.detail}</p>
-                </div>
-              </article>
-            ))}
-          </div>
-
-          <div className="hero-command-grid hero-focus-grid-tight">
-            <article className="hero-command-card hero-command-card-primary">
-              <div className="hero-command-head">
-                <p className="hero-summary-label">지금 붙드는 단계</p>
-                <span className="hero-command-pulse">{phasePulseSummary}</span>
+            <aside className="hero-desk-note">
+              <p className="hero-summary-label">편집 규율 메모</p>
+              <strong>{deskMemoLead}</strong>
+              <p>{focusStageHint}</p>
+              <div className="hero-desk-note-meta">
+                <span className="summary-chip">{briefSealState}</span>
+                <span className="summary-chip">{exportStateLabel}</span>
               </div>
-              <div className="hero-stage-band">
-                <span className="hero-stage-number">{focusStageOrderLabel}</span>
-                <div className="hero-stage-copy">
+            </aside>
+          </div>
+
+          <div className="mission-board">
+            <article className="mission-card mission-card-current">
+              <div className="mission-card-head">
+                <p className="hero-summary-label">지금 붙드는 단계</p>
+                <span className="mission-card-pill">{phasePulseSummary}</span>
+              </div>
+              <div className="mission-stage-band">
+                <span className="mission-stage-index">{focusStageOrderLabel}</span>
+                <div className="mission-stage-copy">
                   <strong>{focusStageLabel}</strong>
                   <p>{focusStageStatusMessage}</p>
                 </div>
               </div>
-              <div className="hero-progress-band">
-                <div className="hero-progress-copy">
-                  <span>지금 이 화면에서 읽어야 할 것</span>
+              <div className="mission-progress-block">
+                <div className="mission-progress-copy">
+                  <span>현재 진행 신호</span>
                   <strong>{progressSummary}</strong>
                 </div>
-                <div className="progress-track hero-progress-track" aria-hidden="true">
+                <div className="progress-track mission-progress-track" aria-hidden="true">
                   <span style={{ width: `${progress}%` }} />
                 </div>
               </div>
-              <div className="hero-command-note">
-                <strong>{focusStageHint}</strong>
-                <p>{closureMessage}</p>
-              </div>
+              <p className="mission-card-note">{closureMessage}</p>
             </article>
 
-            <article className="hero-command-card hero-command-card-next">
-              <p className="hero-summary-label">즉시 할 일</p>
-              <strong>{nextActionLabel}</strong>
-              <p>{nextActionDescription}</p>
-              <div className="hero-action-stack">
+            <article className="mission-card mission-card-action">
+              <div className="mission-card-head">
+                <p className="hero-summary-label">다음 행동</p>
+                <span className="mission-card-pill">{nextActionLabel}</span>
+              </div>
+              <strong className="mission-card-title">{commandPulseLabel}</strong>
+              <p className="mission-card-copy">{nextActionDescription}</p>
+              <div className="hero-action-stack mission-action-stack">
                 <button
-                  aria-label="Generate post"
+                  aria-label={state.generation.status === 'loading' ? '원고 생성 중' : '원고 생성 시작'}
                   className="primary-action"
                   data-testid="Generate post"
                   disabled={state.generation.status === 'loading'}
@@ -976,7 +987,7 @@ function App() {
                   </span>
                 </button>
                 <button
-                  aria-label="Copy markdown"
+                  aria-label="원고 복사"
                   className="secondary-action"
                   data-testid="Copy markdown"
                   disabled={!finalPost}
@@ -986,14 +997,9 @@ function App() {
                   <span className="button-copy-kr">원고 복사</span>
                 </button>
               </div>
-              <div className="hero-note-strip">
-                <span>내보내기 상태</span>
-                <strong>{commandPulseLabel}</strong>
-                <p>{nextActionMicrocopy}</p>
-              </div>
-              <div className="hero-command-note hero-command-note-quiet">
+              <div className="mission-action-note">
                 <strong>{briefSummaryLine}</strong>
-                <p>{commandShortNote}</p>
+                <p>{commandShortNote} {nextActionMicrocopy}</p>
               </div>
             </article>
           </div>
@@ -1005,10 +1011,25 @@ function App() {
           <article className="rail-card rail-card-dark rail-card-input">
             <div className="rail-section-head">
               <div>
-                <p className="section-kicker">입력 레일</p>
-                <h3>브리프 잠금대</h3>
+                <p className="section-kicker">봉인 레일</p>
+                <h3>편집 봉인대</h3>
               </div>
-              <p className="brief-inline">입력은 여기서만 봉인하고, 상태 설명과 예시는 접힌 서랍으로 물립니다.</p>
+              <p className="brief-inline">
+                브리프는 이 레일에서만 고정하고, 상태와 워밍업 카드, 보조 기록은 접힌 서랍으로 뒤로 물립니다.
+              </p>
+            </div>
+            <div className="brief-seal-board">
+              <p className="rail-hook">봉인된 편집 메모</p>
+              <strong>{topicSnapshot}</strong>
+              <p>{briefSealDescription}</p>
+              <div className="brief-seal-meta">
+                <span className="soft-tag">{briefSealState}</span>
+                {briefTags.map((tag) => (
+                  <span className="soft-tag soft-tag-muted" key={tag}>
+                    {tag}
+                  </span>
+                ))}
+              </div>
             </div>
             <div className="brief-lock-strip">
               <div className="brief-lock-copy">

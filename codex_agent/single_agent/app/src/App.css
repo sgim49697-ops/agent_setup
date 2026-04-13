@@ -152,6 +152,8 @@
   max-width: 11ch;
   margin-top: 12px;
   font-size: clamp(2.9rem, 4.6vw, 4.8rem);
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  letter-spacing: -0.03em;
   color: #f8f5ef;
   text-wrap: balance;
 }
@@ -187,156 +189,61 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
-.hero-stage-reel {
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 12px;
+.hero-headline-tight {
+  align-items: end;
 }
 
-.hero-stage-reel::before {
-  content: '';
-  position: absolute;
-  inset: 24px 18px auto;
-  height: 1px;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.08), rgba(142, 170, 255, 0.42), rgba(255, 255, 255, 0.08));
-  pointer-events: none;
+.hero-headline-copy {
+  display: grid;
+  gap: 16px;
 }
 
-.hero-stage-reel-card {
-  position: relative;
+.hero-deck {
+  max-width: 58ch;
+  margin: 0;
+  color: rgba(232, 237, 255, 0.82);
+  font-size: 1rem;
+  line-height: 1.74;
+}
+
+.hero-desk-note {
   display: grid;
   gap: 12px;
-  min-height: 144px;
-  padding: 16px 16px 18px;
-  border-radius: 24px;
+  padding: 18px 20px 20px;
+  border-radius: 28px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.04)),
-    rgba(11, 18, 33, 0.28);
+    linear-gradient(180deg, rgba(255, 248, 240, 0.14), rgba(255, 255, 255, 0.05)),
+    rgba(9, 16, 31, 0.28);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 18px 34px rgba(8, 14, 29, 0.16);
-  backdrop-filter: blur(16px);
+    0 20px 36px rgba(6, 12, 23, 0.18);
+  backdrop-filter: blur(18px);
 }
 
-.hero-stage-reel-card::after {
-  content: '';
-  position: absolute;
-  inset: auto 16px 0;
-  height: 3px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0));
+.hero-desk-note strong,
+.mission-card-title,
+.mission-stage-copy strong,
+.brief-seal-board strong,
+.rail-card-input h3 {
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  letter-spacing: -0.02em;
 }
 
-.hero-stage-reel-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.hero-stage-reel-head span,
-.hero-stage-reel-head strong {
-  font-size: 0.7rem;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-.hero-stage-reel-head span {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 44px;
-  padding: 0.36rem 0.52rem;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
-  color: #eef0ff;
-}
-
-.hero-stage-reel-head strong {
-  color: rgba(214, 223, 255, 0.72);
-}
-
-.hero-stage-reel-copy {
-  display: grid;
-  gap: 8px;
-}
-
-.hero-stage-reel-copy strong {
+.hero-desk-note strong {
   color: #f8f5ef;
-  font-size: 1.02rem;
-  line-height: 1.36;
+  font-size: 1.36rem;
+  line-height: 1.28;
 }
 
-.hero-stage-reel-copy p {
+.hero-desk-note p {
   margin: 0;
-  color: rgba(226, 231, 255, 0.74);
-  font-size: 0.84rem;
-  line-height: 1.62;
+  color: rgba(222, 229, 255, 0.76);
 }
 
-.hero-stage-reel-card-current {
-  transform: translateY(-6px);
-  background:
-    radial-gradient(circle at top right, rgba(255, 177, 136, 0.28), transparent 26%),
-    radial-gradient(circle at bottom left, rgba(111, 148, 255, 0.26), transparent 32%),
-    linear-gradient(155deg, rgba(14, 24, 45, 0.98), rgba(32, 49, 84, 0.94));
-}
-
-.hero-stage-reel-card-current::after {
-  background: linear-gradient(90deg, #ffb08d, #8cb2ff);
-}
-
-.hero-stage-reel-card-complete {
-  background:
-    radial-gradient(circle at top right, rgba(126, 224, 181, 0.24), transparent 30%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.05)),
-    rgba(11, 27, 29, 0.3);
-}
-
-.hero-stage-reel-card-complete::after {
-  background: linear-gradient(90deg, rgba(126, 224, 181, 0.92), rgba(183, 196, 255, 0.42));
-}
-
-.hero-stage-reel-card-upcoming {
-  background:
-    radial-gradient(circle at top right, rgba(255, 121, 72, 0.22), transparent 28%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04)),
-    rgba(27, 23, 36, 0.28);
-}
-
-.hero-stage-reel-card-upcoming::after {
-  background: linear-gradient(90deg, rgba(255, 121, 72, 0.92), rgba(255, 255, 255, 0.1));
-}
-
-.hero-stage-reel-card-recovery {
-  background:
-    radial-gradient(circle at top right, rgba(255, 166, 179, 0.24), transparent 28%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04)),
-    rgba(43, 19, 28, 0.28);
-}
-
-.hero-stage-reel-card-recovery::after {
-  background: linear-gradient(90deg, rgba(255, 166, 179, 0.94), rgba(255, 121, 72, 0.24));
-}
-
-.hero-stage-reel-card-idle {
-  opacity: 0.8;
-}
-
-.hero-stage-reel-card-current .hero-stage-reel-head strong,
-.hero-stage-reel-card-upcoming .hero-stage-reel-head strong,
-.hero-stage-reel-card-recovery .hero-stage-reel-head strong {
-  color: rgba(255, 232, 222, 0.82);
-}
-
-.hero-stage-reel-card-complete .hero-stage-reel-head strong {
-  color: rgba(218, 255, 239, 0.82);
-}
-
-.hero-stage-reel-card-complete .hero-stage-reel-copy p {
-  color: rgba(224, 245, 235, 0.72);
+.hero-desk-note-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .hero-storyboard .section-kicker,
@@ -356,7 +263,6 @@
 
 .hero-focus-card,
 .hero-note-card,
-.hero-stage-reel-card,
 .stage-chip,
 .preset-tile,
 .inline-action,
@@ -865,6 +771,175 @@
   transform: none;
 }
 
+.mission-board {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
+  gap: 16px;
+}
+
+.mission-card {
+  display: grid;
+  gap: 14px;
+  padding: 22px;
+  border-radius: 30px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 22px 40px rgba(8, 14, 29, 0.18);
+}
+
+.mission-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mission-card-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.42rem 0.74rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(241, 244, 255, 0.82);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.mission-card-current {
+  background:
+    radial-gradient(circle at top right, rgba(104, 143, 255, 0.28), transparent 34%),
+    linear-gradient(160deg, rgba(10, 20, 39, 0.98), rgba(24, 39, 68, 0.96));
+}
+
+.mission-stage-band {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.mission-stage-index {
+  display: grid;
+  place-items: center;
+  min-width: 64px;
+  min-height: 64px;
+  padding: 0 0.44rem;
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(224, 230, 255, 0.92));
+  color: var(--accent-strong);
+  font-family: var(--font-ui);
+  font-size: 1.34rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.mission-stage-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.mission-stage-copy strong {
+  color: #f8f5ef;
+  font-size: 1.28rem;
+  line-height: 1.28;
+}
+
+.mission-stage-copy p,
+.mission-card-copy,
+.mission-card-note,
+.mission-action-note p,
+.brief-seal-board p {
+  margin: 0;
+  line-height: 1.7;
+}
+
+.mission-stage-copy p,
+.mission-card-note {
+  color: rgba(224, 231, 255, 0.74);
+}
+
+.mission-progress-block,
+.mission-action-note,
+.brief-seal-board {
+  display: grid;
+  gap: 10px;
+  padding: 16px 18px;
+  border-radius: 24px;
+}
+
+.mission-progress-block {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04)),
+    rgba(9, 16, 31, 0.18);
+}
+
+.mission-progress-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.mission-progress-copy span {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(214, 223, 255, 0.68);
+}
+
+.mission-progress-copy strong {
+  color: #f8f5ef;
+  font-size: 0.98rem;
+  line-height: 1.5;
+}
+
+.mission-progress-track {
+  margin-top: 0;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.mission-progress-track span {
+  background: linear-gradient(135deg, #ffb08d, #8cb2ff);
+}
+
+.mission-card-action {
+  background:
+    radial-gradient(circle at top right, rgba(255, 167, 117, 0.28), transparent 32%),
+    linear-gradient(160deg, rgba(56, 27, 20, 0.96), rgba(34, 18, 16, 0.92));
+}
+
+.mission-card-title {
+  font-size: 1.34rem;
+  line-height: 1.28;
+  color: #fff7f2;
+}
+
+.mission-card-copy {
+  color: rgba(255, 230, 220, 0.78);
+}
+
+.mission-action-stack {
+  gap: 12px;
+}
+
+.mission-action-note {
+  margin-top: auto;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04)),
+    rgba(255, 244, 238, 0.06);
+}
+
+.mission-action-note strong {
+  color: #fff2eb;
+  font-size: 1rem;
+}
+
+.mission-action-note p {
+  color: rgba(255, 229, 219, 0.74);
+}
+
 .workspace-frame {
   display: grid;
   grid-template-columns: minmax(296px, 332px) minmax(0, 1fr);
@@ -907,6 +982,46 @@
   background:
     radial-gradient(circle at top right, rgba(0, 82, 255, 0.12), transparent 32%),
     linear-gradient(180deg, rgba(236, 240, 252, 0.92), rgba(255, 255, 255, 0.98));
+}
+
+.brief-seal-board {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at top right, rgba(111, 148, 255, 0.16), transparent 30%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.03)),
+    rgba(10, 18, 33, 0.3);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 18px 34px rgba(9, 16, 31, 0.18);
+}
+
+.brief-seal-board::before {
+  content: '';
+  position: absolute;
+  inset: 18px auto 18px 0;
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255, 176, 132, 0.82), rgba(111, 148, 255, 0.92));
+}
+
+.brief-seal-board strong {
+  padding-left: 12px;
+  color: #f7f8ff;
+  font-size: 1.2rem;
+  line-height: 1.32;
+}
+
+.brief-seal-board p {
+  padding-left: 12px;
+  color: rgba(226, 231, 255, 0.78);
+}
+
+.brief-seal-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-left: 12px;
 }
 
 .brief-status-chip {
@@ -963,7 +1078,7 @@
 .brief-lock-strip {
   display: grid;
   gap: 14px;
-  margin: 18px 0 20px;
+  margin: 14px 0 20px;
   padding: 18px;
   border-radius: 24px;
   background:
@@ -1370,7 +1485,7 @@
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: start;
   gap: 14px;
-  opacity: 0.64;
+  opacity: 0.84;
   background:
     linear-gradient(180deg, rgba(254, 250, 244, 0.98), rgba(236, 242, 252, 0.92)),
     rgba(255, 255, 255, 0.86);
@@ -1391,12 +1506,12 @@
 }
 
 .stage-chip.complete {
-  opacity: 0.78;
+  opacity: 0.94;
   background: linear-gradient(180deg, rgba(239, 248, 245, 0.98), rgba(250, 252, 255, 0.94));
 }
 
 .stage-chip.is-selected {
-  opacity: 0.88;
+  opacity: 0.96;
   box-shadow:
     inset 0 0 0 1px rgba(0, 82, 255, 0.16),
     0 14px 28px rgba(19, 27, 46, 0.09);
@@ -2144,7 +2259,6 @@ select:focus-visible {
   .primary-action,
   .secondary-action,
   .inline-action,
-  .hero-stage-reel-card,
   .preset-tile,
   .stage-chip,
   .support-drawer summary,
@@ -2157,6 +2271,7 @@ select:focus-visible {
   .workspace-frame,
   .stage-workbench,
   .evidence-grid,
+  .mission-board,
   .hero-command-grid,
   .hero-ledger-strip,
   .hero-headline,
@@ -2169,10 +2284,6 @@ select:focus-visible {
 
   .brief-rail {
     position: static;
-  }
-
-  .hero-stage-reel {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -2193,20 +2304,13 @@ select:focus-visible {
     border-radius: 24px;
   }
 
-  .hero-stage-reel {
-    grid-template-columns: 1fr;
-  }
-
-  .hero-stage-reel-card {
-    min-height: 0;
-  }
-
   .hero-storyboard h1 {
     max-width: none;
     font-size: clamp(2.6rem, 9vw, 3.9rem);
   }
 
   .hero-ribbon,
+  .mission-card-head,
   .hero-command-head,
   .hero-command-note,
   .status-row,
@@ -2244,6 +2348,11 @@ select:focus-visible {
     grid-template-columns: 1fr;
   }
 
+  .hero-desk-note-meta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   .hero-ledger-strip {
     grid-template-columns: 1fr;
   }
@@ -2253,6 +2362,10 @@ select:focus-visible {
   }
 
   .hero-command-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mission-stage-band {
     grid-template-columns: 1fr;
   }
 
