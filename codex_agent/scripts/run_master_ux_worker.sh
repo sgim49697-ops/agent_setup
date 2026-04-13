@@ -62,7 +62,7 @@ trap on_exit EXIT
 readarray -t CONTEXT < <(python3 - <<'PY'
 import json
 from pathlib import Path
-from master_loop_state import load_state, normalize_remaining_harnesses, resolve_harness_token
+from master_loop_state import load_state, normalize_remaining_harnesses, preferred_remaining_harness, resolve_harness_token
 root=Path('/home/user/projects/agent_setup/codex_agent')
 state=load_state(root / '.omx/state/master-ux-loop.json')
 cycle = int(state.get('cycle', 0)) + 1
@@ -70,7 +70,10 @@ remaining = normalize_remaining_harnesses(state.get('remaining_harnesses'))
 current = str(state.get('current_harness') or '').strip()
 current = resolve_harness_token(current, state) if current else ''
 if not current or current == 'benchmark_foundation':
-    current = remaining[0] if remaining else 'benchmark_foundation'
+    current = preferred_remaining_harness(state)
+deferred = set(normalize_remaining_harnesses(state.get('deferred_harnesses')))
+if current in deferred and any(item not in deferred for item in remaining):
+    current = preferred_remaining_harness(state)
 phase = str(state.get('current_phase') or 'cycle-resume')
 stagnant = int(state.get('stagnant_cycle_count', 0))
 regressions = int(state.get('remaining_regression_count', 0))
@@ -97,6 +100,7 @@ print(' | '.join(last_gate_warnings))
 print(int(state.get('quality_gate_failure_streak', 0)))
 print(str(state.get('last_quality_gate_signature') or ''))
 print(int(state.get('current_harness_cycle_streak', 0)))
+print(json.dumps(sorted(deferred), ensure_ascii=False))
 PY
 )
 CURRENT_CYCLE="${CONTEXT[0]}"
@@ -111,6 +115,7 @@ LAST_GATE_WARNINGS="${CONTEXT[8]}"
 QUALITY_GATE_STREAK="${CONTEXT[9]}"
 LAST_GATE_SIGNATURE="${CONTEXT[10]}"
 HARNESS_STREAK="${CONTEXT[11]}"
+DEFERRED_JSON="${CONTEXT[12]}"
 
 STITCH_REF=$(ACTIVE_HARNESS="$ACTIVE_HARNESS" python3 - <<'PY'
 import json, os
@@ -188,6 +193,7 @@ Continue one bounded UX benchmark cycle in /home/user/projects/agent_setup/codex
 Current context:
 - Active harness: $ACTIVE_HARNESS
 - Remaining harnesses: $REMAINING_JSON
+- Deferred harnesses: $DEFERRED_JSON
 - Previous phase: $CURRENT_PHASE
 - Stitch reference: $STITCH_REF
 

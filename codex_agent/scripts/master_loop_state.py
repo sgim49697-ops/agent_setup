@@ -40,6 +40,7 @@ INT_FIELDS = {
 LIST_FIELDS = {
     "remaining_harnesses",
     "completed_harnesses",
+    "deferred_harnesses",
 }
 JSON_FIELDS = {
     "remaining_cycle_history",
@@ -202,6 +203,17 @@ def infer_current_harness(state: dict[str, Any]) -> str:
     return "benchmark_foundation"
 
 
+def preferred_remaining_harness(state: dict[str, Any], include_deferred: bool = False) -> str:
+    remaining = normalize_remaining_harnesses(state.get("remaining_harnesses"))
+    deferred = set(normalize_remaining_harnesses(state.get("deferred_harnesses")))
+    if include_deferred:
+        return remaining[0] if remaining else "benchmark_foundation"
+    for harness in remaining:
+        if harness not in deferred:
+            return harness
+    return remaining[0] if remaining else "benchmark_foundation"
+
+
 def coerce_field(key: str, value: Any) -> Any:
     if isinstance(value, str):
         if value == "__true__":
@@ -250,6 +262,7 @@ def normalize_state(state: dict[str, Any]) -> dict[str, Any]:
     normalized.setdefault("current_harness_cycle_streak", 0)
     normalized.setdefault("remaining_cycle_history", [])
     normalized.setdefault("phase_history", [])
+    normalized.setdefault("deferred_harnesses", [])
     normalized["remaining_harnesses"] = normalize_remaining_harnesses(normalized.get("remaining_harnesses"))
     normalized["remaining_cycle_history"] = normalize_json_list(normalized.get("remaining_cycle_history"))
     normalized["phase_history"] = normalize_json_list(normalized.get("phase_history"))

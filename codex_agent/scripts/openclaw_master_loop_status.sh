@@ -48,8 +48,12 @@ runtime = {
 runtime['active_automation_process_count'] = sum(runtime.values())
 print('=== state ===')
 print(f'worker_elapsed_sec: {os.environ.get("RUNNER_ELAPSED", "")}')
-for key in ['status','project_status','cycle_status','cycle','current_phase','current_harness','remaining_harnesses','last_progress_at','last_progress_summary','last_worker_start_at','last_worker_finish_at','last_worker_interrupt_at','last_worker_interrupt_reason','last_launch_reason','next_cycle_required','hard_blocker','relaunch_count','regression_count','quality_gate_failure_streak','current_harness_cycle_streak','active_worker_count','active_orchestrator_count','active_codex_exec_count','active_stitch_mcp_count','active_playwright_mcp_count','active_automation_process_count','runtime_guard_active','runtime_guard_reason','runtime_guard_last_triggered_at']:
-    print(f'{key}: {state.get(key) if state.get(key) is not None else runtime.get(key)}')
+for key in ['status','project_status','cycle_status','cycle','current_phase','current_harness','remaining_harnesses','deferred_harnesses','last_progress_at','last_progress_summary','last_worker_start_at','last_worker_finish_at','last_worker_interrupt_at','last_worker_interrupt_reason','last_launch_reason','next_cycle_required','hard_blocker','relaunch_count','regression_count','quality_gate_failure_streak','current_harness_cycle_streak','active_worker_count','active_orchestrator_count','active_codex_exec_count','active_stitch_mcp_count','active_playwright_mcp_count','active_automation_process_count','runtime_guard_active','runtime_guard_reason','runtime_guard_last_triggered_at']:
+    if key.startswith('active_'):
+        value = runtime.get(key)
+    else:
+        value = state.get(key) if state.get(key) is not None else runtime.get(key)
+    print(f'{key}: {value}')
 print(f"safe_mode_enabled: {safe.get('enabled')}")
 print(f"safe_mode_reason: {safe.get('reason')}")
 print('\n=== validator ===')

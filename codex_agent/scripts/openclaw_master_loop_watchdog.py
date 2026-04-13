@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from master_loop_state import load_state, normalize_remaining_harnesses, parse_bool, read_safe_mode, save_state
+from master_loop_state import load_state, normalize_remaining_harnesses, parse_bool, preferred_remaining_harness, read_safe_mode, save_state
 from master_loop_trace_sanity import analyze_trace, read_progress_events
 from master_loop_validator import build_report as build_validator_report
 
@@ -24,6 +24,7 @@ PROJECT_FINAL_MARKER = ROOT / '.omx/logs/master-ux-benchmark-v2-project-final.md
 LEGACY_FINAL_MARKER = ROOT / '.omx/logs/master-ux-benchmark-v2-final.md'
 BLOCK_MARKER = ROOT / '.omx/logs/master-ux-benchmark-v2.blocked'
 RUNNER_SCRIPT = ROOT / 'scripts/run_master_ux_worker.sh'
+DEFER_SCRIPT = ROOT / 'scripts/master_loop_defer_harness.py'
 GIT_CHECKPOINT_SCRIPT = ROOT / 'scripts/git_state_checkpoint_watchdog.py'
 BASELINE_SCRIPT = ROOT / 'scripts/master_loop_baseline_metrics.py'
 QUALITY_GATE_SCRIPT = ROOT / 'scripts/master_loop_quality_gate.py'
@@ -47,6 +48,8 @@ MAX_CODEX_EXEC_PROCS = 1
 MAX_STITCH_MCP_PROCS = 1
 MAX_PLAYWRIGHT_MCP_PROCS = 1
 MAX_AUTOMATION_TOTAL_PROCS = 6
+DEFER_FAILURE_STREAK = 8
+DEFER_PHASE_STREAK = 10
 TRANSIENT_BLOCKER_HINTS = (
     'oauth',
     'refresh',
@@ -386,6 +389,23 @@ def step_pipeline_in_progress(state: dict[str, Any], metrics: dict[str, int]) ->
     return bool(metrics.get('orchestrator') or metrics.get('codex_exec'))
 
 
+def defer_active_harness(state: dict[str, Any], reason: str) -> dict[str, Any]:
+    current = str(state.get('current_harness') or '').strip()
+    remaining = normalize_remaining_harnesses(state.get('remaining_harnesses'))
+    if not current or current not in remaining or len(remaining) <= 1:
+        return state
+    proc = subprocess.run(
+        ['python3', str(DEFER_SCRIPT), '--harness', current, '--reason', reason],
+        capture_output=True,
+        text=True,
+    )
+    if proc.returncode == 0:
+        log(f'deferred harness {current}: {reason}')
+        return read_state()
+    log(f'failed to defer harness {current}: {proc.stderr.strip() or proc.stdout.strip()}')
+    return state
+
+
 def checkpoint_git() -> None:
     checkpoint = subprocess.run(['python3', str(GIT_CHECKPOINT_SCRIPT)], capture_output=True, text=True)
     if checkpoint.returncode != 0:
@@ -584,6 +604,28 @@ def main() -> int:
         write_state(state)
         checkpoint_git()
         validator = build_validator_report(read_state())
+
+    current = str(state.get('current_harness') or '').strip()
+    remaining = normalize_remaining_harnesses(state.get('remaining_harnesses'))
+    if (
+        current == 'single_agent'
+        and len(remaining) > 1
+        and (
+            int(state.get('quality_gate_failure_streak', 0)) >= DEFER_FAILURE_STREAK
+            or int(trace.get('max_same_phase_streak') or 0) >= DEFER_PHASE_STREAK
+        )
+    ):
+        reason = (
+            f"auto defer after repeated churn/failure "
+            f"(failure_streak={state.get('quality_gate_failure_streak')}, "
+            f"phase_streak={trace.get('max_same_phase_streak')})"
+        )
+        state = defer_active_harness(state, reason)
+        state['last_progress_summary'] = f'watchdog deferred single_agent and moved to {preferred_remaining_harness(state)}'
+        state = launch_runner(state, 'deferred-single-agent')
+        write_state(state)
+        checkpoint_git()
+        return 0
 
     if runner_active:
         if maybe_restart_for_regression(state, validator, trace, quality_gate):
