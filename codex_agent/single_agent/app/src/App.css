@@ -102,9 +102,9 @@
   align-items: center;
   padding: 0.46rem 0.78rem;
   border-radius: 999px;
-  font-size: 0.74rem;
+  font-size: 0.82rem;
   font-weight: 800;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -124,9 +124,9 @@
 .panel-hook,
 .hero-summary-label {
   margin: 0;
-  font-size: 0.72rem;
+  font-size: 0.82rem;
   font-weight: 800;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
@@ -352,9 +352,9 @@
 }
 
 .hero-progress-copy span {
-  font-size: 0.72rem;
+  font-size: 0.82rem;
   font-weight: 800;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--muted);
 }
@@ -692,9 +692,9 @@
 }
 
 .hero-brief-ticket span {
-  font-size: 0.68rem;
+  font-size: 0.82rem;
   font-weight: 800;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--muted);
 }
@@ -722,9 +722,9 @@
 
 .hero-queue-block span,
 .hero-note-strip span {
-  font-size: 0.74rem;
+  font-size: 0.82rem;
   font-weight: 800;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--muted);
 }
@@ -769,7 +769,7 @@
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.1);
   color: #f3f6ff;
-  font-size: 0.76rem;
+  font-size: 0.84rem;
   font-weight: 700;
 }
 
@@ -1742,11 +1742,29 @@
 }
 
 .stage-chip-state {
-  font-size: 0.78rem;
+  font-size: 0.84rem;
   font-weight: 700;
   color: var(--muted-strong);
   align-self: center;
   white-space: nowrap;
+}
+
+.hero-progress-band-light {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(231, 236, 255, 0.82)),
+    rgba(255, 255, 255, 0.82);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 14px 26px rgba(19, 27, 46, 0.08);
+}
+
+.hero-progress-band-light .hero-progress-copy span,
+.hero-progress-band-light .hero-progress-copy strong {
+  color: var(--muted-strong);
+}
+
+.hero-progress-band-light .hero-progress-track {
+  background: rgba(0, 82, 255, 0.1);
 }
 
 .stage-chip.current .stage-chip-state {
