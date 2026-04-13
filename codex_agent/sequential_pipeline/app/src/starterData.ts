@@ -5,54 +5,54 @@ import type { DeliverableCard, PipelineRoleCard, TopicPreset } from './contracts
 export const pipelineRoles: PipelineRoleCard[] = [
   {
     id: 'researcher',
-    label: 'Researcher',
-    stageLabel: 'Research results',
+    label: '리서처',
+    stageLabel: '자료 요약',
     description: '주제 브리프를 angle, thesis, supporting facts로 정리한다.',
-    handoffLabel: 'Hands off to Outliner',
+    handoffLabel: '아웃라이너에게 전달',
   },
   {
     id: 'outliner',
-    label: 'Outliner',
-    stageLabel: 'Outline',
+    label: '아웃라이너',
+    stageLabel: '구조 설계',
     description: 'research 결과를 읽기 좋은 section order로 변환한다.',
-    handoffLabel: 'Hands off to Writer',
+    handoffLabel: '라이터에게 전달',
   },
   {
     id: 'writer',
-    label: 'Writer',
-    stageLabel: 'Section drafts',
+    label: '라이터',
+    stageLabel: '초안 작성',
     description: 'outline을 section drafts와 pre-review markdown로 확장한다.',
-    handoffLabel: 'Hands off to Reviewer',
+    handoffLabel: '리뷰어에게 전달',
   },
   {
     id: 'reviewer',
-    label: 'Reviewer',
-    stageLabel: 'Review notes',
+    label: '리뷰어',
+    stageLabel: '검토 메모',
     description: 'writer 초안을 보정하고 최종 Markdown을 확정한다.',
-    handoffLabel: 'Prepares Final post',
+    handoffLabel: '최종 원고 잠금',
   },
 ]
 
 export const deliverables: DeliverableCard[] = [
   {
     id: 'manifest',
-    title: 'run_manifest.json',
-    description: '실행 시작/종료 시각, harness 이름, 상태를 남긴다.',
+    title: '실행 기록',
+    description: '`run_manifest.json`에 시작/종료 시각, harness 이름, 상태를 남긴다.',
   },
   {
     id: 'artifacts',
-    title: 'artifact_index.json',
-    description: '스크린샷, final URL, 결과 파일 목록을 모은다.',
+    title: '산출물 목록',
+    description: '`artifact_index.json`에 스크린샷, final URL, 결과 파일 목록을 모은다.',
   },
   {
     id: 'review',
-    title: 'review_report.md',
-    description: '구현 요약, 리스크, 남은 이슈, self-evaluation을 남긴다.',
+    title: '검토 보고',
+    description: '`review_report.md`에 구현 요약, 리스크, 남은 이슈를 남긴다.',
   },
   {
     id: 'scorecard',
-    title: 'scorecard.json',
-    description: '기능, UX, visual, a11y, process 점수를 저장한다.',
+    title: '점수 카드',
+    description: '`scorecard.json`에 기능, UX, visual, a11y, process 점수를 저장한다.',
   },
 ]
 
@@ -81,9 +81,9 @@ export const topicPresets: TopicPreset[] = [
 ]
 
 export const reviewLenses = [
-  'handoff clarity',
-  'reviewer reflection',
-  'responsiveness',
-  'a11y basics',
-  'process adherence',
+  '인계 선명도',
+  '리뷰 반영도',
+  '반응형',
+  '기본 접근성',
+  '프로세스 준수',
 ]

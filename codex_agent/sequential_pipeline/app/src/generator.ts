@@ -28,6 +28,24 @@ const toneGuidance: Record<Tone, string> = {
   opinionated: '판단 기준과 선호를 분명하게 드러내는 톤',
 }
 
+const audienceLabels: Record<Audience, string> = {
+  beginner: '입문자',
+  practitioner: '실무자',
+  advanced: '고급 사용자',
+}
+
+const toneLabels: Record<Tone, string> = {
+  clear: '명료하게',
+  pragmatic: '실무적으로',
+  opinionated: '단호하게',
+}
+
+const lengthLabels: Record<Length, string> = {
+  short: '짧게',
+  medium: '보통',
+  long: '길게',
+}
+
 const lengthSections: Record<Length, string[]> = {
   short: ['왜 지금 중요한가', '핵심 설계 포인트', '바로 적용할 체크리스트'],
   medium: ['문제 정의와 배경', '권장 구조와 역할 분리', '구현 시 주의할 함정', '실전 적용 체크리스트'],
@@ -63,9 +81,9 @@ function buildMarkdown(
   return [
     `# ${titleCase(inputs.topic)}`,
     '',
-    `> Audience: ${titleCase(inputs.audience)} | Tone: ${titleCase(inputs.tone)} | Length: ${titleCase(inputs.length)}`,
+    `> 독자: ${audienceLabels[inputs.audience]} | 톤: ${toneLabels[inputs.tone]} | 분량: ${lengthLabels[inputs.length]}`,
     '',
-    '## Intro',
+    '## 시작 메모',
     introLine,
     '',
     ...drafts.flatMap((draft) => [
@@ -75,10 +93,10 @@ function buildMarkdown(
       '',
       ...draft.paragraphs,
       '',
-      `- Takeaway: ${draft.takeaway}`,
+      `- 핵심 포인트: ${draft.takeaway}`,
       '',
     ]),
-    '## Closing checklist',
+    '## 마무리 체크리스트',
     '',
     closingLine,
   ].join('\n')
@@ -96,17 +114,18 @@ export function runResearcher(inputs: BlogGeneratorInputs): ResearchOutput {
       `${inputs.length} 분량에서는 모든 디테일보다 우선순위가 높은 판단 기준을 남기는 구성이 효과적이다.`,
     ],
     supportingFacts: [
-      `Audience fit: ${audienceGuidance[inputs.audience]}`,
-      `Tone choice: ${toneGuidance[inputs.tone]}`,
-      'Supporting sources: 공식 문서, 실무 회고, 아키텍처 비교 글',
+      `독자 기준: ${audienceGuidance[inputs.audience]}`,
+      `톤 기준: ${toneGuidance[inputs.tone]}`,
+      '근거 소스: 공식 문서, 실무 회고, 아키텍처 비교 글',
     ],
     searchTerms: [
-      `${inputs.topic} architecture`,
-      `${inputs.topic} trade-offs`,
-      `${inputs.topic} best practices`,
-      `${inputs.topic} implementation checklist`,
+      `${inputs.topic} 아키텍처`,
+      `${inputs.topic} 트레이드오프`,
+      `${inputs.topic} 모범 사례`,
+      `${inputs.topic} 구현 체크리스트`,
     ],
-    handoffNote: `Outliner should turn this thesis into a section order that keeps the practical decision point visible from the first heading.`,
+    handoffNote:
+      '아웃라이너는 첫 제목부터 실무 판단 포인트가 보이도록 thesis를 섹션 순서로 다시 잠가야 한다.',
   }
 }
 
@@ -125,8 +144,10 @@ export function runOutliner(
 
   return {
     sections,
-    structureRationale: `The outline starts with the problem framing, then moves into role boundaries, implementation pitfalls, and a checklist so the writer can keep the argument progressively more concrete.`,
-    handoffNote: `Writer should keep each section focused on one decision and end with a takeaway that can be reviewed or tightened later.`,
+    structureRationale:
+      '이 구조는 문제 정의에서 시작해 역할 경계, 구현 함정, 적용 체크리스트로 이동한다. 라이터가 점점 더 구체적인 판단 기준을 쌓게 만드는 순서다.',
+    handoffNote:
+      '라이터는 섹션마다 하나의 의사결정만 붙들고, 마지막에 리뷰어가 다듬기 좋은 핵심 포인트를 남겨야 한다.',
   }
 }
 
@@ -148,13 +169,14 @@ export function runWriter(
   }))
 
   const introLine = `${research.thesis} 이 초안은 ${inputs.audience} 독자를 위해 구조를 먼저 보여주고, 이후에 실제 선택 기준을 차례대로 설명한다.`
-  const closingLine = `- Draft conclusion: ${inputs.topic}는 팀 상황에 맞춰 판단해야 하며, 섣부른 일반화보다는 역할과 운영 비용을 먼저 보는 편이 안전하다.`
+  const closingLine = `- 초안 결론: ${inputs.topic}는 팀 상황에 맞춰 판단해야 하며, 섣부른 일반화보다 역할과 운영 비용을 먼저 보는 편이 안전하다.`
 
   return {
     sectionDrafts,
-    writerSummary: `Writer produced ${sectionDrafts.length} section drafts and a readable pre-review markdown draft that follows the outliner order exactly.`,
+    writerSummary: `라이터가 ${sectionDrafts.length}개의 섹션 초안을 만들었고, 아웃라이너 순서를 그대로 따르는 사전 검토용 마크다운까지 정리했습니다.`,
     preReviewMarkdown: buildMarkdown(inputs, introLine, sectionDrafts, closingLine),
-    handoffNote: `Reviewer should tighten the intro, sharpen at least one takeaway, and turn the draft conclusion into a stronger action-oriented closing.`,
+    handoffNote:
+      '리뷰어는 도입부를 더 단단하게 만들고, 최소 한 개의 핵심 포인트를 sharper하게 다듬은 뒤, 결론을 행동 지향형으로 바꿔야 한다.',
   }
 }
 
@@ -164,14 +186,14 @@ export function runReviewer(
   outline: OutlineOutput,
   writerOutput: WriterOutput,
 ): ReviewerOutput {
-  const introBefore = `${research.thesis} 이 초안은 ${inputs.audience} 독자를 위해 구조를 먼저 보여주고, 이후에 실제 선택 기준을 차례대로 설명한다.`
-  const introAfter = `${research.thesis} 먼저 이 글은 ${inputs.audience} 독자가 역할 분리, 운영 비용, 회피 기준을 한 번에 판단할 수 있도록 구조를 잡는다.`
+  const introBefore = `${research.thesis} 이 초안은 ${audienceLabels[inputs.audience]}를 위해 구조를 먼저 보여주고, 이후에 실제 선택 기준을 차례대로 설명한다.`
+  const introAfter = `${research.thesis} 먼저 이 글은 ${audienceLabels[inputs.audience]}가 역할 분리, 운영 비용, 회피 기준을 한 번에 판단할 수 있도록 구조를 잡는다.`
 
   const firstTakeawayBefore = writerOutput.sectionDrafts[0]?.takeaway ?? ''
   const firstTakeawayAfter = `${outline.sections[0]?.title ?? '첫 섹션'}의 takeaway는 ${inputs.topic}를 도입 이유와 회피 기준을 함께 검토하는 선택지로 보게 만드는 것이다.`
 
-  const closingBefore = `- Draft conclusion: ${inputs.topic}는 팀 상황에 맞춰 판단해야 하며, 섣부른 일반화보다는 역할과 운영 비용을 먼저 보는 편이 안전하다.`
-  const closingAfter = `- Final conclusion: ${inputs.topic}는 팀의 운영 복잡도, 도입 이유, 회피 기준을 같이 따질 때 가장 설득력 있는 선택이 된다.`
+  const closingBefore = `- 초안 결론: ${inputs.topic}는 팀 상황에 맞춰 판단해야 하며, 섣부른 일반화보다 역할과 운영 비용을 먼저 보는 편이 안전하다.`
+  const closingAfter = `- 최종 결론: ${inputs.topic}는 팀의 운영 복잡도, 도입 이유, 회피 기준을 같이 따질 때 가장 설득력 있는 선택이 된다.`
 
   const reviewedDrafts = writerOutput.sectionDrafts.map((draft, index) =>
     index === 0
@@ -184,35 +206,35 @@ export function runReviewer(
 
   const reviewNotes: ReviewNote[] = [
     {
-      label: 'Flow clarity',
-      detail: `The writer followed the outliner order and the reviewer kept all ${outline.sections.length} sections aligned to one argument.`,
+      label: '흐름 선명도',
+      detail: `라이터가 아웃라이너 순서를 그대로 따라갔고, 리뷰어가 ${outline.sections.length}개 섹션을 하나의 주장으로 다시 고정했습니다.`,
       severity: 'good',
     },
     {
-      label: 'Actionability',
-      detail: 'The intro and closing now make the adoption decision more explicit, rather than leaving it as a general summary.',
+      label: '행동 가능성',
+      detail: '도입부와 결론이 일반 요약으로 흐르지 않고, 도입 판단을 더 직접적으로 말해주도록 조정됐습니다.',
       severity: 'good',
     },
     {
-      label: 'Editorial polish',
-      detail: `${inputs.audience} 독자를 위해 몇몇 전문 용어에 짧은 정의를 더하면 진입 장벽을 더 낮출 수 있다.`,
+      label: '편집 다듬기',
+      detail: `${audienceLabels[inputs.audience]}를 위해 몇몇 전문 용어에 짧은 정의를 더하면 진입 장벽을 더 낮출 수 있습니다.`,
       severity: 'improve',
     },
   ]
 
   const appliedEdits = [
     {
-      label: 'Intro reinforcement',
+      label: '도입부 강화',
       before: introBefore,
       after: introAfter,
     },
     {
-      label: 'Takeaway tightening',
+      label: '핵심 포인트 정리',
       before: firstTakeawayBefore,
       after: firstTakeawayAfter,
     },
     {
-      label: 'Closing actionability',
+      label: '결론 행동성 보강',
       before: closingBefore,
       after: closingAfter,
     },
@@ -222,7 +244,7 @@ export function runReviewer(
     reviewNotes,
     appliedEdits,
     finalMarkdown: buildMarkdown(inputs, introAfter, reviewedDrafts, closingAfter),
-    finalizationNote: `Reviewer applied ${appliedEdits.length} concrete edits so the final post reflects editorial changes instead of merely listing review notes.`,
+    finalizationNote: `리뷰어가 ${appliedEdits.length}개의 편집 수정을 적용해 검토 메모를 나열하는 수준을 넘어서, 실제 발행 원고에 바로 반영되도록 잠갔습니다.`,
   }
 }
 
@@ -237,21 +259,21 @@ export function assembleFinalOutputs(
     {
       from: 'researcher',
       to: 'outliner',
-      inputSummary: `Topic brief for ${inputs.topic}`,
+      inputSummary: `${inputs.topic} 주제 브리프`,
       outputSummary: research.handoffNote,
       status: 'delivered',
     },
     {
       from: 'outliner',
       to: 'writer',
-      inputSummary: `Research thesis and ${research.keyFindings.length} key findings`,
+      inputSummary: `리서치 thesis와 ${research.keyFindings.length}개의 핵심 발견`,
       outputSummary: outline.handoffNote,
       status: 'delivered',
     },
     {
       from: 'writer',
       to: 'reviewer',
-      inputSummary: `${outline.sections.length} outlined sections`,
+      inputSummary: `${outline.sections.length}개의 섹션 구조`,
       outputSummary: writerOutput.handoffNote,
       status: 'delivered',
     },
