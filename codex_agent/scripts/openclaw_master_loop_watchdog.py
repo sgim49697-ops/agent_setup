@@ -100,6 +100,8 @@ def pkill_runner_tree() -> None:
         'master_loop_orchestrator.py',
         'run_master_ux_worker.sh',
         'codex exec --dangerously-bypass',
+        'stitch-mcp proxy',
+        'playwright-mcp',
     ]
     for pat in patterns:
         subprocess.run(['pkill', '-TERM', '-f', pat], check=False, capture_output=True)

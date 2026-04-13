@@ -42,8 +42,12 @@ cleanup_children() {
   # does not orphan them. Without this, watchdog's tmux kill-window + our HUP
   # trap would leave python3/codex alive under the tmux server.
   pkill -TERM -P $$ 2>/dev/null || true
+  pkill -TERM -f 'stitch-mcp proxy' 2>/dev/null || true
+  pkill -TERM -f 'playwright-mcp' 2>/dev/null || true
   sleep 1
   pkill -KILL -P $$ 2>/dev/null || true
+  pkill -KILL -f 'stitch-mcp proxy' 2>/dev/null || true
+  pkill -KILL -f 'playwright-mcp' 2>/dev/null || true
 }
 on_exit() {
   local ts
