@@ -880,18 +880,6 @@
 
 /* Cycle 276 aesthetic override: Slate Orchestrator tuned for the OMX quality gauntlet */
 
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
 .gauntlet-shell {
   position: relative;
   width: min(1400px, calc(100% - 40px));
@@ -1615,5 +1603,337 @@
 
   .focus-meter {
     width: 100%;
+  }
+}
+
+/* Cycle 278 design pass: pressure-bracket editorial refinement */
+
+.hero-card,
+.input-card,
+.panel,
+.focus-card,
+.journey-step,
+.stage-card,
+.surface-card,
+.release-spotlight,
+.drawer,
+.timeline-card,
+.verification-card,
+.deliverable-card,
+.draft-card {
+  transition:
+    box-shadow 180ms ease,
+    background 180ms ease;
+}
+
+.hero-card {
+  gap: 28px;
+}
+
+.hero-rail-drawer {
+  margin-top: -4px;
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.hero-signal-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.hero-signal-card {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  padding: 18px;
+  border-radius: 22px;
+  overflow: hidden;
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.9), rgba(218, 226, 253, 0.78));
+  box-shadow: 0 18px 32px rgba(19, 27, 46, 0.08);
+}
+
+.hero-signal-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: linear-gradient(90deg, rgba(149, 34, 0, 0.78), rgba(0, 82, 255, 0.92));
+}
+
+.hero-signal-label,
+.ledger-card span {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.hero-signal-value,
+.ledger-card strong {
+  font-family: var(--font-display);
+  line-height: 1.1;
+  color: var(--ink);
+}
+
+.hero-signal-value {
+  font-size: clamp(1.4rem, 2.4vw, 2rem);
+  letter-spacing: -0.06em;
+}
+
+.hero-signal-note,
+.ledger-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.focus-strip.pressure-board {
+  grid-template-columns: minmax(0, 1.24fr) repeat(2, minmax(280px, 0.88fr));
+  gap: 18px;
+  align-items: stretch;
+}
+
+.focus-strip.pressure-board .focus-card {
+  min-height: 100%;
+}
+
+.focus-strip.pressure-board .focus-card.is-primary {
+  background:
+    radial-gradient(circle at top right, rgba(0, 82, 255, 0.16), transparent 32%),
+    linear-gradient(160deg, rgba(255, 255, 255, 0.99), rgba(230, 236, 255, 0.92));
+}
+
+.command-card,
+.release-card {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+
+.command-card {
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.96), rgba(242, 243, 255, 0.86));
+}
+
+.release-card {
+  background:
+    radial-gradient(circle at top right, rgba(0, 82, 255, 0.18), transparent 28%),
+    linear-gradient(160deg, rgba(19, 27, 46, 0.96), rgba(26, 38, 70, 0.94));
+  color: var(--ink-inverse);
+}
+
+.release-card .panel-label,
+.release-card h2,
+.release-card strong {
+  color: var(--ink-inverse);
+}
+
+.release-card > p:not(.panel-label),
+.release-card .ledger-card span,
+.release-card .ledger-card p {
+  color: var(--muted-inverse);
+}
+
+.ledger-grid {
+  display: grid;
+  gap: 12px;
+  margin-top: auto;
+}
+
+.ledger-card {
+  display: grid;
+  gap: 6px;
+  padding: 16px 18px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.56);
+}
+
+.release-card .ledger-card {
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.journey-strip {
+  gap: 10px;
+}
+
+.journey-step {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  min-height: 108px;
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.88), rgba(242, 243, 255, 0.76));
+}
+
+.journey-step div {
+  display: grid;
+  gap: 4px;
+}
+
+.journey-step span {
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.journey-step.is-active {
+  background:
+    radial-gradient(circle at top right, rgba(0, 82, 255, 0.14), transparent 28%),
+    linear-gradient(160deg, rgba(19, 27, 46, 0.95), rgba(30, 44, 78, 0.94));
+}
+
+.journey-step.is-active strong,
+.journey-step.is-active span,
+.journey-step.is-active .workflow-step {
+  color: var(--ink-inverse);
+}
+
+.journey-step.is-complete {
+  background:
+    linear-gradient(160deg, rgba(230, 240, 249, 0.94), rgba(255, 255, 255, 0.92));
+}
+
+.workbench-grid {
+  align-items: start;
+}
+
+.loop-output-stack {
+  display: grid;
+  gap: 24px;
+}
+
+.review-panel {
+  background:
+    radial-gradient(circle at top right, rgba(149, 34, 0, 0.08), transparent 22%),
+    linear-gradient(160deg, rgba(242, 243, 255, 0.94), rgba(255, 255, 255, 0.88));
+}
+
+.final-panel {
+  position: relative;
+  overflow: hidden;
+  margin-left: clamp(32px, 6vw, 88px);
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.96), rgba(242, 243, 255, 0.88));
+}
+
+.final-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: linear-gradient(180deg, rgba(149, 34, 0, 0.8), rgba(0, 82, 255, 0.92));
+}
+
+.proof-panel {
+  margin-right: clamp(24px, 5vw, 72px);
+  background:
+    linear-gradient(160deg, rgba(234, 237, 255, 0.82), rgba(255, 255, 255, 0.9));
+}
+
+.release-spotlight {
+  gap: 18px;
+}
+
+.release-highlights {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.release-highlights li strong {
+  line-height: 1.4;
+}
+
+.proof-panel > .drawer-summary {
+  padding-bottom: 22px;
+}
+
+.proof-panel[open] > .drawer-summary {
+  box-shadow: inset 0 -1px 0 rgba(67, 70, 86, 0.1);
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .hero-card,
+  .input-card,
+  .panel,
+  .focus-card,
+  .journey-step,
+  .stage-card,
+  .surface-card,
+  .release-spotlight,
+  .drawer,
+  .timeline-card,
+  .verification-card,
+  .deliverable-card,
+  .draft-card {
+    transition:
+      transform 180ms ease,
+      box-shadow 180ms ease,
+      background 180ms ease;
+  }
+
+  .hero-card:hover,
+  .focus-card:hover,
+  .journey-step:hover,
+  .panel:hover,
+  .drawer:hover {
+    transform: translateY(-2px);
+  }
+
+  .hero-card,
+  .input-card,
+  .focus-card,
+  .panel {
+    animation: rise-in 560ms cubic-bezier(0.2, 0.9, 0.2, 1) both;
+  }
+}
+
+@media (max-width: 1120px) {
+  .hero-signal-grid,
+  .release-highlights {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .focus-strip.pressure-board {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .focus-strip.pressure-board .focus-card.is-primary {
+    grid-column: 1 / -1;
+  }
+
+  .final-panel,
+  .proof-panel {
+    margin-inline: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .hero-signal-grid,
+  .ledger-grid,
+  .release-highlights {
+    grid-template-columns: 1fr;
+  }
+
+  .focus-strip.pressure-board {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-card h1 {
+    max-width: none;
   }
 }

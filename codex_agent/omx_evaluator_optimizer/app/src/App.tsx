@@ -236,11 +236,11 @@ function App() {
   const remainingVerificationCycles = Math.max(requiredLoops - visibleVerificationCycles.length, 0)
   const hasLoopOutputs = Boolean(state.outputs)
   const stageHooks = {
-    research: 'Research results',
-    outline: 'Outline',
-    drafts: 'Section drafts',
-    review: 'Review notes',
-    final: 'Final post',
+    research: '연구 결과',
+    outline: '개요',
+    drafts: '섹션 초안',
+    review: '리뷰 메모',
+    final: '최종 원고',
   } as const
 
   const loopStatus =
@@ -303,25 +303,21 @@ function App() {
     {
       id: 'research',
       label: '연구 결과',
-      hook: stageHooks.research,
       note: '근거와 핵심 논점이 얼마나 압축됐는지 읽습니다.',
     },
     {
       id: 'outline',
       label: '개요',
-      hook: stageHooks.outline,
       note: '글 구조가 어떤 순서로 잠기는지 빠르게 확인합니다.',
     },
     {
       id: 'drafts',
       label: '섹션 초안',
-      hook: stageHooks.drafts,
       note: '문단 톤, 전환, 결론 리듬을 한 장에서 점검합니다.',
     },
     {
       id: 'review',
       label: '리뷰 메모',
-      hook: stageHooks.review,
       note: '아직 출고를 막는 판정과 수정 압박만 남겨 둡니다.',
     },
   ] as const
@@ -407,6 +403,57 @@ function App() {
           : '현재 선택 루프에는 추가 수정 압박이 없습니다.',
     },
   ] as const
+  const gatePressureCards = [
+    {
+      label: '열린 루프',
+      value: `${state.revealedIterations}/${requiredLoops}`,
+      note:
+        state.status === 'initial'
+          ? '첫 초안 전'
+          : state.status === 'export-ready'
+            ? '전체 루프 노출'
+            : '현재 화면 기준',
+    },
+    {
+      label: '열린 검증',
+      value: `${visibleVerificationCycles.length}/${requiredLoops}`,
+      note:
+        remainingVerificationCycles === 0
+          ? '반복 감사 완료'
+          : `${remainingVerificationCycles}회 검증 남음`,
+    },
+    {
+      label: '직전 판정',
+      value: state.outputs ? `${state.outputs.loop_summary.lastIterationPassCount}/9` : '대기',
+      note: state.outputs ? '마지막 루프 기준' : '첫 루프 대기',
+    },
+  ] as const
+  const releaseSignals = [
+    {
+      label: '출고 상태',
+      value: state.outputs?.loop_summary.readyForExport ? '열림' : '잠김',
+      note:
+        finalArticle || state.status === 'export-ready'
+          ? '복사 가능한 승인안'
+          : '열 번째 루프 전까지 잠금 유지',
+    },
+    {
+      label: '최종 목표',
+      value: '9.4+',
+      note: '최종 점수 하한선',
+    },
+    {
+      label: '남은 압력',
+      value:
+        finalArticle || state.status === 'export-ready'
+          ? '완료'
+          : `${remainingLoops}·${remainingVerificationCycles}`,
+      note:
+        finalArticle || state.status === 'export-ready'
+          ? '추가 압박 없음'
+          : '루프 · 검증 순서',
+    },
+  ] as const
 
   function updateField<Key extends keyof BlogGeneratorInputs>(
     field: Key,
@@ -469,7 +516,7 @@ function App() {
     if (isForcedErrorTopic(topic)) {
       dispatch({
         type: 'generation_error',
-        message: '리뷰어가 이 주제를 분류 단계에서 차단했습니다. fail/error 접두어를 지운 뒤 다시 실행하세요.',
+        message: '리뷰어가 이 주제를 분류 단계에서 차단했습니다. 강제 실패 표식을 지운 뒤 다시 실행하세요.',
       })
       return
     }
@@ -532,17 +579,38 @@ function App() {
             기본 화면은 현재 게이트, 다음 행동, 출고 잠금만 전면에 남깁니다. 증거와 반복 로그는
             뒤쪽 서랍으로 밀고, 지금 어떤 원고를 얼마나 더 밀어붙여야 하는지만 차갑게 보여 줍니다.
           </p>
-          <div className="hero-loop-rail" aria-label="품질 관제 흐름">
-            {heroRail.map((item, index) => (
-              <article key={item.title} className={`loop-rail-step ${item.className}`}>
-                <span className="loop-rail-index">0{index + 1}</span>
-                <div className="loop-rail-copy">
-                  <strong>{item.title}</strong>
-                  <span>{item.detail}</span>
-                </div>
+          <div className="hero-signal-grid" aria-label="현재 압박 신호">
+            {gatePressureCards.map((item) => (
+              <article key={item.label} className="hero-signal-card">
+                <span className="hero-signal-label">{item.label}</span>
+                <strong className="hero-signal-value">{item.value}</strong>
+                <small className="hero-signal-note">{item.note}</small>
               </article>
             ))}
           </div>
+          <details className="drawer hero-rail-drawer">
+            <summary className="drawer-summary">
+              <div>
+                <p className="panel-label">건틀릿 단계</p>
+                <h3>압박 단계 펼치기</h3>
+                <p>첫 화면은 요약만 남기고, 세부 단계는 필요할 때만 펼칩니다.</p>
+              </div>
+              <span className="meta-pill">3단계 흐름</span>
+            </summary>
+            <div className="drawer-body">
+              <div className="hero-loop-rail" aria-label="품질 관제 흐름">
+                {heroRail.map((item, index) => (
+                  <article key={item.title} className={`loop-rail-step ${item.className}`}>
+                    <span className="loop-rail-index">0{index + 1}</span>
+                    <div className="loop-rail-copy">
+                      <strong>{item.title}</strong>
+                      <span>{item.detail}</span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </details>
           <div className="hero-actions">
             <button
               type="button"
@@ -551,7 +619,6 @@ function App() {
               onClick={handleGenerate}
               disabled={state.isGenerating}
             >
-              <span className="sr-only">Generate post</span>
               {state.isGenerating ? '생성 중...' : '원고 생성 시작'}
             </button>
             <button
@@ -560,27 +627,26 @@ function App() {
               data-testid="copy-markdown"
               onClick={handleCopyMarkdown}
             >
-              <span className="sr-only">Copy markdown</span>
               승인 원고 복사
             </button>
           </div>
           <div
             className={`status-banner is-${state.status}`}
             aria-live="polite"
+            aria-label="현재 생성 상태"
             data-testid="generation-status"
           >
             <strong>{statusBadgeCopy[state.status]}</strong>
             <span>{state.statusMessage}</span>
-            <span className="sr-only">{state.status}</span>
           </div>
         </article>
 
         <aside className="input-card">
           <div className="section-head">
-            <p className="panel-label">브리프 입력 레일</p>
+            <p className="panel-label">브리프 입력 구획</p>
             <h2>가혹한 루프를 버틸 초안 조건을 먼저 잠급니다</h2>
             <p>
-              이 rail은 좁지만 냉정해야 합니다. 독자 수준, 주장 강도, 분량 계약을 먼저 고정해야
+              이 입력 구획은 좁지만 냉정해야 합니다. 독자 수준, 주장 강도, 분량 계약을 먼저 고정해야
               작성자와 리뷰어가 같은 기준으로 서로를 압박할 수 있습니다.
             </p>
           </div>
@@ -596,7 +662,6 @@ function App() {
           <form className="input-grid" onSubmit={(event) => event.preventDefault()}>
             <label htmlFor="topic">
               <span>주제</span>
-              <span className="sr-only">Topic</span>
               <textarea
                 id="topic"
                 name="topic"
@@ -608,7 +673,6 @@ function App() {
             </label>
             <label htmlFor="audience">
               <span>독자</span>
-              <span className="sr-only">Audience</span>
               <select
                 id="audience"
                 name="audience"
@@ -623,7 +687,6 @@ function App() {
             </label>
             <label htmlFor="tone">
               <span>톤</span>
-              <span className="sr-only">Tone</span>
               <select
                 id="tone"
                 name="tone"
@@ -638,7 +701,6 @@ function App() {
             </label>
             <label htmlFor="length">
               <span>분량</span>
-              <span className="sr-only">Length</span>
               <select
                 id="length"
                 name="length"
@@ -683,7 +745,7 @@ function App() {
         </aside>
       </section>
 
-      <section className="focus-strip">
+      <section className="focus-strip pressure-board">
         <article className="focus-card is-primary focus-card-hero">
           <p className="panel-label">현재 게이트</p>
           <div className="focus-hero-head">
@@ -706,37 +768,41 @@ function App() {
             ))}
           </ul>
           <div className="focus-meta">
-            <span className="meta-pill">
-              화면 노출 {state.revealedIterations}/{requiredLoops}
-            </span>
-            <span className="meta-pill">직전 통과 {state.outputs?.loop_summary.lastIterationPassCount ?? 0}/9</span>
+            <span className="meta-pill">단계 {completedStageCount}/{workflowStages.length} 통과</span>
+            <span className="meta-pill">현재 표면 {activeStageLabel}</span>
           </div>
         </article>
-        <div className="focus-stack">
-          <article className="focus-card">
-            <p className="panel-label">다음 행동</p>
-            <h2>{nextActionTitle}</h2>
-            <p>{nextActionBody}</p>
-            <div className="focus-meta">
-              <span className="meta-pill">
-                검증 {visibleVerificationCycles.length}/{requiredLoops}
-              </span>
-            </div>
-          </article>
-          <article className="focus-card">
-            <p className="panel-label">출고 잠금</p>
-            <h2>{exportLockTitle}</h2>
-            <p>{exportLockBody}</p>
-            <div className="focus-meta">
-              <span className="meta-pill">
-                승인 상태 {state.outputs?.loop_summary.readyForExport ? '열림' : '잠김'}
-              </span>
-            </div>
-          </article>
-        </div>
+        <article className="focus-card command-card">
+          <p className="panel-label">다음 행동</p>
+          <h2>{nextActionTitle}</h2>
+          <p>{nextActionBody}</p>
+          <div className="ledger-grid" aria-label="현재 행동 신호">
+            {reviewSignals.map((signal) => (
+              <article key={signal.label} className="ledger-card">
+                <span>{signal.label}</span>
+                <strong>{signal.value}</strong>
+                <p>{signal.note}</p>
+              </article>
+            ))}
+          </div>
+        </article>
+        <article className="focus-card release-card">
+          <p className="panel-label">출고 압력</p>
+          <h2>{exportLockTitle}</h2>
+          <p>{exportLockBody}</p>
+          <div className="ledger-grid" aria-label="출고 압력 신호">
+            {releaseSignals.map((signal) => (
+              <article key={signal.label} className="ledger-card">
+                <span>{signal.label}</span>
+                <strong>{signal.value}</strong>
+                <p>{signal.note}</p>
+              </article>
+            ))}
+          </div>
+        </article>
       </section>
 
-      <section className="journey-strip" aria-label="Required stages">
+      <section className="journey-strip" aria-label="필수 단계">
         {stagedWorkflow.map((stage, index) => (
           <article
             key={stage.id}
@@ -764,14 +830,14 @@ function App() {
           <div>
             <p className="panel-label">단계 흐름</p>
             <h3>상세 단계 지도 열기</h3>
-            <p>기본 화면의 compact strip만으로 부족할 때, 상태 설명이 붙은 전체 단계 맵을 펼칩니다.</p>
+            <p>기본 화면의 요약 띠만으로 부족할 때, 상태 설명이 붙은 전체 단계 맵을 펼칩니다.</p>
           </div>
           <span className="meta-pill">
             {completedStageCount}/{workflowStages.length} 통과 · {activeStageLabel}
           </span>
         </summary>
         <div className="drawer-body">
-          <section className="stage-strip" aria-label="Required stages">
+          <section className="stage-strip" aria-label="필수 단계">
             {stagedWorkflow.map((stage, index) => (
               <article
                 key={stage.id}
@@ -797,414 +863,413 @@ function App() {
       </details>
 
       {hasLoopOutputs ? (
-      <section className="workbench-grid">
-        <article className="panel review-panel">
-          <div className="section-head">
-            <p className="panel-label">현재 루프 스냅샷</p>
-            <h2>막힘 메모와 수정 반응을 한 화면에 고정합니다</h2>
-            <p>지금 막는 항목과 방금 적용된 수정은 가까이 두고, 원시 판정표는 서랍 뒤로 밀어 둡니다.</p>
-          </div>
-          {selectedIteration ? (
-            <>
-              <div className="iteration-meta">
-                <span className="meta-pill">시작 {selectedIteration.startedAt}</span>
-                <span className="meta-pill">{formatCounts(selectedIteration)}</span>
-                <span className="meta-pill">
-                  추가 반복 {selectedIteration.needsAnotherLoop ? '필요' : '불필요'}
-                </span>
+        <div className="loop-output-stack">
+          <section className="workbench-grid">
+            <article className="panel review-panel">
+              <div className="section-head">
+                <p className="panel-label">현재 루프 스냅샷</p>
+                <h2>막힘 메모와 수정 반응을 한 화면에 고정합니다</h2>
+                <p>지금 막는 항목과 방금 적용된 수정은 가까이 두고, 원시 판정표는 서랍 뒤로 밀어 둡니다.</p>
               </div>
-              <div className="review-signal-grid">
-                {reviewSignals.map((signal) => (
-                  <article key={signal.label} className="signal-card">
-                    <span>{signal.label}</span>
-                    <strong>{signal.value}</strong>
-                    <p>{signal.note}</p>
-                  </article>
+              {selectedIteration ? (
+                <>
+                  <div className="iteration-meta">
+                    <span className="meta-pill">시작 {selectedIteration.startedAt}</span>
+                    <span className="meta-pill">{formatCounts(selectedIteration)}</span>
+                    <span className="meta-pill">
+                      추가 반복 {selectedIteration.needsAnotherLoop ? '필요' : '불필요'}
+                    </span>
+                  </div>
+                  <div className="review-signal-grid">
+                    {reviewSignals.map((signal) => (
+                      <article key={signal.label} className="signal-card">
+                        <span>{signal.label}</span>
+                        <strong>{signal.value}</strong>
+                        <p>{signal.note}</p>
+                      </article>
+                    ))}
+                  </div>
+                  <div className="current-loop-grid">
+                    <article className="subpanel">
+                      <p className="panel-label">방금 적용된 수정</p>
+                      <h3>수정자가 이번 차수에 실제로 반영한 변화</h3>
+                      <ul className="bullet-list">
+                        {selectedIteration.optimizerChanges.map((item) => (
+                          <li key={item}>{item}</li>
+                        ))}
+                      </ul>
+                    </article>
+                    <article className="subpanel">
+                      <p className="panel-label">수정 브리프</p>
+                      <h3>아직 출고를 막고 있는 항목</h3>
+                      {repairRows.length > 0 ? (
+                        <ul className="repair-list">
+                          {repairRows.map((row) => (
+                            <li key={row.index}>
+                              <strong>#{row.index}</strong>
+                              <span>{row.note}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <div className="empty-state compact">
+                          {requiredLoops}차 승인 후보에는 열린 수정 항목이 없습니다. 이제 출고 점검으로 넘길 수 있습니다.
+                        </div>
+                      )}
+                    </article>
+                  </div>
+                  <details className="drawer detail-drawer">
+                    <summary className="drawer-summary">
+                      <div>
+                        <p className="panel-label">리뷰어 상세 판정</p>
+                        <h3>전체 판정표 열기</h3>
+                        <p>엄격한 증거는 유지하되, 첫 읽기 표면과 경쟁하지 않도록 뒤 레이어에 둡니다.</p>
+                      </div>
+                      <span className="meta-pill">9개 체크</span>
+                    </summary>
+                    <div className="drawer-body">
+                      <div className="review-table-wrap">
+                        <table className="review-table">
+                          <thead>
+                            <tr>
+                              <th>#</th>
+                              <th>체크 항목</th>
+                              <th>판정</th>
+                              <th>리뷰 메모</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {selectedIteration.verdictRows.map((row) => (
+                              <tr key={row.index}>
+                                <td>{row.index}</td>
+                                <td>{row.label}</td>
+                                <td>
+                                  <span className={`verdict-badge is-${row.verdict.toLowerCase()}`}>
+                                    {verdictCopy[row.verdict]}
+                                  </span>
+                                </td>
+                                <td>{row.note}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </details>
+                </>
+              ) : (
+                <div className="empty-state">
+                  첫 초안을 생성하면 선택 루프 스냅샷이 채워지고, 건틀릿 브리프가 열립니다.
+                </div>
+              )}
+            </article>
+
+            <section className="panel reader-panel">
+              <div className="section-head">
+                <p className="panel-label">집중 읽기 표면</p>
+                <h2>한 번에 하나의 읽기 표면만 유지합니다</h2>
+                <p>리서치, 구조, 초안, 리뷰 메모는 한 장의 집중된 읽기 표면 안에서만 교체합니다.</p>
+              </div>
+              <div className="reader-tabs" role="tablist" aria-label="읽기 표면">
+                {readerTabs.map((tab, index) => (
+                  <button
+                    key={tab.id}
+                    ref={(node) => {
+                      readerTabRefs.current[index] = node
+                    }}
+                    id={`surface-tab-${tab.id}`}
+                    type="button"
+                    role="tab"
+                    aria-selected={activeSurface === tab.id}
+                    aria-label={tab.label}
+                    aria-controls={`surface-panel-${tab.id}`}
+                    tabIndex={activeSurface === tab.id ? 0 : -1}
+                    className={`reader-tab ${activeSurface === tab.id ? 'is-active' : ''}`}
+                    data-testid={`reader-tab-${tab.id}`}
+                    onClick={() => setActiveSurface(tab.id)}
+                    onKeyDown={(event) => handleReaderTabKeyDown(event, index)}
+                  >
+                    <span className="reader-tab-copy">
+                      <strong className="reader-tab-title">{tab.label}</strong>
+                      <span className="reader-tab-note">{tab.note}</span>
+                    </span>
+                  </button>
                 ))}
               </div>
-              <div className="current-loop-grid">
-                <article className="subpanel">
-                  <p className="panel-label">방금 적용된 수정</p>
-                  <h3>수정자가 이번 차수에 실제로 반영한 변화</h3>
-                  <ul className="bullet-list">
-                    {selectedIteration.optimizerChanges.map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ul>
-                </article>
-                <article className="subpanel">
-                  <p className="panel-label">수정 브리프</p>
-                  <h3>아직 출고를 막고 있는 항목</h3>
-                  {repairRows.length > 0 ? (
-                    <ul className="repair-list">
-                      {repairRows.map((row) => (
-                        <li key={row.index}>
-                          <strong>#{row.index}</strong>
-                          <span>{row.note}</span>
-                        </li>
+              <article
+                id={`surface-panel-${activeReaderTab.id}`}
+                className="surface-card"
+                role="tabpanel"
+                aria-labelledby={`surface-tab-${activeReaderTab.id}`}
+                aria-label={activeReaderTab.label}
+                data-testid={`surface-${activeReaderTab.id}`}
+              >
+                <div className="section-head">
+                  <p className="panel-label">{activeReaderTab.label}</p>
+                  <h2>{activeReaderTab.label}</h2>
+                  <p className="surface-note">{activeReaderTab.note}</p>
+                </div>
+                {selectedIteration ? (
+                  activeSurface === 'research' ? (
+                    <ul className="bullet-list">
+                      {selectedIteration.researchSummary.map((item) => (
+                        <li key={item}>{item}</li>
                       ))}
                     </ul>
-                  ) : (
-                    <div className="empty-state compact">
-                      {requiredLoops}차 승인 후보에는 열린 수정 항목이 없습니다. 이제 출고 점검으로 넘길 수 있습니다.
+                  ) : activeSurface === 'outline' ? (
+                    <ol className="outline-list">
+                      {selectedIteration.outline.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ol>
+                  ) : activeSurface === 'drafts' ? (
+                    <div className="draft-stack">
+                      {selectedIteration.sectionDrafts.map((draft) => (
+                        <article key={draft.title} className="draft-card">
+                          <h3>{draft.title}</h3>
+                          <p>{draft.body}</p>
+                          <strong>{draft.takeaway}</strong>
+                        </article>
+                      ))}
                     </div>
+                  ) : (
+                    <ol className="review-notes">
+                      {selectedIteration.reviewNotes.map((note) => (
+                        <li key={note}>{note}</li>
+                      ))}
+                    </ol>
+                  )
+                ) : (
+                  <div className="empty-state">
+                    {activeSurface === 'research'
+                      ? '1차 반복이 열리면 연구 결과가 이곳에 쌓입니다.'
+                      : activeSurface === 'outline'
+                        ? '작성 초안이 검토되면 개요 순서가 이곳에 나타납니다.'
+                        : activeSurface === 'drafts'
+                          ? '루프가 실제로 평가할 초안을 만들기 전까지 섹션 초안은 숨겨 둡니다.'
+                          : '리뷰 메모는 첫 초안이 점수화된 뒤에 여기에 채워집니다.'}
+                  </div>
+                )}
+              </article>
+            </section>
+          </section>
+
+          <section
+            className="panel final-panel"
+            aria-label={stageHooks.final}
+            data-testid="final-post-panel"
+          >
+            <div className="section-head">
+              <p className="panel-label">최종 원고</p>
+              <h2>승인 직전 원고만 첫 화면에 남깁니다</h2>
+              <p>열 번째 루프가 모든 게이트를 통과할 때만 출고를 엽니다. 긴 본문과 원문 마크다운은 모두 뒤쪽 서랍에 둡니다.</p>
+            </div>
+            {finalArticle ? (
+              <>
+                <div className="release-spotlight">
+                  <p className="article-kicker">{requiredLoops}차 승인안</p>
+                  <h3>{finalArticle.title}</h3>
+                  <p className="article-intro">{finalArticle.intro}</p>
+                  <ul className="release-highlights">
+                    {finalArticle.mergedSections.slice(0, 3).map((section) => (
+                      <li key={section.title}>
+                        <strong>{section.title}</strong>
+                        <span>{section.takeaway}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="release-preview">
+                    <p className="panel-label">승인안 미리보기</p>
+                    <pre className="markdown-preview">{releasePreview}</pre>
+                  </div>
+                </div>
+                <details className="drawer detail-drawer article-drawer">
+                  <summary className="drawer-summary">
+                    <div>
+                      <p className="panel-label">전체 본문</p>
+                      <h3>승인된 본문 전체 보기</h3>
+                      <p>긴 본문은 기본 표면 밖으로 빼고, 필요할 때만 전체 섹션을 펼칩니다.</p>
+                    </div>
+                    <span className="meta-pill">섹션 {finalArticle.mergedSections.length}개</span>
+                  </summary>
+                  <div className="drawer-body">
+                    <div className="article-preview">
+                      <p className="article-kicker">{requiredLoops}차 승인 후보</p>
+                      <h3>{finalArticle.title}</h3>
+                      <p className="article-intro">{finalArticle.intro}</p>
+                      <div className="article-sections">
+                        {finalArticle.mergedSections.map((section) => (
+                          <article key={section.title} className="article-section">
+                            <h4>{section.title}</h4>
+                            <p>{section.body}</p>
+                            <strong>{section.takeaway}</strong>
+                          </article>
+                        ))}
+                      </div>
+                      <p className="article-closing">{finalArticle.closing}</p>
+                    </div>
+                  </div>
+                </details>
+                <details className="drawer detail-drawer markdown-drawer">
+                  <summary className="drawer-summary">
+                    <div>
+                      <p className="panel-label">마크다운 원문</p>
+                      <h3>복사용 원문 열기</h3>
+                      <p>복사 실패나 포맷 점검이 필요할 때만 원문 마크다운을 펼칩니다.</p>
+                    </div>
+                    <span className="meta-pill">원문</span>
+                  </summary>
+                  <div className="drawer-body">
+                    <pre className="markdown-export">{finalArticle.markdown}</pre>
+                  </div>
+                </details>
+              </>
+            ) : (
+              <div className="empty-state">
+                최종 원고는 {requiredLoops}차 루프가 끝나기 전까지 잠겨 있습니다.
+              </div>
+            )}
+          </section>
+
+          <details className="panel proof-panel proof-drawer">
+            <summary className="drawer-summary">
+              <div>
+                <p className="panel-label">검증 증거</p>
+                <h2>증거 팩은 한 단계 뒤에 둡니다</h2>
+                <p>비교, 평가, 검증 기록은 유지하되 기본 표면에서는 요약만 남깁니다.</p>
+              </div>
+              <span className="meta-pill">
+                검증 {visibleVerificationCycles.length}/{requiredLoops}
+              </span>
+            </summary>
+            <div className="drawer-body">
+              <div className="verification-summary">
+                <article className="subpanel compact">
+                  <p className="panel-label">노출된 검증</p>
+                  <h3>
+                    {visibleVerificationCycles.length}/{requiredLoops}
+                  </h3>
+                  <p>비교, 검증, 평가 펄스가 반복적으로 누적되어야만 출고가 열립니다.</p>
+                </article>
+                <article className="subpanel compact">
+                  <p className="panel-label">최신 변화</p>
+                  <h3>{visibleVerificationCycles.at(-1)?.label ?? '1차 검증 대기'}</h3>
+                  <p>{visibleVerificationCycles.at(-1)?.delta ?? '첫 초안을 생성하면 검증 압력이 이곳에 드러납니다.'}</p>
+                </article>
+                <article className="subpanel compact">
+                  <p className="panel-label">루프 요약</p>
+                  {state.outputs ? (
+                    <>
+                      <h3>{state.outputs.loop_summary.lastIterationPassCount}/9 게이트 통과</h3>
+                      <p>
+                        최소 반복 충족 {state.outputs.loop_summary.minimumLoopsMet ? '완료' : '미완료'} · 출고 준비{' '}
+                        {state.outputs.loop_summary.readyForExport ? '완료' : '잠금'}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <h3>1차 루프 대기</h3>
+                      <p>한 번 루프를 실행하면 승인 요약과 증거 체크리스트가 이곳에 열립니다.</p>
+                    </>
                   )}
                 </article>
               </div>
               <details className="drawer detail-drawer">
                 <summary className="drawer-summary">
                   <div>
-                    <p className="panel-label">리뷰어 상세 판정</p>
-                    <h3>전체 판정표 열기</h3>
-                    <p>엄격한 증거는 유지하되, 첫 읽기 표면과 경쟁하지 않도록 뒤 레이어에 둡니다.</p>
+                    <p className="panel-label">루프 타임라인</p>
+                    <h3>10회 반복 루프 열기</h3>
+                    <p>이 건틀릿은 첫 답변을 신뢰하지 않습니다. 모든 루프가 스스로 승격을 벌어야 합니다.</p>
                   </div>
-                  <span className="meta-pill">9개 체크</span>
+                  <span className="meta-pill">{visibleIterations.length}/{requiredLoops} 노출</span>
                 </summary>
                 <div className="drawer-body">
-                  <div className="review-table-wrap">
-                    <table className="review-table">
-                      <thead>
-                        <tr>
-                          <th>#</th>
-                          <th>체크 항목</th>
-                          <th>판정</th>
-                          <th>리뷰 메모</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {selectedIteration.verdictRows.map((row) => (
-                          <tr key={row.index}>
-                            <td>{row.index}</td>
-                            <td>{row.label}</td>
-                            <td>
-                              <span className={`verdict-badge is-${row.verdict.toLowerCase()}`}>
-                                {verdictCopy[row.verdict]}
-                              </span>
-                            </td>
-                            <td>{row.note}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div className="timeline-grid">
+                    {Array.from({ length: requiredLoops }, (_, index) => index + 1).map((iterationNumber) => {
+                      const record = visibleIterations.find((item) => item.iteration === iterationNumber) ?? null
+                      const isSelected = selectedIteration?.iteration === iterationNumber
+                      const isRevealed = Boolean(record)
+
+                      return (
+                        <button
+                          key={iterationNumber}
+                          type="button"
+                          className={`timeline-card ${isSelected ? 'is-selected' : ''} ${
+                            isRevealed ? 'is-revealed' : 'is-queued'
+                          }`}
+                          onClick={() =>
+                            record && dispatch({ type: 'select_iteration', iteration: iterationNumber })
+                          }
+                          disabled={!record}
+                        >
+                          <div>
+                            <p className="timeline-kicker">{iterationNumber}차 반복</p>
+                            <strong>{record ? record.buildStatus : '리뷰 대기'}</strong>
+                          </div>
+                          <p className="timeline-counts">{formatCounts(record)}</p>
+                          <span className={`phase-pill is-${record?.phase ?? 'writer'}`}>
+                            {record ? phaseCopy[record.phase] : '대기'}
+                          </span>
+                        </button>
+                      )
+                    })}
                   </div>
                 </div>
               </details>
-            </>
-          ) : (
-            <div className="empty-state">
-              첫 초안을 생성하면 선택 루프 스냅샷이 채워지고, 건틀릿 브리프가 열립니다.
-            </div>
-          )}
-        </article>
-
-        <section className="panel reader-panel">
-          <div className="section-head">
-            <p className="panel-label">집중 읽기 표면</p>
-            <h2>한 번에 하나의 읽기 표면만 유지합니다</h2>
-            <p>리서치, 구조, 초안, 리뷰 메모는 한 장의 집중된 읽기 표면 안에서만 교체합니다.</p>
-          </div>
-          <div className="reader-tabs" role="tablist" aria-label="Loop surfaces">
-            {readerTabs.map((tab, index) => (
-              <button
-                key={tab.id}
-                ref={(node) => {
-                  readerTabRefs.current[index] = node
-                }}
-                id={`surface-tab-${tab.id}`}
-                type="button"
-                role="tab"
-                aria-selected={activeSurface === tab.id}
-                aria-label={`${tab.label} · ${tab.hook}`}
-                aria-controls={`surface-panel-${tab.id}`}
-                tabIndex={activeSurface === tab.id ? 0 : -1}
-                className={`reader-tab ${activeSurface === tab.id ? 'is-active' : ''}`}
-                data-testid={`reader-tab-${tab.id}`}
-                onClick={() => setActiveSurface(tab.id)}
-                onKeyDown={(event) => handleReaderTabKeyDown(event, index)}
-              >
-                <span className="reader-tab-copy">
-                  <strong className="reader-tab-title">{tab.label}</strong>
-                  <span className="reader-tab-note">{tab.note}</span>
-                </span>
-                <span className="sr-only">{tab.hook}</span>
-              </button>
-            ))}
-          </div>
-          <article
-            id={`surface-panel-${activeReaderTab.id}`}
-            className="surface-card"
-            role="tabpanel"
-            aria-labelledby={`surface-tab-${activeReaderTab.id}`}
-            aria-label={activeReaderTab.hook}
-            data-testid={`surface-${activeReaderTab.id}`}
-          >
-            <div className="section-head">
-              <p className="panel-label">{activeReaderTab.label}</p>
-              <h2>{activeReaderTab.label}</h2>
-              <p className="surface-note">{activeReaderTab.note}</p>
-              <span className="sr-only">{activeReaderTab.hook}</span>
-            </div>
-            {selectedIteration ? (
-              activeSurface === 'research' ? (
-                <ul className="bullet-list">
-                  {selectedIteration.researchSummary.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-              ) : activeSurface === 'outline' ? (
-                <ol className="outline-list">
-                  {selectedIteration.outline.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ol>
-              ) : activeSurface === 'drafts' ? (
-                <div className="draft-stack">
-                  {selectedIteration.sectionDrafts.map((draft) => (
-                    <article key={draft.title} className="draft-card">
-                      <h3>{draft.title}</h3>
-                      <p>{draft.body}</p>
-                      <strong>{draft.takeaway}</strong>
-                    </article>
-                  ))}
-                </div>
-              ) : (
-                <ol className="review-notes">
-                  {selectedIteration.reviewNotes.map((note) => (
-                    <li key={note}>{note}</li>
-                  ))}
-                </ol>
-              )
-            ) : (
-              <div className="empty-state">
-                {activeSurface === 'research'
-                  ? '1차 반복이 열리면 연구 결과가 이곳에 쌓입니다.'
-                  : activeSurface === 'outline'
-                    ? '작성 초안이 검토되면 개요 순서가 이곳에 나타납니다.'
-                    : activeSurface === 'drafts'
-                      ? '루프가 실제로 평가할 초안을 만들기 전까지 섹션 초안은 숨겨 둡니다.'
-                      : '리뷰 메모는 첫 초안이 점수화된 뒤에 여기에 채워집니다.'}
-              </div>
-            )}
-          </article>
-        </section>
-      </section>
-
-      <section
-        className="panel final-panel"
-        aria-label={stageHooks.final}
-        data-testid="final-post-panel"
-      >
-        <div className="section-head">
-          <p className="panel-label">최종 원고</p>
-          <h2>승인 직전 원고만 첫 화면에 남깁니다</h2>
-          <span className="sr-only">{stageHooks.final}</span>
-          <p>열 번째 루프가 모든 게이트를 통과할 때만 출고를 엽니다. 긴 본문과 원문 마크다운은 모두 뒤쪽 서랍에 둡니다.</p>
-        </div>
-        {finalArticle ? (
-          <>
-            <div className="release-spotlight">
-              <p className="article-kicker">{requiredLoops}차 승인안</p>
-              <h3>{finalArticle.title}</h3>
-              <p className="article-intro">{finalArticle.intro}</p>
-              <ul className="release-highlights">
-                {finalArticle.mergedSections.slice(0, 3).map((section) => (
-                  <li key={section.title}>
-                    <strong>{section.title}</strong>
-                    <span>{section.takeaway}</span>
-                  </li>
-                ))}
-              </ul>
-              <div className="release-preview">
-                <p className="panel-label">승인안 미리보기</p>
-                <pre className="markdown-preview">{releasePreview}</pre>
-              </div>
-            </div>
-            <details className="drawer detail-drawer article-drawer">
-              <summary className="drawer-summary">
-                <div>
-                  <p className="panel-label">전체 본문</p>
-                  <h3>승인된 본문 전체 보기</h3>
-                  <p>긴 본문은 기본 표면 밖으로 빼고, 필요할 때만 전체 섹션을 펼칩니다.</p>
-                </div>
-                <span className="meta-pill">섹션 {finalArticle.mergedSections.length}개</span>
-              </summary>
-              <div className="drawer-body">
-                <div className="article-preview">
-                  <p className="article-kicker">{requiredLoops}차 승인 후보</p>
-                  <h3>{finalArticle.title}</h3>
-                  <p className="article-intro">{finalArticle.intro}</p>
-                  <div className="article-sections">
-                    {finalArticle.mergedSections.map((section) => (
-                      <article key={section.title} className="article-section">
-                        <h4>{section.title}</h4>
-                        <p>{section.body}</p>
-                        <strong>{section.takeaway}</strong>
+              <details className="drawer detail-drawer">
+                <summary className="drawer-summary">
+                  <div>
+                    <p className="panel-label">검증 상세</p>
+                    <h3>비교 · 평가 · 검증 사이클 열기</h3>
+                    <p>증거 선은 건틀릿을 감사해야 할 때만 세부까지 펼칩니다.</p>
+                  </div>
+                  <span className="meta-pill">{visibleVerificationCycles.length}개 노출</span>
+                </summary>
+                <div className="drawer-body">
+                  <div className="verification-grid">
+                    {visibleVerificationCycles.map((cycle) => (
+                      <article key={cycle.cycle} className="verification-card">
+                        <p className="timeline-kicker">{cycle.cycle}차 검증</p>
+                        <h3>{cycle.label}</h3>
+                        <div className="verification-badges">
+                          <span className="meta-pill">검증 · 통과</span>
+                          <span className="meta-pill">비교 · 통과</span>
+                          <span className="meta-pill">평가 · 통과</span>
+                        </div>
+                        <p>{cycle.delta}</p>
                       </article>
                     ))}
                   </div>
-                  <p className="article-closing">{finalArticle.closing}</p>
                 </div>
-              </div>
-            </details>
-            <details className="drawer detail-drawer markdown-drawer">
-              <summary className="drawer-summary">
-                <div>
-                  <p className="panel-label">마크다운 원문</p>
-                  <h3>복사용 원문 열기</h3>
-                  <p>복사 실패나 포맷 점검이 필요할 때만 원문 마크다운을 펼칩니다.</p>
-                </div>
-                <span className="meta-pill">원문</span>
-              </summary>
-              <div className="drawer-body">
-                <pre className="markdown-export">{finalArticle.markdown}</pre>
-              </div>
-            </details>
-          </>
-        ) : (
-          <div className="empty-state">
-            최종 원고는 {requiredLoops}차 루프가 끝나기 전까지 잠겨 있습니다.
-          </div>
-        )}
-      </section>
-
-      <details className="panel proof-panel proof-drawer">
-        <summary className="drawer-summary">
-          <div>
-            <p className="panel-label">검증 증거</p>
-            <h2>증거 팩은 한 단계 뒤에 둡니다</h2>
-            <p>비교, 평가, 검증 기록은 유지하되 기본 표면에서는 요약만 남깁니다.</p>
-          </div>
-          <span className="meta-pill">
-            검증 {visibleVerificationCycles.length}/{requiredLoops}
-          </span>
-        </summary>
-        <div className="drawer-body">
-          <div className="verification-summary">
-            <article className="subpanel compact">
-              <p className="panel-label">노출된 검증</p>
-              <h3>
-                {visibleVerificationCycles.length}/{requiredLoops}
-              </h3>
-              <p>비교, 검증, 평가 펄스가 반복적으로 누적되어야만 출고가 열립니다.</p>
-            </article>
-            <article className="subpanel compact">
-              <p className="panel-label">최신 변화</p>
-              <h3>{visibleVerificationCycles.at(-1)?.label ?? '1차 검증 대기'}</h3>
-              <p>{visibleVerificationCycles.at(-1)?.delta ?? '첫 초안을 생성하면 검증 압력이 이곳에 드러납니다.'}</p>
-            </article>
-            <article className="subpanel compact">
-              <p className="panel-label">루프 요약</p>
-              {state.outputs ? (
-                <>
-                  <h3>{state.outputs.loop_summary.lastIterationPassCount}/9 게이트 통과</h3>
-                  <p>
-                    최소 반복 충족 {state.outputs.loop_summary.minimumLoopsMet ? '완료' : '미완료'} · 출고 준비{' '}
-                    {state.outputs.loop_summary.readyForExport ? '완료' : '잠금'}
-                  </p>
-                </>
-              ) : (
-                <>
-                  <h3>1차 루프 대기</h3>
-                  <p>한 번 루프를 실행하면 승인 요약과 증거 체크리스트가 이곳에 열립니다.</p>
-                </>
-              )}
-            </article>
-          </div>
-          <details className="drawer detail-drawer">
-          <summary className="drawer-summary">
-            <div>
-              <p className="panel-label">루프 타임라인</p>
-              <h3>10회 반복 루프 열기</h3>
-              <p>이 건틀릿은 첫 답변을 신뢰하지 않습니다. 모든 루프가 스스로 승격을 벌어야 합니다.</p>
-            </div>
-            <span className="meta-pill">{visibleIterations.length}/{requiredLoops} 노출</span>
-          </summary>
-          <div className="drawer-body">
-            <div className="timeline-grid">
-              {Array.from({ length: requiredLoops }, (_, index) => index + 1).map((iterationNumber) => {
-                const record = visibleIterations.find((item) => item.iteration === iterationNumber) ?? null
-                const isSelected = selectedIteration?.iteration === iterationNumber
-                const isRevealed = Boolean(record)
-
-                return (
-                  <button
-                    key={iterationNumber}
-                    type="button"
-                    className={`timeline-card ${isSelected ? 'is-selected' : ''} ${
-                      isRevealed ? 'is-revealed' : 'is-queued'
-                    }`}
-                    onClick={() =>
-                      record && dispatch({ type: 'select_iteration', iteration: iterationNumber })
-                    }
-                    disabled={!record}
-                  >
-                    <div>
-                      <p className="timeline-kicker">{iterationNumber}차 반복</p>
-                      <strong>{record ? record.buildStatus : '리뷰 대기'}</strong>
-                    </div>
-                    <p className="timeline-counts">{formatCounts(record)}</p>
-                    <span className={`phase-pill is-${record?.phase ?? 'writer'}`}>
-                      {record ? phaseCopy[record.phase] : '대기'}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-          </details>
-          <details className="drawer detail-drawer">
-          <summary className="drawer-summary">
-            <div>
-              <p className="panel-label">검증 상세</p>
-              <h3>비교 · 평가 · 검증 사이클 열기</h3>
-              <p>증거 선은 건틀릿을 감사해야 할 때만 세부까지 펼칩니다.</p>
-            </div>
-            <span className="meta-pill">{visibleVerificationCycles.length}개 노출</span>
-          </summary>
-          <div className="drawer-body">
-            <div className="verification-grid">
-              {visibleVerificationCycles.map((cycle) => (
-                <article key={cycle.cycle} className="verification-card">
-                  <p className="timeline-kicker">{cycle.cycle}차 검증</p>
-                  <h3>{cycle.label}</h3>
-                  <div className="verification-badges">
-                    <span className="meta-pill">검증 · 통과</span>
-                    <span className="meta-pill">비교 · 통과</span>
-                    <span className="meta-pill">평가 · 통과</span>
+              </details>
+              <details className="drawer detail-drawer">
+                <summary className="drawer-summary">
+                  <div>
+                    <p className="panel-label">증거 팩</p>
+                    <h3>아티팩트와 루브릭 목표 열기</h3>
+                    <p>모든 증거는 남겨 두되, 더 이상 제품 표면을 압도하지 않게 합니다.</p>
                   </div>
-                  <p>{cycle.delta}</p>
-                </article>
-              ))}
+                  <span className="meta-pill">파일 {deliverables.length}개</span>
+                </summary>
+                <div className="drawer-body">
+                  <div className="deliverable-grid">
+                    {deliverables.map((item) => (
+                      <article key={item.id} className="deliverable-card">
+                        <h3>{item.title}</h3>
+                        <p>{item.description}</p>
+                      </article>
+                    ))}
+                  </div>
+                  <ul className="target-list">
+                    {evaluationTargets.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              </details>
             </div>
-          </div>
-          </details>
-          <details className="drawer detail-drawer">
-          <summary className="drawer-summary">
-            <div>
-              <p className="panel-label">증거 팩</p>
-              <h3>아티팩트와 루브릭 목표 열기</h3>
-              <p>모든 증거는 남겨 두되, 더 이상 제품 표면을 압도하지 않게 합니다.</p>
-            </div>
-            <span className="meta-pill">파일 {deliverables.length}개</span>
-          </summary>
-          <div className="drawer-body">
-            <div className="deliverable-grid">
-              {deliverables.map((item) => (
-                <article key={item.id} className="deliverable-card">
-                  <h3>{item.title}</h3>
-                  <p>{item.description}</p>
-                </article>
-              ))}
-            </div>
-            <ul className="target-list">
-              {evaluationTargets.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-          </div>
           </details>
         </div>
-      </details>
       ) : null}
 
       {state.errorMessage ? (
