@@ -33,6 +33,7 @@ export interface WorkflowStage {
 export interface DeliverableCard {
   id: string
   title: string
+  path: string
   description: string
 }
 

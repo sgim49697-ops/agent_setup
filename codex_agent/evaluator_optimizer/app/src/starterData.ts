@@ -89,22 +89,26 @@ export const checklistLabels = [
 export const deliverables: DeliverableCard[] = [
   {
     id: 'iteration-log',
-    title: 'runs/iteration_log.md',
+    title: '반복 기록 장부',
+    path: 'runs/iteration_log.md',
     description: '최소 3회의 작성자-리뷰어-수정자 루프와 각 반복의 통과/보류/실패 집계를 남깁니다.',
   },
   {
     id: 'manifest',
-    title: 'runs/run_manifest.json',
+    title: '실행 명세 묶음',
+    path: 'runs/run_manifest.json',
     description: '하네스 이름, 실행 식별자, 타임스탬프, 스펙 버전, 종료 상태를 기록합니다.',
   },
   {
     id: 'scorecard',
-    title: 'reports/scorecard.json',
+    title: '평가 점수표',
+    path: 'reports/scorecard.json',
     description: '과업 적합성, UX, 반응형, 접근성, 프로세스, 전체 평가 입력값을 담습니다.',
   },
   {
     id: 'evaluation',
-    title: 'reports/evaluation_report.json',
+    title: '통합 평가 리포트',
+    path: 'reports/evaluation_report.json',
     description: 'scripts/evaluate.py가 생성한 통합 L1/L2/L3 평가 결과입니다.',
   },
 ]
