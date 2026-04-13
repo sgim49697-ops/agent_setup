@@ -1,25 +1,28 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Noto+Sans+KR:wght@400;500;700&display=swap');
+
 :root {
-  --paper: #edf2fb;
-  --panel: rgba(247, 250, 255, 0.94);
-  --line: rgba(15, 31, 56, 0.12);
-  --ink: #0f1f38;
-  --muted: #5d6f8d;
-  --accent: #2457d6;
-  --accent-strong: #1638a5;
-  --accent-cool: #0f7d67;
+  --paper: #faf8ff;
+  --panel: rgba(255, 255, 255, 0.78);
+  --line: rgba(115, 118, 136, 0.18);
+  --ink: #131b2e;
+  --muted: #57657a;
+  --accent: #003ec7;
+  --accent-strong: #0052ff;
+  --accent-cool: #3a485b;
   --shadow-soft:
-    0 22px 44px rgba(15, 31, 56, 0.08),
-    0 8px 18px rgba(15, 31, 56, 0.05);
+    0 24px 48px rgba(15, 23, 42, 0.08),
+    0 10px 20px rgba(15, 23, 42, 0.05);
   font-family:
-    'Space Grotesk',
-    'Segoe UI',
+    'Noto Sans KR',
+    'Manrope',
     sans-serif;
-  line-height: 1.5;
+  line-height: 1.6;
   font-weight: 400;
   color: var(--ink);
   background:
-    radial-gradient(circle at top left, rgba(36, 87, 214, 0.14), transparent 28%),
-    linear-gradient(180deg, #f5f8fe, #e8eef8);
+    radial-gradient(circle at top left, rgba(0, 82, 255, 0.14), transparent 30%),
+    radial-gradient(circle at right center, rgba(221, 225, 255, 0.52), transparent 36%),
+    linear-gradient(180deg, #faf8ff, #edf2ff);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -46,8 +49,8 @@ input,
 select,
 textarea {
   font-family:
-    'Space Grotesk',
-    'Segoe UI',
+    'Noto Sans KR',
+    'Manrope',
     sans-serif;
 }
 
@@ -62,7 +65,7 @@ button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 3px solid rgba(36, 87, 214, 0.24);
+  outline: 3px solid rgba(0, 82, 255, 0.22);
   outline-offset: 2px;
 }
 
@@ -70,21 +73,24 @@ h1,
 h2,
 h3 {
   font-family:
-    'Fraunces',
-    Georgia,
-    serif;
+    'Manrope',
+    'Noto Sans KR',
+    sans-serif;
   line-height: 1.08;
+  letter-spacing: -0.04em;
   color: var(--ink);
 }
 
 h1 {
-  font-size: clamp(2.7rem, 5vw, 4.8rem);
-  letter-spacing: -0.05em;
+  font-size: clamp(2.9rem, 5vw, 4.9rem);
 }
 
 h2 {
-  font-size: clamp(1.55rem, 2.1vw, 2.35rem);
-  letter-spacing: -0.04em;
+  font-size: clamp(1.56rem, 2.1vw, 2.35rem);
+}
+
+h3 {
+  font-size: clamp(1.02rem, 1.4vw, 1.2rem);
 }
 
 a {

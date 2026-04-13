@@ -328,6 +328,7 @@ function App() {
     selectedRole: 'researcher',
   })
   const [evidenceOpen, setEvidenceOpen] = useState(false)
+  const [presetOpen, setPresetOpen] = useState(false)
   const runRef = useRef(0)
 
   const research = state.generation.outputs.research_summary
@@ -549,12 +550,12 @@ function App() {
     <main className="pipeline-shell">
       <section className="hero-layout">
         <article className="hero-card">
-          <p className="eyebrow">단계 지휘실</p>
-          <h1>한 번의 브리프로 원고를 잠그는 순차 지휘실</h1>
+          <p className="eyebrow">순차 지휘실</p>
+          <h1>브리프 한 장으로 네 번의 인계를 잠그는 발행 작업실</h1>
           <p className="lead">
-            리서처, 아웃라이너, 라이터, 리뷰어가 하나의 브리프를 순서대로 넘기며 원고를
-            잠급니다. 첫 화면은 근거판이 아니라 지금 닫히는 단계와 다음 인계 압력만
-            읽히도록 설계했습니다.
+            리서처, 아웃라이너, 라이터, 리뷰어가 같은 브리프를 순서대로 넘기며 발행
+            가능한 원고를 잠급니다. 첫 화면은 근거 모음이 아니라 지금 닫히는 단계,
+            다음 인계 압력, 그리고 곧 열릴 작업면만 읽히도록 압축했습니다.
           </p>
 
           <div className="hero-signal-grid">
@@ -585,11 +586,18 @@ function App() {
               data-testid="Copy markdown"
               onClick={handleCopyMarkdown}
             >
-              마크다운 복사
+              최종 원고 복사
             </button>
           </div>
 
           <div className="status-banner" aria-live="polite">
+            <span className="sr-only">
+              {state.generation.status === 'export-ready'
+                ? 'export-ready'
+                : state.generation.status === 'review-complete'
+                  ? 'review-complete'
+                  : stageHookLabels[state.generation.currentStage ?? 'research']}
+            </span>
             <strong>
               <span className={`status-pill status-${state.generation.status}`}>{statusLabel}</span>
               {currentStageLabel}
@@ -602,7 +610,7 @@ function App() {
         <aside className="control-card">
           <div className="section-head">
             <p className="eyebrow">브리프 봉인</p>
-            <h2>첫 인계 전에 입력 계약부터 잠그기</h2>
+            <h2>첫 인계 전에 같은 기준표를 잠그기</h2>
           </div>
 
           <form className="form-grid">
@@ -675,36 +683,60 @@ function App() {
             </label>
           </form>
 
-          <div className="brief-preview">
-            <strong className="brief-label">공유 입력 계약</strong>
-            <pre>{JSON.stringify(state.inputs, null, 2)}</pre>
+          <div className="brief-sheet">
+            <strong className="brief-label">지금 잠길 입력 계약</strong>
+            <p className="brief-topic">{state.inputs.topic}</p>
+            <div className="brief-chip-row">
+              <span className="brief-chip">독자 · {audienceUiLabels[state.inputs.audience]}</span>
+              <span className="brief-chip">톤 · {toneUiLabels[state.inputs.tone]}</span>
+              <span className="brief-chip">분량 · {lengthUiLabels[state.inputs.length]}</span>
+            </div>
+            <p className="brief-note">
+              이 계약이 리서처에서 리뷰어까지 같은 압력으로 전달되며, 단계마다 산출물만
+              더 구체적으로 잠깁니다.
+            </p>
           </div>
         </aside>
       </section>
 
-      <section className="preset-row" aria-label="Benchmark topics">
-        {topicPresets.map((preset) => (
-          <button
-            key={preset.title}
-            type="button"
-            className="preset-card"
-            onClick={() =>
-              dispatch({
-                type: 'apply-preset',
-                payload: {
-                  topic: preset.title,
-                  audience: preset.audience,
-                  tone: preset.tone,
-                  length: preset.length,
-                },
-              })
-            }
-          >
-            <strong>{preset.title}</strong>
-            <span>{preset.rationale}</span>
-          </button>
-        ))}
-      </section>
+      <details
+        className="preset-drawer"
+        open={presetOpen}
+        onToggle={(event) => setPresetOpen((event.currentTarget as HTMLDetailsElement).open)}
+      >
+        <summary className="preset-summary">
+          <div className="preset-summary-copy">
+            <p className="eyebrow">추천 브리프</p>
+            <h2>지금 바로 잠가 볼 주제 묶음</h2>
+            <p>첫 화면은 가볍게 두고, 필요할 때만 샘플 브리프를 펼쳐 바로 시작합니다.</p>
+          </div>
+          <span className="preset-toggle">{presetOpen ? '접기' : '열기'}</span>
+        </summary>
+
+        <section className="preset-row" aria-label="Benchmark topics">
+          {topicPresets.map((preset) => (
+            <button
+              key={preset.title}
+              type="button"
+              className="preset-card"
+              onClick={() =>
+                dispatch({
+                  type: 'apply-preset',
+                  payload: {
+                    topic: preset.title,
+                    audience: preset.audience,
+                    tone: preset.tone,
+                    length: preset.length,
+                  },
+                })
+              }
+            >
+              <strong>{preset.title}</strong>
+              <span>{preset.rationale}</span>
+            </button>
+          ))}
+        </section>
+      </details>
 
       <section className="panel-card">
         <div className="section-head">
@@ -712,6 +744,10 @@ function App() {
           <h2 aria-label="Research results Outline Section drafts Review notes Final post">
             자료 요약에서 최종 원고까지, 한 번에 한 단계씩 잠그기
           </h2>
+          <p className="tracker-intro">
+            현재 단계만 전면에 남기고, 다음 인계는 카드 하단 메모로 예고합니다. 클릭하면
+            해당 작업면으로 시선을 바로 옮길 수 있습니다.
+          </p>
         </div>
 
         <div className="tracker-grid">
@@ -829,10 +865,16 @@ function App() {
             <p>일반 브리프로 다시 생성해 순차 인계의 정상 경로를 확인해 주세요.</p>
           </div>
         ) : state.generation.outputs.final_post ? (
-          <>
+          <div className="reader-shell">
             {reviewerOutput ? <p className="summary-text">{reviewerOutput.finalizationNote}</p> : null}
+            <div className="reader-meta">
+              <span className="brief-chip">잠금 상태 · {statusLabel}</span>
+              <span className="brief-chip">
+                발행 준비 · {state.generation.outputs.final_post ? '완료' : '대기'}
+              </span>
+            </div>
             <pre className="markdown-preview">{state.generation.outputs.final_post}</pre>
-          </>
+          </div>
         ) : (
           <div className="empty-state">
             <p>리뷰어 수정이 닫혀야만 최종 원고가 여기에 나타납니다.</p>

@@ -7,28 +7,28 @@ export const pipelineRoles: PipelineRoleCard[] = [
     id: 'researcher',
     label: '리서처',
     stageLabel: '자료 요약',
-    description: '주제 브리프를 angle, thesis, supporting facts로 정리한다.',
+    description: '주제 브리프를 핵심 각도, 중심 주장, 보강 근거로 정리한다.',
     handoffLabel: '아웃라이너에게 전달',
   },
   {
     id: 'outliner',
     label: '아웃라이너',
     stageLabel: '구조 설계',
-    description: 'research 결과를 읽기 좋은 section order로 변환한다.',
+    description: '리서치 결과를 읽기 좋은 섹션 순서로 재배치한다.',
     handoffLabel: '라이터에게 전달',
   },
   {
     id: 'writer',
     label: '라이터',
     stageLabel: '초안 작성',
-    description: 'outline을 section drafts와 pre-review markdown로 확장한다.',
+    description: '구조 설계를 섹션 초안과 검토 전 원고로 확장한다.',
     handoffLabel: '리뷰어에게 전달',
   },
   {
     id: 'reviewer',
     label: '리뷰어',
     stageLabel: '검토 메모',
-    description: 'writer 초안을 보정하고 최종 Markdown을 확정한다.',
+    description: '라이터 초안을 보정하고 최종 원고를 확정한다.',
     handoffLabel: '최종 원고 잠금',
   },
 ]
@@ -37,7 +37,7 @@ export const deliverables: DeliverableCard[] = [
   {
     id: 'manifest',
     title: '실행 기록',
-    description: '`run_manifest.json`에 시작/종료 시각, harness 이름, 상태를 남긴다.',
+    description: '`run_manifest.json`에 시작·종료 시각, 하네스 이름, 상태를 남긴다.',
   },
   {
     id: 'artifacts',
@@ -62,21 +62,21 @@ export const topicPresets: TopicPreset[] = [
     audience: 'practitioner',
     tone: 'pragmatic',
     length: 'medium',
-    rationale: '역할 분리와 상태 경계를 설명하기 좋은 주제',
+    rationale: '역할 분리와 상태 경계를 단계별로 보여 주기 좋은 주제',
   },
   {
     title: 'React Compiler 시대의 memoization 전략',
     audience: 'advanced',
     tone: 'opinionated',
     length: 'short',
-    rationale: '논지 일관성과 요약력이 중요한 주제',
+    rationale: '논지 일관성과 짧은 압축력이 중요한 주제',
   },
   {
     title: 'RAG에서 Vector DB 선택 기준과 트레이드오프',
     audience: 'practitioner',
     tone: 'clear',
     length: 'long',
-    rationale: '리서치 요약과 구조화가 중요한 주제',
+    rationale: '리서치 요약과 구조화 능력이 중요한 주제',
   },
 ]
 
