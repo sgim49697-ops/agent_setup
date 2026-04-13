@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -74,6 +75,11 @@ def main() -> int:
         log("no tracked state change; skip git checkpoint")
         return 0
 
+    child_env = dict(os.environ)
+    child_env.pop("GH_TOKEN", None)
+    child_env.pop("GITHUB_TOKEN", None)
+    child_env["GIT_TERMINAL_PROMPT"] = "0"
+
     if not git_has_workspace_changes():
         write_json(CHECKPOINT_STATE, {"signature": current, "updated_at": utc_now()})
         log("state changed but no git changes under codex_agent; signature advanced only")
@@ -87,6 +93,7 @@ def main() -> int:
         cwd=ROOT,
         capture_output=True,
         text=True,
+        env=child_env,
     )
 
     if proc.returncode != 0:

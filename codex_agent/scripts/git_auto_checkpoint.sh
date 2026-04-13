@@ -37,6 +37,13 @@ fi
 
 cd "$REPO_ROOT"
 
+# Stale GH_TOKEN/GITHUB_TOKEN values can break non-interactive HTTPS pushes even
+# when git/gh credential helpers are otherwise healthy. Rely on the configured
+# git credential helper instead of ambient shell tokens.
+unset GH_TOKEN || true
+unset GITHUB_TOKEN || true
+export GIT_TERMINAL_PROMPT=0
+
 if [[ -z "$MESSAGE" ]]; then
   MESSAGE="Preserve automation progress for codex_agent"
 fi
