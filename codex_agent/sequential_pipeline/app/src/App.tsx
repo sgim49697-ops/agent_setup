@@ -408,31 +408,61 @@ function App() {
           ? Math.min(92, completedCount * 25 + 16)
           : Math.max(8, completedCount * 25)
   const finalPreview = buildFinalPreview(state.generation.outputs.final_post)
-  const routeSignals = [
+  const briefPressureLabel = `${audienceUiLabels[state.inputs.audience]} · ${toneUiLabels[state.inputs.tone]} · ${lengthUiLabels[state.inputs.length]}`
+  const routeRules = [
     {
-      label: '현재 잠금 단계',
-      value: currentStageLabel,
-      note: `${statusLabel} 상태에서 다음 인계를 준비합니다.`,
+      label: '브리프 계약',
+      value: briefPressureLabel,
+      note: '네 역할이 같은 기준표를 이어받고, 단계가 바뀌어도 입력 계약은 흔들리지 않습니다.',
+    },
+    {
+      label: '현재 압력',
+      value: currentRoleMeta.handoffLabel,
+      note:
+        state.generation.status === 'export-ready'
+          ? '모든 인계가 닫혔으므로 이제 발행본 확인과 복사만 남았습니다.'
+          : actionHint,
+    },
+    {
+      label: '표면 원칙',
+      value: '현재 · 다음 · 발행',
+      note: state.generation.outputs.final_post
+        ? '긴 본문은 요약 아래에서만 펼치고, 첫 화면은 잠금 완료 상태만 또렷하게 남깁니다.'
+        : '첫 화면은 현재 단계와 다음 인계만 강조하고 긴 산출물은 작업면 안쪽으로 밀어 둡니다.',
+    },
+  ]
+  const routeStations = [
+    {
+      label: '지금 닫는 구간',
+      value: `${currentRoleMeta.label} · ${currentRoleMeta.stageLabel}`,
+      note:
+        state.generation.status === 'initial'
+          ? '브리프 잠금 전이라 첫 인계 대기 중입니다.'
+          : currentRoleMeta.handoffSummary,
+      tone:
+        state.generation.status === 'export-ready'
+          ? 'complete'
+          : state.generation.status === 'error'
+            ? 'pending'
+            : 'active',
     },
     {
       label: '다음 인계',
-      value:
-        state.generation.status === 'export-ready'
-          ? '발행 정리'
-          : currentRoleMeta.handoffLabel,
+      value: nextRoleMeta ? `${nextRoleMeta.label} · ${nextRoleMeta.stageLabel}` : '발행 준비 완료',
       note:
-        state.generation.status === 'export-ready'
-          ? '이제 복사와 최종 점검만 남았습니다.'
-          : currentRoleMeta.handoffSummary,
+        nextRoleMeta?.handoffSummary ??
+        '최종 원고가 잠겨 있어 이제 복사와 마지막 확인만 남았습니다.',
+      tone: nextRoleMeta ? 'next' : 'complete',
     },
     {
       label: '최종 잠금',
-      value: state.generation.outputs.final_post ? '발행본 대기' : '리뷰 잠금 전',
+      value: state.generation.outputs.final_post ? '복사 가능한 발행본' : '리뷰 잠금 대기',
       note: state.generation.outputs.final_post
-        ? '긴 본문은 요약 미리보기 뒤에 접어 두고, 필요할 때만 펼칩니다.'
+        ? '발행본 요약을 먼저 읽고 필요할 때만 전체 원고를 펼칩니다.'
         : '리뷰어 단계가 닫히면 발행본 미리보기가 바로 열립니다.',
+      tone: state.generation.outputs.final_post ? 'complete' : 'pending',
     },
-  ]
+  ] as const
   const deskMoments = [
     {
       label: '현재 데스크',
@@ -624,9 +654,9 @@ function App() {
           <p className="eyebrow">순차 지휘실</p>
           <h1>한 줄 레일 위에서 네 번의 인계를 잠그는 발행 데스크</h1>
           <p className="lead">
-            리서처, 아웃라이너, 라이터, 리뷰어가 같은 브리프를 순서대로 넘기며 발행
-            가능한 원고를 잠급니다. 첫 화면은 긴 산출물 더미 대신 지금 닫히는 단계,
-            다음 인계 압력, 그리고 잠긴 발행본의 접근 경로만 읽히도록 다듬었습니다.
+            리서처, 아웃라이너, 라이터, 리뷰어가 같은 브리프를 순서대로 넘기며 발행 가능한
+            원고를 잠급니다. 첫 화면은 긴 산출물 대신 지금 닫히는 단계와 다음 인계,
+            발행 잠금 상태만 먼저 읽히도록 정리했습니다.
           </p>
 
           <div className="hero-storyband">
@@ -636,9 +666,9 @@ function App() {
               <p>{actionHint}</p>
             </article>
 
-            <div className="hero-metric-grid">
+            <div className="hero-command-strip">
               {deskMoments.map((moment) => (
-                <article key={moment.label} className="hero-metric-card">
+                <article key={moment.label} className="hero-command-card">
                   <span className="signal-label">{moment.label}</span>
                   <strong>{moment.value}</strong>
                   <p>{moment.note}</p>
@@ -815,8 +845,8 @@ function App() {
             지금 닫히는 단계와 다음 인계를 한눈에 읽는 루트 보드
           </h2>
           <p className="tracker-intro">
-            한꺼번에 모든 산출물을 펼치지 않고, 현재 단계와 다음 전달 메모만 먼저
-            강조합니다. 카드 하나를 누르면 해당 작업면으로 바로 시선이 이동합니다.
+            모든 산출물을 한 번에 펼치지 않고, 현재 단계와 다음 전달 메모만 먼저 강조합니다.
+            카드를 누르면 해당 작업면으로 바로 시선이 이동합니다.
           </p>
         </div>
 
@@ -844,12 +874,15 @@ function App() {
                   : actionHint}
             </p>
 
-            <div className="route-note-list">
-              {deskMoments.map((moment) => (
-                <article key={moment.label} className="route-note-card">
-                  <span className="signal-label">{moment.label}</span>
-                  <strong>{moment.value}</strong>
-                  <p>{moment.note}</p>
+            <div className="route-rule-list">
+              {routeRules.map((moment, index) => (
+                <article key={moment.label} className="route-rule-card">
+                  <span className="route-rule-index">{`0${index + 1}`}</span>
+                  <div className="route-rule-copy">
+                    <span className="signal-label">{moment.label}</span>
+                    <strong>{moment.value}</strong>
+                    <p>{moment.note}</p>
+                  </div>
                 </article>
               ))}
             </div>
@@ -862,6 +895,8 @@ function App() {
                   key={role.id}
                   type="button"
                   className="tracker-card-button"
+                  aria-pressed={state.selectedRole === role.id}
+                  aria-current={role.status === 'current' ? 'step' : undefined}
                   onClick={() => dispatch({ type: 'select-role', role: role.id })}
                 >
                   <article
@@ -893,10 +928,16 @@ function App() {
               ))}
             </div>
 
-            <div className="route-journal">
-              {routeSignals.map((signal) => (
-                <article key={signal.label} className="route-journal-card">
-                  <span className="signal-label">{signal.label}</span>
+            <div className="route-station-strip">
+              {routeStations.map((signal, index) => (
+                <article
+                  key={signal.label}
+                  className={`route-station-card route-station-${signal.tone}`}
+                >
+                  <div className="route-station-head">
+                    <span className="route-station-step">{`0${index + 1}`}</span>
+                    <span className="signal-label">{signal.label}</span>
+                  </div>
                   <strong>{signal.value}</strong>
                   <p>{signal.note}</p>
                 </article>

@@ -91,7 +91,6 @@
 }
 
 .hero-bulletin,
-.hero-metric-card,
 .route-journal-card {
   position: relative;
   overflow: hidden;
@@ -110,7 +109,6 @@
 }
 
 .hero-bulletin::after,
-.hero-metric-card::after,
 .route-journal-card::after {
   content: '';
   position: absolute;
@@ -121,7 +119,6 @@
 }
 
 .hero-bulletin strong,
-.hero-metric-card strong,
 .route-journal-card strong {
   display: block;
   margin-top: 10px;
@@ -130,7 +127,6 @@
 }
 
 .hero-bulletin p,
-.hero-metric-card p,
 .route-journal-card p {
   position: relative;
   z-index: 1;
@@ -139,14 +135,47 @@
   line-height: 1.68;
 }
 
-.hero-metric-grid {
+.hero-command-strip {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
 }
 
-.hero-metric-card {
+.hero-command-card {
+  position: relative;
+  overflow: hidden;
   padding: 18px 20px;
+  border-radius: 22px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(232, 238, 255, 0.82));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.78),
+    0 12px 26px rgba(15, 23, 42, 0.05);
+}
+
+.hero-command-card::after {
+  content: '';
+  position: absolute;
+  inset: auto -12% -42% 48%;
+  height: 120px;
+  background: radial-gradient(circle, rgba(0, 82, 255, 0.2), transparent 70%);
+  pointer-events: none;
+}
+
+.hero-command-card strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 1.06rem;
+  line-height: 1.35;
+  color: #112142;
+}
+
+.hero-command-card p {
+  position: relative;
+  z-index: 1;
+  margin: 10px 0 0;
+  color: #586882;
+  line-height: 1.62;
 }
 
 .route-board-shell {
@@ -240,7 +269,8 @@
 }
 
 .route-note-list,
-.route-journal {
+.route-journal,
+.route-rule-list {
   display: grid;
   gap: 12px;
 }
@@ -268,12 +298,148 @@
   line-height: 1.64;
 }
 
+.route-rule-list {
+  margin-top: 2px;
+}
+
+.route-rule-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  padding: 18px 20px;
+  border-radius: 22px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(234, 237, 255, 0.9));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.84),
+    0 10px 24px rgba(15, 23, 42, 0.04);
+}
+
+.route-rule-index,
+.route-station-step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  background: rgba(221, 225, 255, 0.92);
+  color: #24459d;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.route-rule-copy {
+  display: grid;
+  gap: 8px;
+}
+
+.route-rule-copy strong {
+  color: #142342;
+  font-size: 1rem;
+  line-height: 1.32;
+}
+
+.route-rule-copy p {
+  margin: 0;
+  color: #56657d;
+  line-height: 1.64;
+}
+
 .route-journal {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .route-journal-card {
   padding: 18px 20px;
+}
+
+.route-station-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.route-station-card {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  gap: 10px;
+  min-height: 188px;
+  padding: 18px 20px;
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(238, 241, 255, 0.9));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.84),
+    0 16px 30px rgba(15, 23, 42, 0.05);
+}
+
+.route-station-card::after {
+  content: '';
+  position: absolute;
+  inset: auto -14% -48% 52%;
+  height: 140px;
+  background: radial-gradient(circle, rgba(0, 82, 255, 0.16), transparent 70%);
+  pointer-events: none;
+}
+
+.route-station-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.route-station-card strong {
+  position: relative;
+  z-index: 1;
+  color: #112142;
+  font-size: 1.08rem;
+  line-height: 1.34;
+}
+
+.route-station-card p {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  color: #596983;
+  line-height: 1.64;
+}
+
+.route-station-active {
+  background:
+    linear-gradient(180deg, rgba(221, 230, 255, 0.96), rgba(243, 246, 255, 0.92));
+  box-shadow:
+    0 22px 40px rgba(0, 76, 237, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.88);
+}
+
+.route-station-active .route-station-step {
+  background: linear-gradient(135deg, #003ec7, #0052ff);
+  color: #eef0ff;
+  box-shadow: 0 10px 20px rgba(0, 82, 255, 0.24);
+}
+
+.route-station-next {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(232, 238, 255, 0.88));
+}
+
+.route-station-complete {
+  background:
+    linear-gradient(180deg, rgba(238, 255, 246, 0.98), rgba(230, 246, 239, 0.9));
+}
+
+.route-station-complete .route-station-step {
+  background: rgba(23, 133, 95, 0.16);
+  color: #126445;
+}
+
+.route-station-pending {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(243, 244, 250, 0.92));
 }
 
 .signal-label {
@@ -452,17 +618,28 @@
 .form-grid textarea,
 .form-grid select {
   width: 100%;
-  border: 1px solid rgba(195, 197, 217, 0.45);
+  border: none;
   border-radius: 18px;
   padding: 0.98rem 1rem;
   color: #0f1b35;
-  background: rgba(255, 255, 255, 0.72);
-  box-shadow: inset 0 -2px 0 rgba(218, 226, 253, 0.9);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(245, 247, 255, 0.56));
+  box-shadow:
+    inset 0 -2px 0 rgba(195, 197, 217, 0.56),
+    0 10px 20px rgba(15, 23, 42, 0.02);
 }
 
 .form-grid textarea {
   min-height: 128px;
   resize: vertical;
+}
+
+.form-grid textarea:focus,
+.form-grid select:focus {
+  outline: none;
+  box-shadow:
+    inset 0 -3px 0 rgba(0, 82, 255, 0.88),
+    0 14px 26px rgba(0, 82, 255, 0.08);
 }
 
 .brief-sheet {
@@ -1039,7 +1216,8 @@
   .route-signal-grid,
   .route-board-shell,
   .route-journal,
-  .hero-metric-grid {
+  .hero-command-strip,
+  .route-station-strip {
     grid-template-columns: 1fr;
   }
 
