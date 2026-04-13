@@ -261,8 +261,10 @@ PHASE 2 — Design and implement:
 4. Implement the UI patch for {harness} based on what you found in Stitch.
    Use Stitch tokens and component patterns directly in the code.
 5. Korean-first visible copy. English only in aria/data-testid/test-hook text.
-6. Each screen must have exactly one primary action. No screen should show all pipeline
-   outputs simultaneously — distribute them across screens or progressive disclosure.
+6. Each screen must have exactly one primary action (single primary action per screen).
+   FORBIDDEN: showing all pipeline outputs (research, outline, drafts, review, final)
+   simultaneously on one page. This is a single-page dump and the critic will reject it.
+   Distribute outputs across screens or behind progressive disclosure.
 
 PHASE 3 — Record:
 7. Write {artifact_dir}/designer-notes.md covering:
