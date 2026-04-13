@@ -45,9 +45,9 @@ TRACE_RESTART_THRESHOLD = 2
 PROCESS_BUDGET_BACKOFF_MINUTES = 5
 MAX_ORCHESTRATOR_PROCS = 1
 MAX_CODEX_EXEC_PROCS = 1
-MAX_STITCH_MCP_PROCS = 1
-MAX_PLAYWRIGHT_MCP_PROCS = 1
-MAX_AUTOMATION_TOTAL_PROCS = 6
+MAX_STITCH_MCP_PROCS = 3
+MAX_PLAYWRIGHT_MCP_PROCS = 3
+MAX_AUTOMATION_TOTAL_PROCS = 10
 DEFER_FAILURE_STREAK = 8
 DEFER_PHASE_STREAK = 10
 TRANSIENT_BLOCKER_HINTS = (
@@ -98,7 +98,6 @@ def pkill_runner_tree() -> None:
     """
     patterns = [
         'master_loop_orchestrator.py',
-        'run_master_ux_worker.sh',
         'codex exec --dangerously-bypass',
         'stitch-mcp proxy',
         'playwright-mcp',
@@ -207,8 +206,7 @@ def runtime_budget_issue(metrics: dict[str, int]) -> str | None:
     return None
 
 
-def cleanup_runtime_budget_excess() -> None:
-    pkill_runner_tree()
+def cleanup_orphan_mcp_proxies() -> None:
     for pattern in ('stitch-mcp proxy', 'playwright-mcp'):
         subprocess.run(['pkill', '-TERM', '-f', pattern], check=False, capture_output=True)
     try:
@@ -218,6 +216,13 @@ def cleanup_runtime_budget_excess() -> None:
         pass
     for pattern in ('stitch-mcp proxy', 'playwright-mcp'):
         subprocess.run(['pkill', '-KILL', '-f', pattern], check=False, capture_output=True)
+
+
+def cleanup_runtime_budget_excess(issue: str | None = None) -> None:
+    if issue and issue.startswith(('stitch_mcp', 'playwright_mcp')):
+        cleanup_orphan_mcp_proxies()
+        return
+    pkill_runner_tree()
 
 
 def gateway_healthy() -> bool:
@@ -542,7 +547,7 @@ def main() -> int:
     state['active_automation_process_count'] = metrics['automation_total']
     issue = runtime_budget_issue(metrics)
     if issue:
-        cleanup_runtime_budget_excess()
+        cleanup_runtime_budget_excess(issue)
         state['runtime_guard_active'] = True
         state['runtime_guard_reason'] = issue
         state['runtime_guard_last_triggered_at'] = utc_now()
