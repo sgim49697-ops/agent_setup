@@ -1,9 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Sora:wght@500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Noto+Serif+KR:wght@500;600;700&display=swap');
 
 :root {
   --font-ui: 'IBM Plex Sans KR', 'Apple SD Gothic Neo', sans-serif;
   --font-copy: 'IBM Plex Sans KR', 'Apple SD Gothic Neo', sans-serif;
-  --font-display: 'Sora', 'IBM Plex Sans KR', sans-serif;
+  --font-display: 'Noto Serif KR', 'IBM Plex Sans KR', serif;
   --paper: #faf8ff;
   --panel: rgba(255, 255, 255, 0.94);
   --panel-soft: rgba(242, 243, 255, 0.94);

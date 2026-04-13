@@ -16,6 +16,9 @@ HANGUL_RE = re.compile(r'[가-힣]')
 LATIN_RE = re.compile(r'[A-Za-z]')
 IGNORE_CONTEXT_TOKENS = ('import ', ' from ', 'className', 'data-testid', 'data-test', 'href=', 'src=', 'url', 'id:', 'role:', 'variant:', 'status:', 'kind:', 'path:', 'http://', 'https://', 'type ', 'interface ', 'enum ')
 ALLOW_ENGLISH_HOOK_TOKENS = ('aria-', 'ariaLabel', 'aria-label', 'live-region', 'copy markdown', 'generate post', 'research results', 'outline', 'section drafts', 'review notes', 'final post', 'export-ready', 'review-complete')
+HARNESS_ALIASES = {
+    'benchmark_foundation': 'single_agent',
+}
 
 
 def active_file_roots(harness: str) -> list[Path]:
@@ -58,7 +61,7 @@ def is_english_hook(text: str, line: str) -> bool:
 
 def scan_harness(harness: str) -> dict:
     state = load_state(ROOT / '.omx/state/master-ux-loop.json')
-    resolved_harness = resolve_harness_token(harness, state)
+    resolved_harness = resolve_harness_token(HARNESS_ALIASES.get(harness, harness), state)
     files = []
     korean = 0
     english = 0

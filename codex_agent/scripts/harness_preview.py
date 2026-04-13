@@ -27,7 +27,10 @@ HARNESS_PORTS = {
     'evaluator_optimizer': 4278,
     'omx_evaluator_optimizer': 4279,
 }
-HARNESS_CHOICES = sorted([*HARNESSES, QUALITY_GATE_ALIAS])
+HARNESS_CHOICES = sorted([*HARNESSES, QUALITY_GATE_ALIAS, 'benchmark_foundation'])
+HARNESS_ALIASES = {
+    'benchmark_foundation': 'single_agent',
+}
 
 
 def run(cmd: list[str]) -> subprocess.CompletedProcess[str]:
@@ -120,7 +123,8 @@ def wait_for_port(port: int, timeout_s: float = 20.0) -> bool:
 
 def resolve_requested_harness(harness: str) -> tuple[str, int]:
     state = load_state(ROOT / '.omx/state/master-ux-loop.json')
-    resolved = resolve_harness_token(harness, state)
+    requested = HARNESS_ALIASES.get(harness, harness)
+    resolved = resolve_harness_token(requested, state)
     if resolved not in HARNESS_PORTS:
         raise SystemExit(f'unknown harness: {harness}')
     return resolved, HARNESS_PORTS[resolved]
@@ -133,16 +137,17 @@ def ensure_preview(harness: str) -> dict[str, Any]:
     if not app.exists():
         raise SystemExit(f'app directory missing: {app}')
 
-    state = read_state(harness)
+    state = read_state(resolved)
     if socket_open(HOST, port):
-        state.update({'harness': harness, 'resolved_harness': resolved, 'port': port, 'url': url, 'status': 'running'})
-        write_state(harness, state)
+        state.update({'harness': resolved, 'requested_harness': harness, 'resolved_harness': resolved, 'port': port, 'url': url, 'status': 'running'})
+        write_state(resolved, state)
         return state
 
     launch_window(resolved, port)
     ok = wait_for_port(port)
     state = {
-        'harness': harness,
+        'harness': resolved,
+        'requested_harness': harness,
         'resolved_harness': resolved,
         'port': port,
         'url': url,
@@ -150,7 +155,7 @@ def ensure_preview(harness: str) -> dict[str, Any]:
         'window': window_name(resolved),
         'log': str(log_path(resolved)),
     }
-    write_state(harness, state)
+    write_state(resolved, state)
     return state
 
 
@@ -160,9 +165,9 @@ def stop_preview(harness: str) -> dict[str, Any]:
     name = window_name(resolved)
     if name in session_windows():
         run(['tmux', 'kill-window', '-t', f'{SESSION}:{name}'])
-    state = read_state(harness)
-    state.update({'harness': harness, 'resolved_harness': resolved, 'port': port, 'url': f'http://{HOST}:{port}/', 'status': 'stopped'})
-    write_state(harness, state)
+    state = read_state(resolved)
+    state.update({'harness': resolved, 'requested_harness': harness, 'resolved_harness': resolved, 'port': port, 'url': f'http://{HOST}:{port}/', 'status': 'stopped'})
+    write_state(resolved, state)
     return state
 
 
@@ -186,11 +191,12 @@ def main() -> int:
     elif args.cmd == 'stop':
         payload = stop_preview(args.harness)
     else:
-        payload = read_state(args.harness)
+        resolved, port = resolve_requested_harness(args.harness)
+        payload = read_state(resolved)
         if not payload:
-            resolved, port = resolve_requested_harness(args.harness)
             payload = {
-                'harness': args.harness,
+                'harness': resolved,
+                'requested_harness': args.harness,
                 'resolved_harness': resolved,
                 'port': port,
                 'url': f'http://{HOST}:{port}/',

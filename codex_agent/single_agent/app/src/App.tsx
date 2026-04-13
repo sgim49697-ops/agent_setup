@@ -329,20 +329,6 @@ function App() {
       : state.generation.status === 'error'
         ? state.generation.errorMessage ?? '브리프를 조정한 뒤 같은 흐름을 다시 시작하세요.'
         : state.generation.statusMessage
-  const focusStageHint =
-    state.generation.status === 'initial'
-      ? '브리프를 봉인하면 리서치부터 최종 원고까지 순서대로 이어집니다.'
-      : state.generation.status === 'error'
-        ? '브리프를 다듬으면 같은 흐름을 처음부터 다시 시작합니다.'
-        : stageVisibleHooks[currentStage.id]
-  const deskMemoLead =
-    state.generation.status === 'initial'
-      ? '첫 화면은 현재 단계와 다음 행동만 남깁니다'
-      : state.generation.status === 'error'
-        ? '복구 지점만 다시 열고 같은 흐름을 재시작합니다'
-        : finalPost
-          ? '복사 직전 확인면만 남기고 긴 기록은 접었습니다'
-          : '지금은 이 단계와 다음 연결만 보면 충분합니다'
   const focusProgressLabel =
     state.generation.status === 'initial' ? '브리프 봉인 전' : `${currentStageNumber} / 5 단계`
   const progressSummary =
@@ -924,22 +910,24 @@ function App() {
               {commandPulseLabel} · {statusLabel(state.generation.status)}
             </span>
           </div>
-          <div className="hero-headline hero-headline-tight">
+          <div className="hero-headline hero-headline-tight hero-headline-solo">
             <div className="hero-headline-copy">
-              <p className="section-kicker">야간 원고 데스크</p>
+              <p className="section-kicker">작성 현황</p>
               <h1>{heroHeadline}</h1>
               <p className="hero-deck">{heroLead}</p>
             </div>
-            <aside className="hero-desk-note">
-              <p className="hero-summary-label">편집 규율 메모</p>
-              <strong>{deskMemoLead}</strong>
-              <p>{focusStageHint}</p>
-              <div className="hero-desk-note-meta">
-                <span className="summary-chip">{briefSealState}</span>
-                <span className="summary-chip">{exportStateLabel}</span>
-              </div>
-            </aside>
           </div>
+          <ul className="hero-ledger-strip" aria-label="브리프 요약">
+            <li className="hero-ledger-panel hero-ledger-panel-spotlight">
+              <span>브리프 요약</span>
+              <strong>{topicSnapshot}</strong>
+              <p>{briefSummaryLine}</p>
+              <div className="hero-ledger-meta">
+                <span className="summary-chip">{briefSealState}</span>
+                <span className="summary-chip">{focusProgressLabel}</span>
+              </div>
+            </li>
+          </ul>
 
           <div className="mission-board">
             <article className="mission-card mission-card-current">
@@ -1012,10 +1000,10 @@ function App() {
             <div className="rail-section-head">
               <div>
                 <p className="section-kicker">봉인 레일</p>
-                <h3>편집 봉인대</h3>
+                <h3>브리프 요약</h3>
               </div>
               <p className="brief-inline">
-                브리프는 이 레일에서만 고정하고, 상태와 워밍업 카드, 보조 기록은 접힌 서랍으로 뒤로 물립니다.
+                브리프는 이 레일에서만 고정하고, 나머지 기록은 뒤 서랍으로 밀어 첫 장면을 가볍게 유지합니다.
               </p>
             </div>
             <div className="brief-seal-board">
@@ -1188,7 +1176,7 @@ function App() {
             <section className="stage-rail-shell">
               <div className="stage-rail-head">
                 <p className="panel-hook">마감 레일</p>
-                <h2>지금 켜 둘 다섯 장면</h2>
+                <h2>지금 볼 작성 단계</h2>
                 <p>{stageRailLead}</p>
               </div>
               <div aria-label="작성 단계 선택" aria-orientation="vertical" className="stage-rail" role="tablist">
