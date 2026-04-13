@@ -588,8 +588,9 @@ def main() -> int:
     state['active_stitch_mcp_count'] = metrics['stitch_mcp']
     state['active_playwright_mcp_count'] = metrics['playwright_mcp']
     state['active_automation_process_count'] = metrics['automation_total']
+    pipeline_active = step_pipeline_in_progress(state, metrics)
     issue = runtime_budget_issue(metrics)
-    if runner_active and step_pipeline_in_progress(state, metrics):
+    if pipeline_active:
         progress_age = last_progress_age_minutes(state)
         if progress_age is not None and progress_age > STALL_TIMEOUT_MINUTES:
             write_watchdog_forensics('active-step-stall-observe', f'{progress_age:.1f}m')
@@ -606,7 +607,7 @@ def main() -> int:
 
         state = record_active_observation(state, metrics, issue)
         write_state(state)
-        log('runner active with step pipeline in progress; watchdog stayed observe-only')
+        log('active step pipeline detected; watchdog stayed observe-only and skipped all side effects')
         return 0
 
     if issue:
