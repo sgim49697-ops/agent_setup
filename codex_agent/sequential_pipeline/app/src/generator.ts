@@ -51,7 +51,7 @@ const lengthSections: Record<Length, string[]> = {
   medium: ['문제 정의와 배경', '권장 구조와 역할 분리', '구현 시 주의할 함정', '실전 적용 체크리스트'],
   long: [
     '문제 정의와 배경',
-    '핵심 mental model',
+    '핵심 판단 모델',
     '구조 선택과 트레이드오프',
     '실전 구현 패턴',
     '운영 체크리스트와 결론',
@@ -104,14 +104,16 @@ function buildMarkdown(
 
 export function runResearcher(inputs: BlogGeneratorInputs): ResearchOutput {
   const cleanTopic = titleCase(inputs.topic)
+  const audienceLabel = audienceLabels[inputs.audience]
+  const lengthLabel = lengthLabels[inputs.length]
 
   return {
-    angle: `${toneGuidance[inputs.tone]}으로 ${cleanTopic}를 설명하고, ${inputs.audience} 독자가 도입 기준을 빠르게 잡게 만든다.`,
+    angle: `${toneGuidance[inputs.tone]}으로 ${cleanTopic}를 설명하고, ${audienceLabel}가 도입 기준을 빠르게 잡게 만든다.`,
     thesis: `${cleanTopic}는 기능 소개보다 "어떤 조건에서 쓰고, 언제 피해야 하는지"를 중심으로 설명할 때 훨씬 유용해진다.`,
     keyFindings: [
       `${cleanTopic}의 핵심 가치는 역할 경계와 책임 분리를 명확히 했을 때 잘 드러난다.`,
-      `${inputs.audience} 독자에게는 이상론보다 실패 패턴과 회피 기준을 함께 주는 편이 실용적이다.`,
-      `${inputs.length} 분량에서는 모든 디테일보다 우선순위가 높은 판단 기준을 남기는 구성이 효과적이다.`,
+      `${audienceLabel}에게는 이상론보다 실패 패턴과 회피 기준을 함께 주는 편이 실용적이다.`,
+      `${lengthLabel} 분량에서는 모든 디테일보다 우선순위가 높은 판단 기준을 남기는 구성이 효과적이다.`,
     ],
     supportingFacts: [
       `독자 기준: ${audienceGuidance[inputs.audience]}`,
@@ -156,19 +158,20 @@ export function runWriter(
   research: ResearchOutput,
   outline: OutlineOutput,
 ): WriterOutput {
+  const audienceLabel = audienceLabels[inputs.audience]
   const sectionDrafts: SectionDraft[] = outline.sections.map((section, index) => ({
     id: section.id,
     title: section.title,
     summary: `${section.goal} 이 섹션은 ${inputs.topic}를 좋은 기술 소개가 아니라 조건부 선택지로 설명하도록 구성한다.`,
     paragraphs: [
       `${section.title}에서는 ${titleCase(inputs.topic)}를 단일 해법처럼 포장하지 않고, 팀이 감당할 수 있는 복잡도와 운영 비용을 먼저 드러낸다.`,
-      `Researcher가 남긴 ${research.keyFindings[index % research.keyFindings.length]} 포인트를 중심으로 보면, 독자는 개념보다 판단 기준을 먼저 얻게 된다.`,
-      `${inputs.audience} 독자를 위해서는 역할 경계, 실패 패턴, 적용 전 체크리스트를 한 묶음으로 제시하는 편이 실제 읽기 흐름에 잘 맞는다.`,
+      `리서처가 남긴 ${research.keyFindings[index % research.keyFindings.length]} 포인트를 중심으로 보면, 독자는 개념보다 판단 기준을 먼저 얻게 된다.`,
+      `${audienceLabel}를 위해서는 역할 경계, 실패 패턴, 적용 전 체크리스트를 한 묶음으로 제시하는 편이 실제 읽기 흐름에 잘 맞는다.`,
     ],
-    takeaway: `${section.title}의 takeaway는 ${inputs.topic}를 도입 전 체크리스트와 함께 이해하게 만드는 것이다.`,
+    takeaway: `${section.title}의 핵심 문장은 ${inputs.topic}를 도입 전 체크리스트와 함께 이해하게 만드는 것이다.`,
   }))
 
-  const introLine = `${research.thesis} 이 초안은 ${inputs.audience} 독자를 위해 구조를 먼저 보여주고, 이후에 실제 선택 기준을 차례대로 설명한다.`
+  const introLine = `${research.thesis} 이 초안은 ${audienceLabel}를 위해 구조를 먼저 보여주고, 이후에 실제 선택 기준을 차례대로 설명한다.`
   const closingLine = `- 초안 결론: ${inputs.topic}는 팀 상황에 맞춰 판단해야 하며, 섣부른 일반화보다 역할과 운영 비용을 먼저 보는 편이 안전하다.`
 
   return {
@@ -176,7 +179,7 @@ export function runWriter(
     writerSummary: `라이터가 ${sectionDrafts.length}개의 섹션 초안을 만들었고, 아웃라이너 순서를 그대로 따르는 사전 검토용 마크다운까지 정리했습니다.`,
     preReviewMarkdown: buildMarkdown(inputs, introLine, sectionDrafts, closingLine),
     handoffNote:
-      '리뷰어는 도입부를 더 단단하게 만들고, 최소 한 개의 핵심 포인트를 sharper하게 다듬은 뒤, 결론을 행동 지향형으로 바꿔야 한다.',
+      '리뷰어는 도입부를 더 단단하게 만들고, 최소 한 개의 핵심 포인트를 더 선명하게 다듬은 뒤, 결론을 행동 지향형으로 바꿔야 한다.',
   }
 }
 
@@ -190,7 +193,7 @@ export function runReviewer(
   const introAfter = `${research.thesis} 먼저 이 글은 ${audienceLabels[inputs.audience]}가 역할 분리, 운영 비용, 회피 기준을 한 번에 판단할 수 있도록 구조를 잡는다.`
 
   const firstTakeawayBefore = writerOutput.sectionDrafts[0]?.takeaway ?? ''
-  const firstTakeawayAfter = `${outline.sections[0]?.title ?? '첫 섹션'}의 takeaway는 ${inputs.topic}를 도입 이유와 회피 기준을 함께 검토하는 선택지로 보게 만드는 것이다.`
+  const firstTakeawayAfter = `${outline.sections[0]?.title ?? '첫 섹션'}의 핵심 문장은 ${inputs.topic}를 도입 이유와 회피 기준을 함께 검토하는 선택지로 보게 만드는 것이다.`
 
   const closingBefore = `- 초안 결론: ${inputs.topic}는 팀 상황에 맞춰 판단해야 하며, 섣부른 일반화보다 역할과 운영 비용을 먼저 보는 편이 안전하다.`
   const closingAfter = `- 최종 결론: ${inputs.topic}는 팀의 운영 복잡도, 도입 이유, 회피 기준을 같이 따질 때 가장 설득력 있는 선택이 된다.`

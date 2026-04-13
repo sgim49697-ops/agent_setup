@@ -285,6 +285,17 @@ function formatRoleLabel(role: PipelineRole) {
   return roleLabels[role]
 }
 
+function roleStatusLabel(status: 'complete' | 'current' | 'pending') {
+  switch (status) {
+    case 'complete':
+      return '닫힘'
+    case 'current':
+      return '진행 중'
+    default:
+      return '대기'
+  }
+}
+
 function nextActionText(generation: GenerationState) {
   if (generation.status === 'error') {
     return '주제를 다듬은 뒤 자료 요약부터 다시 잠가 주세요.'
@@ -463,29 +474,6 @@ function App() {
       tone: state.generation.outputs.final_post ? 'complete' : 'pending',
     },
   ] as const
-  const deskMoments = [
-    {
-      label: '현재 데스크',
-      value: `${currentRoleMeta.label} · ${currentRoleMeta.stageLabel}`,
-      note:
-        state.generation.status === 'initial'
-          ? '브리프가 잠기면 첫 요약 메모가 이 자리에서 켜집니다.'
-          : currentRoleMeta.handoffSummary,
-    },
-    {
-      label: '다음 인계',
-      value: nextRoleMeta ? `${nextRoleMeta.label} · ${nextRoleMeta.stageLabel}` : '발행 준비 완료',
-      note:
-        nextRoleMeta?.handoffSummary ??
-        '최종 원고가 잠겨 있어 이제 복사와 마지막 확인만 남았습니다.',
-    },
-    {
-      label: '브리프 압력',
-      value: `${audienceUiLabels[state.inputs.audience]} · ${toneUiLabels[state.inputs.tone]}`,
-      note: `${lengthUiLabels[state.inputs.length]} 길이 기준으로 네 역할이 같은 계약을 이어받습니다.`,
-    },
-  ]
-
   const manifestPreview: Record<string, unknown> = {
     워크스페이스: '순차 파이프라인',
     현재_단계: currentStageLabel,
@@ -666,16 +654,26 @@ function App() {
               <p>{actionHint}</p>
             </article>
 
-            <div className="hero-command-strip">
-              {deskMoments.map((moment) => (
-                <article key={moment.label} className="hero-command-card">
-                  <span className="signal-label">{moment.label}</span>
-                  <strong>{moment.value}</strong>
-                  <p>{moment.note}</p>
+            <div className="hero-sequence" aria-label="순차 인계 단계">
+              {roleTracker.map((role, index) => (
+                <article
+                  key={role.id}
+                  className={`hero-sequence-card hero-sequence-${role.status}`}
+                >
+                  <span className="hero-sequence-index">{`0${index + 1}`}</span>
+                  <div className="hero-sequence-copy">
+                    <strong>{role.label}</strong>
+                    <p>{role.stageLabel}</p>
+                  </div>
+                  <span className="hero-sequence-status">{roleStatusLabel(role.status)}</span>
                 </article>
               ))}
             </div>
           </div>
+
+          <p className="hero-contract-line">
+            공통 입력 계약 · {briefPressureLabel}
+          </p>
 
           <div className="hero-actions">
             <button
@@ -842,11 +840,11 @@ function App() {
         <div className="section-head">
           <p className="eyebrow">인계 레일</p>
           <h2 aria-label="Research results Outline Section drafts Review notes Final post">
-            지금 닫히는 단계와 다음 인계를 한눈에 읽는 루트 보드
+            지금 잠근 카드가 다음 책상을 여는 handoff rail
           </h2>
           <p className="tracker-intro">
-            모든 산출물을 한 번에 펼치지 않고, 현재 단계와 다음 전달 메모만 먼저 강조합니다.
-            카드를 누르면 해당 작업면으로 바로 시선이 이동합니다.
+            네 단계 전체를 한 번에 읽히게 두되, 먼저 보이는 것은 현재 잠금과 다음 인계뿐입니다.
+            각 카드는 다음 책상을 여는 전달 메모를 함께 품고 있어 선택 즉시 작업면으로 이어집니다.
           </p>
         </div>
 
@@ -910,11 +908,7 @@ function App() {
                         <span className="tracker-badge">{role.label}</span>
                       </div>
                       <span className={`tracker-status tracker-${role.status}`}>
-                        {role.status === 'complete'
-                          ? '완료'
-                          : role.status === 'current'
-                            ? '진행 중'
-                            : '대기'}
+                        {roleStatusLabel(role.status)}
                       </span>
                     </div>
                     <h3>{role.stageLabel}</h3>
@@ -1025,31 +1019,49 @@ function App() {
           </div>
         ) : state.generation.outputs.final_post ? (
           <div className="reader-shell">
-            {reviewerOutput ? <p className="summary-text">{reviewerOutput.finalizationNote}</p> : null}
-            <div className="final-preview-top">
-              <div className="reader-meta">
-                <span className="brief-chip">잠금 상태 · {statusLabel}</span>
-                <span className="brief-chip">
-                  발행 준비 · {state.generation.outputs.final_post ? '완료' : '대기'}
-                </span>
+            <div className="reader-focus-band">
+              <article className="reader-spotlight-card">
+                <span className="signal-label">발행 메모</span>
+                <strong>{reviewerOutput?.finalizationNote ?? '발행본 잠금이 완료되었습니다.'}</strong>
+                <p>
+                  긴 원고를 바로 전면에 펼치지 않고, 먼저 발행 상태와 핵심 요약만 읽히도록
+                  reader pocket으로 접어 둡니다.
+                </p>
+                <div className="reader-meta">
+                  <span className="brief-chip">잠금 상태 · {statusLabel}</span>
+                  <span className="brief-chip">
+                    발행 준비 · {state.generation.outputs.final_post ? '완료' : '대기'}
+                  </span>
+                </div>
+              </article>
+
+              <div className="reader-preview-card">
+                <div className="final-preview-top">
+                  <div>
+                    <span className="signal-label">발행 pocket</span>
+                    <h3>복사 전에 읽는 짧은 원고 요약</h3>
+                  </div>
+                  <button
+                    type="button"
+                    className="secondary-button final-copy-button"
+                    aria-label="Copy markdown"
+                    data-testid="Copy markdown"
+                    onClick={handleCopyMarkdown}
+                  >
+                    최종 원고 복사
+                  </button>
+                </div>
+                {finalPreview ? (
+                  <pre className="markdown-preview markdown-preview-compact">{finalPreview.excerpt}</pre>
+                ) : null}
+                {finalPreview && finalPreview.hiddenLineCount > 0 ? (
+                  <p className="summary-text">
+                    아래 요약 뒤에 본문 {finalPreview.hiddenLineCount}줄이 더 잠겨 있습니다. 전체
+                    확인이 필요할 때만 펼치세요.
+                  </p>
+                ) : null}
               </div>
-              <button
-                type="button"
-                className="secondary-button final-copy-button"
-                aria-label="Copy markdown"
-                data-testid="Copy markdown"
-                onClick={handleCopyMarkdown}
-              >
-                최종 원고 복사
-              </button>
             </div>
-            {finalPreview ? <pre className="markdown-preview markdown-preview-compact">{finalPreview.excerpt}</pre> : null}
-            {finalPreview && finalPreview.hiddenLineCount > 0 ? (
-              <p className="summary-text">
-                아래 요약 뒤에 본문 {finalPreview.hiddenLineCount}줄이 더 잠겨 있습니다. 전체 확인이
-                필요할 때만 펼치세요.
-              </p>
-            ) : null}
             <details className="inline-details final-preview-details">
               <summary>전체 원고 펼치기</summary>
               <div className="markdown-block">
