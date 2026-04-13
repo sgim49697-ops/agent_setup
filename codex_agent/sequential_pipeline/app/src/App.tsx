@@ -420,14 +420,14 @@ function App() {
           : Math.max(8, completedCount * 25)
   const finalPreview = buildFinalPreview(state.generation.outputs.final_post)
   const briefPressureLabel = `${audienceUiLabels[state.inputs.audience]} · ${toneUiLabels[state.inputs.tone]} · ${lengthUiLabels[state.inputs.length]}`
-  const routeRules = [
+  const heroTickets = [
     {
       label: '브리프 계약',
       value: briefPressureLabel,
       note: '네 역할이 같은 기준표를 이어받고, 단계가 바뀌어도 입력 계약은 흔들리지 않습니다.',
     },
     {
-      label: '현재 압력',
+      label: '지금 압력',
       value: currentRoleMeta.handoffLabel,
       note:
         state.generation.status === 'export-ready'
@@ -474,6 +474,15 @@ function App() {
       tone: state.generation.outputs.final_post ? 'complete' : 'pending',
     },
   ] as const
+  const relayChecklist = [
+    '브리프는 한 번 잠그면 단계만 이동하고, 기준표는 끝까지 유지합니다.',
+    state.generation.outputs.final_post
+      ? '발행본은 요약을 먼저 읽고, 전체 원고는 필요할 때만 펼칩니다.'
+      : '긴 본문은 작업면 안쪽에서만 읽고 첫 화면에는 잠금 상황만 남깁니다.',
+    nextRoleMeta
+      ? `${nextRoleMeta.label} 책상은 ${nextRoleMeta.stageLabel} 인계를 기다리는 중입니다.`
+      : '이제 발행 전 마지막 읽기와 복사만 남았습니다.',
+  ]
   const manifestPreview: Record<string, unknown> = {
     워크스페이스: '순차 파이프라인',
     현재_단계: currentStageLabel,
@@ -639,13 +648,63 @@ function App() {
     <main className="pipeline-shell">
       <section className="hero-layout">
         <article className="hero-card">
-          <p className="eyebrow">순차 지휘실</p>
-          <h1>한 줄 레일 위에서 네 번의 인계를 잠그는 발행 데스크</h1>
-          <p className="lead">
-            리서처, 아웃라이너, 라이터, 리뷰어가 같은 브리프를 순서대로 넘기며 발행 가능한
-            원고를 잠급니다. 첫 화면은 긴 산출물 대신 지금 닫히는 단계와 다음 인계,
-            발행 잠금 상태만 먼저 읽히도록 정리했습니다.
-          </p>
+          <div className="hero-headline-grid">
+            <div className="hero-headline-copy">
+              <p className="eyebrow">순차 지휘실</p>
+              <h1>한 줄 레일 위에서 네 번의 인계를 잠그는 발행 데스크</h1>
+              <p className="lead">
+                리서처, 아웃라이너, 라이터, 리뷰어가 같은 브리프를 순서대로 넘기며 발행 가능한
+                원고를 잠급니다. 첫 화면은 긴 산출물 대신 지금 닫히는 단계와 다음 인계,
+                발행 잠금 상태만 먼저 읽히도록 정리했습니다.
+              </p>
+
+              <p className="hero-contract-line">
+                공통 입력 계약 · {briefPressureLabel}
+              </p>
+
+              <div className="hero-actions">
+                <button
+                  type="button"
+                  className="primary-button"
+                  aria-label="Generate post"
+                  data-testid="Generate post"
+                  onClick={handleGenerate}
+                  disabled={state.generation.status === 'loading'}
+                >
+                  {state.generation.status === 'loading' ? '생성 중...' : '글 생성 시작'}
+                </button>
+              </div>
+            </div>
+
+            <article className="hero-closing-card">
+              <span className="signal-label">마감 창구</span>
+              <strong>
+                {state.generation.status === 'export-ready'
+                  ? '모든 창구가 닫혀 발행본 확인만 남은 상태'
+                  : `${currentRoleMeta.label} 책상이 지금 인계를 닫고 있습니다.`}
+              </strong>
+              <p>
+                레일 전체를 한눈에 보여 주되, 가장 앞줄에는 지금 닫히는 창구와 이어질 창구,
+                발행 창구만 남겨 첫 판단을 빠르게 만듭니다.
+              </p>
+
+              <div className="hero-window-list">
+                {routeStations.map((signal, index) => (
+                  <article
+                    key={signal.label}
+                    className={`hero-window-card hero-window-${signal.tone}`}
+                  >
+                    <div className="hero-window-head">
+                      <span className="hero-window-step">{`0${index + 1}`}</span>
+                      <span className="signal-label">{signal.label}</span>
+                    </div>
+                    <strong>{signal.value}</strong>
+                    <p>{signal.note}</p>
+                  </article>
+                ))}
+              </div>
+            </article>
+          </div>
 
           <div className="hero-storyband">
             <article className="hero-bulletin">
@@ -653,6 +712,16 @@ function App() {
               <strong>{currentRoleMeta.stageLabel}</strong>
               <p>{actionHint}</p>
             </article>
+
+            <div className="hero-ticket-row">
+              {heroTickets.map((ticket) => (
+                <article key={ticket.label} className="hero-ticket-card">
+                  <span className="signal-label">{ticket.label}</span>
+                  <strong>{ticket.value}</strong>
+                  <p>{ticket.note}</p>
+                </article>
+              ))}
+            </div>
 
             <div className="hero-sequence" aria-label="순차 인계 단계">
               {roleTracker.map((role, index) => (
@@ -669,23 +738,6 @@ function App() {
                 </article>
               ))}
             </div>
-          </div>
-
-          <p className="hero-contract-line">
-            공통 입력 계약 · {briefPressureLabel}
-          </p>
-
-          <div className="hero-actions">
-            <button
-              type="button"
-              className="primary-button"
-              aria-label="Generate post"
-              data-testid="Generate post"
-              onClick={handleGenerate}
-              disabled={state.generation.status === 'loading'}
-            >
-              {state.generation.status === 'loading' ? '생성 중...' : '글 생성 시작'}
-            </button>
           </div>
 
           <div className="status-banner" aria-live="polite">
@@ -840,7 +892,7 @@ function App() {
         <div className="section-head">
           <p className="eyebrow">인계 레일</p>
           <h2 aria-label="Research results Outline Section drafts Review notes Final post">
-            지금 잠근 카드가 다음 책상을 여는 handoff rail
+            지금 잠근 카드가 다음 책상을 여는 인계 레일
           </h2>
           <p className="tracker-intro">
             네 단계 전체를 한 번에 읽히게 두되, 먼저 보이는 것은 현재 잠금과 다음 인계뿐입니다.
@@ -871,19 +923,6 @@ function App() {
                   ? '리뷰어 잠금까지 끝났으므로 이제 발행본 확인과 복사만 남았습니다.'
                   : actionHint}
             </p>
-
-            <div className="route-rule-list">
-              {routeRules.map((moment, index) => (
-                <article key={moment.label} className="route-rule-card">
-                  <span className="route-rule-index">{`0${index + 1}`}</span>
-                  <div className="route-rule-copy">
-                    <span className="signal-label">{moment.label}</span>
-                    <strong>{moment.value}</strong>
-                    <p>{moment.note}</p>
-                  </div>
-                </article>
-              ))}
-            </div>
           </article>
 
           <div className="route-stage-column">
@@ -945,43 +984,42 @@ function App() {
         <article className="panel-card role-panel checkpoint-panel">
           <div className="section-head">
             <p className="eyebrow">체크포인트 레일</p>
-            <h2>지금 단계와 다음 움직임</h2>
+            <h2>오늘의 닫힘 창구와 다음 움직임</h2>
           </div>
 
-          <div className="role-meta">
-            <div>
-              <strong>현재 단계</strong>
-              <p>{currentRoleMeta.stageLabel}</p>
+          <div className="checkpoint-docket">
+            <div className="role-meta checkpoint-meta">
+              <div>
+                <strong>현재 단계</strong>
+                <p>{currentRoleMeta.stageLabel}</p>
+              </div>
+              <div>
+                <strong>다음 행동</strong>
+                <p>{actionHint}</p>
+              </div>
             </div>
-            <div>
-              <strong>다음 행동</strong>
-              <p>{actionHint}</p>
+
+            <div className="checkpoint-window-list">
+              {routeStations.map((signal, index) => (
+                <article
+                  key={signal.label}
+                  className={`checkpoint-window checkpoint-window-${signal.tone}`}
+                >
+                  <div className="checkpoint-window-head">
+                    <span className="checkpoint-window-step">{`0${index + 1}`}</span>
+                    <span className="signal-label">{signal.label}</span>
+                  </div>
+                  <strong>{signal.value}</strong>
+                  <p>{signal.note}</p>
+                </article>
+              ))}
             </div>
-          </div>
 
-          <div className="artifact-list checkpoint-stack">
-            <article className="artifact-card checkpoint-card">
-              <h3>활성 담당</h3>
-              <p>
-                {state.generation.currentRole
-                  ? `${formatRoleLabel(state.generation.currentRole)}가 지금 인계를 닫는 책임을 맡고 있습니다.`
-                  : '리뷰어 인계가 끝나 이제 최종 원고를 바로 복사할 수 있습니다.'}
-              </p>
-            </article>
-
-            <article className="artifact-card checkpoint-card">
-              <h3>인계 압력</h3>
-              <p>{currentRoleMeta.handoffSummary}</p>
-            </article>
-
-            <article className="artifact-card checkpoint-card">
-              <h3>내보내기 잠금</h3>
-              <p>
-                {state.generation.outputs.final_post
-                  ? '아래 발행본 요약에서 바로 읽기 흐름을 확인하고 복사할 수 있습니다.'
-                  : '리뷰어 단계가 닫히기 전까지 최종 원고는 잠겨 있습니다.'}
-              </p>
-            </article>
+            <ul className="checkpoint-rule-list">
+              {relayChecklist.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
           </div>
         </article>
 
@@ -1025,7 +1063,7 @@ function App() {
                 <strong>{reviewerOutput?.finalizationNote ?? '발행본 잠금이 완료되었습니다.'}</strong>
                 <p>
                   긴 원고를 바로 전면에 펼치지 않고, 먼저 발행 상태와 핵심 요약만 읽히도록
-                  reader pocket으로 접어 둡니다.
+                  요약 면 뒤로 접어 둡니다.
                 </p>
                 <div className="reader-meta">
                   <span className="brief-chip">잠금 상태 · {statusLabel}</span>
@@ -1038,7 +1076,7 @@ function App() {
               <div className="reader-preview-card">
                 <div className="final-preview-top">
                   <div>
-                    <span className="signal-label">발행 pocket</span>
+                    <span className="signal-label">발행 요약</span>
                     <h3>복사 전에 읽는 짧은 원고 요약</h3>
                   </div>
                   <button
