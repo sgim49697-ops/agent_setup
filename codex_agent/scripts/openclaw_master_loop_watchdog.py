@@ -287,6 +287,26 @@ def ensure_tmux_base() -> None:
         log('created tmux heartbeat10 window')
 
 
+def ensure_tmux_observer_windows() -> None:
+    """Keep log/heartbeat windows present only when the runner is idle.
+
+    Creating tmux windows while a long-running codex step is active has correlated
+    with wrapper 143 exits. During active step execution, avoid mutating the tmux
+    session and leave existing runner pane untouched.
+    """
+    if not tmux_has_session():
+        ensure_tmux_base()
+        return
+    windows = run(['tmux', 'list-windows', '-t', SESSION, '-F', '#W']).stdout.splitlines()
+    if LOG_WINDOW not in windows:
+        run(['tmux', 'new-window', '-t', SESSION, '-n', LOG_WINDOW, '-c', str(ROOT), f"bash -lc 'tail -n 200 -f \"{LOG_PATH}\"'"])
+        log('created tmux log window')
+    if HEARTBEAT_WINDOW not in windows:
+        heartbeat_cmd = f"bash -lc 'while true; do clear; TZ=Asia/Seoul date \"+%Y-%m-%d %H:%M:%S KST\"; echo; {STATUS_SCRIPT}; echo; echo \"[next refresh in 600s]\"; sleep 600; done'"
+        run(['tmux', 'new-window', '-t', SESSION, '-n', HEARTBEAT_WINDOW, '-c', str(ROOT), heartbeat_cmd])
+        log('created tmux heartbeat10 window')
+
+
 def runner_alive() -> bool:
     proc = run(['tmux', 'list-panes', '-t', f'{SESSION}:{RUNNER_WINDOW}', '-F', '#{{pane_dead}} #{{pane_current_command}}'])
     if proc.returncode != 0:
@@ -534,7 +554,8 @@ def main() -> int:
     state['runtime_guard_active'] = False
     state['runtime_guard_reason'] = ''
 
-    ensure_tmux_base()
+    if not tmux_has_session():
+        ensure_tmux_base()
 
     state, cleared = try_clear_transient_blocker(state)
     if cleared:
@@ -650,6 +671,7 @@ def main() -> int:
         return 0
 
     if state.get('next_cycle_required') is True and (state.get('status') == 'cycle_completed' or CYCLE_MARKER.exists()):
+        ensure_tmux_observer_windows()
         archive_cycle_artifacts(state)
         state['status'] = 'idle'
         state['cycle_status'] = 'idle'
@@ -661,12 +683,14 @@ def main() -> int:
         return 0
 
     if (validator['errors'] or quality_gate.get('errors')) and not runner_alive():
+        ensure_tmux_observer_windows()
         state['last_progress_summary'] = 'watchdog relaunched runner to recover quality gate / validator errors while idle'
         state = launch_runner(state, 'quality-gate-errors')
         write_state(state)
         checkpoint_git()
         return 0
 
+    ensure_tmux_observer_windows()
     state = launch_runner(state, 'runner-not-active')
     write_state(state)
     checkpoint_git()
