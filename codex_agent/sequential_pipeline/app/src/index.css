@@ -1,18 +1,18 @@
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Song+Myung&display=swap');
 
 :root {
-  --paper: #edf1f4;
-  --panel: rgba(249, 250, 252, 0.72);
-  --line: rgba(44, 60, 84, 0.14);
-  --ink: #0f1825;
-  --muted: #5a6778;
-  --accent: #1e63ff;
-  --accent-strong: #0f49cb;
-  --accent-cool: #263448;
-  --accent-warm: #c5773a;
+  --paper: #07111d;
+  --panel: rgba(246, 242, 234, 0.9);
+  --line: rgba(112, 128, 153, 0.2);
+  --ink: #edf2fb;
+  --muted: #b2bfd5;
+  --accent: #5f87ff;
+  --accent-strong: #3452c9;
+  --accent-cool: #142033;
+  --accent-warm: #c98b4a;
   --shadow-soft:
-    0 32px 64px rgba(9, 16, 28, 0.08),
-    0 10px 22px rgba(9, 16, 28, 0.04);
+    0 34px 72px rgba(3, 8, 18, 0.42),
+    0 14px 32px rgba(3, 8, 18, 0.18);
   font-family:
     'IBM Plex Sans KR',
     sans-serif;
@@ -20,9 +20,10 @@
   font-weight: 400;
   color: var(--ink);
   background:
-    radial-gradient(circle at top left, rgba(30, 99, 255, 0.16), transparent 28%),
-    radial-gradient(circle at 85% 18%, rgba(197, 119, 58, 0.16), transparent 22%),
-    linear-gradient(180deg, #f4f6f7, #e8edf2);
+    radial-gradient(circle at 10% 10%, rgba(95, 135, 255, 0.24), transparent 24%),
+    radial-gradient(circle at 85% 18%, rgba(201, 139, 74, 0.18), transparent 20%),
+    radial-gradient(circle at 50% 100%, rgba(61, 92, 145, 0.18), transparent 26%),
+    linear-gradient(180deg, #06101b, #0c1422 48%, #131e30);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -41,6 +42,11 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  background:
+    radial-gradient(circle at 12% 12%, rgba(95, 135, 255, 0.22), transparent 24%),
+    radial-gradient(circle at 86% 16%, rgba(201, 139, 74, 0.14), transparent 20%),
+    radial-gradient(circle at 50% 100%, rgba(61, 92, 145, 0.16), transparent 26%),
+    linear-gradient(180deg, #06101b, #0c1422 48%, #131e30);
 }
 
 body,
@@ -64,7 +70,7 @@ button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 3px solid rgba(0, 82, 255, 0.22);
+  outline: 3px solid rgba(95, 135, 255, 0.42);
   outline-offset: 2px;
 }
 

@@ -422,12 +422,12 @@ function App() {
   const briefPressureLabel = `${audienceUiLabels[state.inputs.audience]} · ${toneUiLabels[state.inputs.tone]} · ${lengthUiLabels[state.inputs.length]}`
   const heroProofs = [
     {
-      label: '잠긴 기준표',
+      label: '잠근 기준',
       value: briefPressureLabel,
       note: '한 번 잠그면 네 데스크가 같은 독자, 톤, 분량 압력으로만 움직입니다.',
     },
     {
-      label: '첫 화면 규율',
+      label: '첫 폴드 약속',
       value: '현재 · 다음 · 발행',
       note: state.generation.outputs.final_post
         ? '긴 본문은 뒤로 접고 발행 요약과 복사 동작만 먼저 보이게 둡니다.'
@@ -436,7 +436,7 @@ function App() {
   ] as const
   const relaySignals = [
     {
-      label: '지금 봉인',
+      label: '현재 데스크',
       value: `${currentRoleMeta.label} · ${currentRoleMeta.stageLabel}`,
       note:
         state.generation.status === 'initial'
@@ -450,7 +450,7 @@ function App() {
             : 'active',
     },
     {
-      label: '다음 인계',
+      label: '다음 데스크',
       value: nextRoleMeta ? `${nextRoleMeta.label} · ${nextRoleMeta.stageLabel}` : '복사와 마지막 읽기',
       note:
         nextRoleMeta?.handoffSummary ??
@@ -458,7 +458,7 @@ function App() {
       tone: nextRoleMeta ? 'next' : 'complete',
     },
     {
-      label: '발행 봉인',
+      label: '발행 준비',
       value: state.generation.outputs.final_post ? '복사 가능한 발행본' : '리뷰 잠금 뒤 공개',
       note: state.generation.outputs.final_post
         ? '발행 요약을 먼저 읽고 전체 원고는 필요할 때만 펼칩니다.'
@@ -468,7 +468,7 @@ function App() {
   ] as const
   const checkpointHighlights = [
     {
-      label: '현재 데스크',
+      label: '현재 창구',
       value: `${currentRoleMeta.label} · ${currentRoleMeta.stageLabel}`,
       note:
         state.generation.status === 'initial'
@@ -482,7 +482,7 @@ function App() {
             : 'current',
     },
     {
-      label: nextRoleMeta ? '다음 데스크' : '발행 데스크',
+      label: nextRoleMeta ? '다음 창구' : '발행 창구',
       value: nextRoleMeta ? `${nextRoleMeta.label} · ${nextRoleMeta.stageLabel}` : '복사와 마지막 읽기',
       note:
         nextRoleMeta?.handoffSummary ??
@@ -492,7 +492,7 @@ function App() {
   ] as const
   const routePulse = [
     {
-      label: '현재 닫힘',
+      label: '현재 잠금',
       value: `${currentRoleMeta.label} · ${currentRoleMeta.stageLabel}`,
       note:
         state.generation.status === 'initial'
@@ -507,7 +507,7 @@ function App() {
         '리뷰 반영 원고가 잠겨 복사와 마지막 읽기만 남았습니다.',
     },
     {
-      label: '발행 봉인',
+      label: '발행 준비',
       value: state.generation.outputs.final_post ? '복사 가능한 발행본' : '리뷰 잠금 후 공개',
       note: state.generation.outputs.final_post
         ? '짧은 발행 요약과 복사 동작을 먼저 두고 전체 원고는 접힌 읽기 면 아래에 둡니다.'
@@ -715,16 +715,16 @@ function App() {
         <article className="hero-card">
           <div className="hero-headline-grid">
             <div className="hero-headline-copy">
-              <p className="eyebrow">순차 지휘실</p>
-              <h1>원고 한 장이 네 데스크를 지나 봉인되는 야간 편집 레일</h1>
+              <p className="eyebrow">야간 편집 레일</p>
+              <h1>한 장의 원고가 네 데스크를 건너며 잠기는 심야 편집 레일</h1>
               <p className="lead">
-                리서처부터 리뷰어까지 한 장의 원고가 순서대로 잠기며 이동합니다. 첫 화면은 긴
-                산출물 대신 지금 닫히는 데스크, 바로 이어질 데스크, 마지막 발행 봉인만 남겨
-                인계 리듬이 먼저 읽히도록 눌렀습니다.
+                리서처부터 리뷰어까지 한 장의 원고가 같은 기준표를 들고 순서대로 이동합니다.
+                첫 화면은 긴 산출물 대신 지금 움직이는 데스크, 바로 이어질 데스크, 마지막
+                발행 준비만 남겨 인계 리듬이 먼저 읽히도록 눌렀습니다.
               </p>
 
               <p className="hero-contract-line">
-                공통 입력 계약 · {briefPressureLabel} · 한 번 잠그면 네 데스크가 같은 기준으로
+                입력 계약 · {briefPressureLabel} · 한 번 잠그면 네 데스크가 같은 기준으로
                 움직입니다.
               </p>
 
@@ -743,15 +743,15 @@ function App() {
             </div>
 
             <article className="hero-closing-card">
-              <span className="signal-label">봉인 관제석</span>
+              <span className="signal-label">인계 관제석</span>
               <strong>
                 {state.generation.status === 'export-ready'
-                  ? '네 데스크가 같은 원고를 끝까지 넘겨 봉인을 마쳤습니다. 이제 발행본 확인과 복사만 남았습니다.'
-                  : `${currentRoleMeta.label} 데스크가 인계 봉인을 닫고 있고, 다음 책상은 같은 원고를 받을 준비를 마쳤습니다.`}
+                  ? '네 데스크가 같은 원고를 끝까지 넘겼습니다. 이제 발행본 확인과 복사만 남았습니다.'
+                  : `${currentRoleMeta.label} 데스크가 지금 인계를 닫고 있고, 다음 데스크는 같은 원고를 받을 준비를 마쳤습니다.`}
               </strong>
               <p>
                 검토 로그와 전체 근거는 뒤로 물리고, 앞줄에는 현재 데스크와 다음 데스크,
-                발행 봉인만 남겨 첫 스캔에서 손에서 손으로 넘어가는 움직임이 먼저 읽히게
+                발행 준비만 남겨 첫 스캔에서 손에서 손으로 넘어가는 움직임이 먼저 읽히게
                 정리했습니다.
               </p>
 
@@ -775,7 +775,7 @@ function App() {
 
           <div className="hero-storyband">
             <article className="hero-bulletin">
-              <span className="signal-label">봉인 메모</span>
+              <span className="signal-label">지금 메모</span>
               <strong>
                 {state.generation.status === 'initial'
                   ? '첫 인계를 열기 전 브리프 잠금'
@@ -814,7 +814,7 @@ function App() {
 
         <aside className="control-card">
           <div className="section-head">
-            <p className="eyebrow">브리프 봉인</p>
+            <p className="eyebrow">브리프 데스크</p>
             <h2>첫 인계 전에 같은 기준표를 잠그기</h2>
           </div>
 
@@ -945,9 +945,9 @@ function App() {
 
       <section className="panel-card">
         <div className="section-head">
-          <p className="eyebrow">인계 레일</p>
+          <p className="eyebrow">레일 보드</p>
           <h2 aria-label="Research results Outline Section drafts Review notes Final post">
-            한 장씩 닫히며 다음 책상을 여는 봉인 레일
+            현재 인계와 다음 인계를 한 줄로 보여주는 레일
           </h2>
           <p className="tracker-intro">
             네 단계 전체를 한눈에 읽히게 두되, 처음 보이는 것은 현재 잠금과 다음 인계뿐입니다.
@@ -1031,8 +1031,8 @@ function App() {
       <section className="workspace-grid">
         <article className="panel-card role-panel checkpoint-panel">
           <div className="section-head">
-            <p className="eyebrow">체크포인트 레일</p>
-            <h2>오늘의 닫힘 창구와 다음 움직임</h2>
+            <p className="eyebrow">보조 체크포인트</p>
+            <h2>지금 필요한 창구만 다시 확인하기</h2>
           </div>
 
           <div className="checkpoint-docket">
@@ -1092,8 +1092,8 @@ function App() {
         data-testid={stageHookLabels.final}
       >
         <div className="section-head">
-          <p className="eyebrow">최종 원고</p>
-          <h2>검토 봉인 뒤 발행대로 옮긴 최종 원고</h2>
+          <p className="eyebrow">발행 원고</p>
+          <h2>검토를 마친 뒤 발행대로 넘기는 최종 원고</h2>
         </div>
 
         {state.generation.status === 'error' ? (
