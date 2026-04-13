@@ -247,16 +247,34 @@ Workspace: {ROOT}
 Artifact directory: {artifact_dir}
 
 Required work (single step, not a full cycle):
-1. Read docs/stitch-ux-reference.md and relevant Stitch MCP context for {harness}.
-2. Produce the visible UI patch for {harness}. Make the edits directly in the repo.
-3. Korean-first visible copy. English only in aria/data-testid/test-hook text.
-4. Write a short rationale to {artifact_dir}/designer-notes.md covering:
-   - Aesthetic direction chosen
-   - Files changed (paths)
-   - Korean-first copy decisions
-   - Known gaps to hand off to critic
-5. Do NOT run verify/gate/browser-review in this step. That is handled by later steps.
-6. Do NOT mutate remaining_harnesses or write completion markers here.
+
+PHASE 1 — Stitch discovery (mandatory, do this before touching any code):
+1. Call Stitch MCP: explore available components, tokens, and patterns in project 11015732894783859302.
+   Search for terms relevant to {harness}: try "wizard", "multi-step", "stepper", "pipeline",
+   "onboarding", "article", "editor", "publish", "flow" — use whatever fits the harness shape.
+2. Extract from Stitch: color tokens, typography scale, spacing system, and at least one
+   screen-flow or interaction pattern that fits this harness.
+3. Decide on a screen flow (e.g. 3-screen wizard, tab-based stages, route-per-step).
+   Default to multi-screen. Justify single-screen only with explicit Stitch evidence.
+
+PHASE 2 — Design and implement:
+4. Implement the UI patch for {harness} based on what you found in Stitch.
+   Use Stitch tokens and component patterns directly in the code.
+5. Korean-first visible copy. English only in aria/data-testid/test-hook text.
+6. Each screen must have exactly one primary action. No screen should show all pipeline
+   outputs simultaneously — distribute them across screens or progressive disclosure.
+
+PHASE 3 — Record:
+7. Write {artifact_dir}/designer-notes.md covering:
+   - Stitch search terms used and patterns found (required — critic will check this)
+   - Screen flow defined (Screen 1 → trigger → Screen 2 → ...)
+   - Stitch tokens applied (color vars, type scale, spacing)
+   - Aesthetic direction and the ONE memorable design choice
+   - Files changed
+   - Known gaps for the critic
+
+Do NOT run verify/gate/browser-review in this step. That is handled by later steps.
+Do NOT mutate remaining_harnesses or write completion markers here.
 
 Context from wrapper:
 {ctx}
@@ -289,8 +307,24 @@ Designer notes to review:
 
 Required work:
 1. Open the changed files via git diff or ls-files and read them fresh. Do not trust the designer's self-report.
-2. Evaluate the changes against: Korean-first copy, information density, a11y, visual hierarchy, framework idiom.
-3. Write your verdict to {artifact_dir}/critic-report.md using this exact format:
+2. Check the designer-notes.md for Stitch discovery evidence. If "Stitch search terms used" is absent
+   or says nothing was searched, that is a blocking issue: the designer skipped Stitch.
+3. Evaluate the changes against these criteria (any blocking issue triggers reject):
+
+   BLOCKING — reject if any of these are true:
+   a) All pipeline outputs (research, outline, drafts, review, final) are visible on a single screen
+      simultaneously with no navigation or progressive disclosure between them.
+   b) No Stitch tokens (color vars, typography, spacing) are present in the changed code.
+   c) Stitch discovery is absent from designer-notes.md.
+   d) Korean-first copy violation: user-visible text is predominantly English.
+   e) No clear primary action per screen (multiple competing CTAs or no CTA).
+
+   WARN — note but do not block:
+   - Minor a11y gaps (missing aria-label, low contrast)
+   - Interaction detail missing (hover state, loading state)
+   - Typography fallback to system font
+
+4. Write your verdict to {artifact_dir}/critic-report.md using this exact format:
 
    # Critic Report
    verdict: approve | reject
@@ -301,8 +335,8 @@ Required work:
    evidence:
      - (file:line references for each issue)
 
-4. If verdict is reject, DO NOT edit code. List the issues and stop.
-5. If verdict is approve, note that the patch is ready for ko-copy + verify.
+5. If verdict is reject, DO NOT edit code. List the issues and stop.
+6. If verdict is approve, note that the patch is ready for ko-copy + verify.
 
 Finish as soon as critic-report.md is written.
 """
