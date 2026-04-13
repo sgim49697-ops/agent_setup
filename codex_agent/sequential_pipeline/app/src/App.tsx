@@ -320,6 +320,22 @@ function nextActionText(generation: GenerationState) {
   return '현재 단계를 읽고 다음 인계로 이동할 준비를 해 주세요.'
 }
 
+function buildFinalPreview(markdown?: string) {
+  if (!markdown) {
+    return null
+  }
+
+  const lines = markdown
+    .split('\n')
+    .filter((line, index, source) => line.trim() !== '' || source[index - 1]?.trim() !== '')
+  const excerptLines = lines.slice(0, 9)
+
+  return {
+    excerpt: excerptLines.join('\n'),
+    hiddenLineCount: Math.max(lines.length - excerptLines.length, 0),
+  }
+}
+
 function App() {
   const [state, dispatch] = useReducer(reducer, {
     inputs: initialInputs,
@@ -371,23 +387,39 @@ function App() {
     ? stageLabels[state.generation.currentStage]
     : '자료 요약'
   const actionHint = nextActionText(state.generation)
-  const heroSignals = [
+  const completedCount = roleTracker.filter((role) => role.status === 'complete').length
+  const progressPercent =
+    state.generation.status === 'export-ready'
+      ? 100
+      : state.generation.status === 'review-complete'
+        ? 88
+        : state.generation.status === 'loading'
+          ? Math.min(92, completedCount * 25 + 16)
+          : Math.max(8, completedCount * 25)
+  const finalPreview = buildFinalPreview(state.generation.outputs.final_post)
+  const routeSignals = [
     {
       label: '현재 잠금 단계',
       value: currentStageLabel,
       note: `${statusLabel} 상태에서 다음 인계를 준비합니다.`,
     },
     {
-      label: '활성 담당',
-      value: state.generation.currentRole ? formatRoleLabel(state.generation.currentRole) : '리뷰 잠금 완료',
-      note: state.generation.currentRole
-        ? `${currentRoleMeta.handoffLabel} 직전까지 이 역할이 책임집니다.`
-        : '이제 최종 원고를 복사하거나 발행 전 점검만 남았습니다.',
+      label: '다음 인계',
+      value:
+        state.generation.status === 'export-ready'
+          ? '발행 정리'
+          : currentRoleMeta.handoffLabel,
+      note:
+        state.generation.status === 'export-ready'
+          ? '이제 복사와 최종 점검만 남았습니다.'
+          : currentRoleMeta.handoffSummary,
     },
     {
-      label: '다음 움직임',
-      value: state.generation.status === 'export-ready' ? '내보내기 정리' : '인계 이어가기',
-      note: actionHint,
+      label: '최종 잠금',
+      value: state.generation.outputs.final_post ? '발행본 대기' : '리뷰 잠금 전',
+      note: state.generation.outputs.final_post
+        ? '긴 본문은 요약 미리보기 뒤에 접어 두고, 필요할 때만 펼칩니다.'
+        : '리뷰어 단계가 닫히면 발행본 미리보기가 바로 열립니다.',
     },
   ]
 
@@ -551,22 +583,12 @@ function App() {
       <section className="hero-layout">
         <article className="hero-card">
           <p className="eyebrow">순차 지휘실</p>
-          <h1>브리프 한 장으로 네 번의 인계를 잠그는 발행 작업실</h1>
+          <h1>한 줄 레일 위에서 네 번의 인계를 잠그는 발행 데스크</h1>
           <p className="lead">
             리서처, 아웃라이너, 라이터, 리뷰어가 같은 브리프를 순서대로 넘기며 발행
-            가능한 원고를 잠급니다. 첫 화면은 근거 모음이 아니라 지금 닫히는 단계,
-            다음 인계 압력, 그리고 곧 열릴 작업면만 읽히도록 압축했습니다.
+            가능한 원고를 잠급니다. 첫 화면은 긴 산출물 더미 대신 지금 닫히는 단계,
+            다음 인계 압력, 그리고 잠긴 발행본의 접근 경로만 읽히도록 다듬었습니다.
           </p>
-
-          <div className="hero-signal-grid">
-            {heroSignals.map((signal) => (
-              <article key={signal.label} className="hero-signal-card">
-                <span className="signal-label">{signal.label}</span>
-                <strong>{signal.value}</strong>
-                <p>{signal.note}</p>
-              </article>
-            ))}
-          </div>
 
           <div className="hero-actions">
             <button
@@ -578,15 +600,6 @@ function App() {
               disabled={state.generation.status === 'loading'}
             >
               {state.generation.status === 'loading' ? '생성 중...' : '글 생성 시작'}
-            </button>
-            <button
-              type="button"
-              className="secondary-button"
-              aria-label="Copy markdown"
-              data-testid="Copy markdown"
-              onClick={handleCopyMarkdown}
-            >
-              최종 원고 복사
             </button>
           </div>
 
@@ -742,12 +755,44 @@ function App() {
         <div className="section-head">
           <p className="eyebrow">인계 레일</p>
           <h2 aria-label="Research results Outline Section drafts Review notes Final post">
-            자료 요약에서 최종 원고까지, 한 번에 한 단계씩 잠그기
+            지금 닫히는 단계와 다음 인계를 한눈에 읽는 루트 보드
           </h2>
           <p className="tracker-intro">
-            현재 단계만 전면에 남기고, 다음 인계는 카드 하단 메모로 예고합니다. 클릭하면
-            해당 작업면으로 시선을 바로 옮길 수 있습니다.
+            한꺼번에 모든 산출물을 펼치지 않고, 현재 단계와 다음 전달 메모만 먼저
+            강조합니다. 카드 하나를 누르면 해당 작업면으로 바로 시선이 이동합니다.
           </p>
+        </div>
+
+        <div className="route-overview">
+          <article className="route-progress-card">
+            <div className="route-progress-top">
+              <div>
+                <span className="signal-label">잠금 진행도</span>
+                <strong>{state.generation.status === 'export-ready' ? '모든 인계 잠금 완료' : `${completedCount}/4 인계 잠금`}</strong>
+              </div>
+              <span className="route-progress-value">{Math.round(progressPercent)}%</span>
+            </div>
+            <div className="route-progress-track" aria-hidden="true">
+              <span className="route-progress-fill" style={{ width: `${progressPercent}%` }} />
+            </div>
+            <p className="summary-text">
+              {state.generation.status === 'initial'
+                ? '브리프를 잠그면 리서처부터 리뷰어까지 같은 계약으로 레일이 켜집니다.'
+                : state.generation.status === 'export-ready'
+                  ? '리뷰어 잠금까지 끝났으므로 이제 발행본 확인과 복사만 남았습니다.'
+                  : actionHint}
+            </p>
+          </article>
+
+          <div className="route-signal-grid">
+            {routeSignals.map((signal) => (
+              <article key={signal.label} className="route-signal-card">
+                <span className="signal-label">{signal.label}</span>
+                <strong>{signal.value}</strong>
+                <p>{signal.note}</p>
+              </article>
+            ))}
+          </div>
         </div>
 
         <div className="tracker-grid">
@@ -802,7 +847,7 @@ function App() {
           {renderRoleSurface(selectedRoleMeta.id, research, outline, writerOutput, reviewerOutput)}
         </RolePanel>
 
-        <article className="panel-card role-panel">
+        <article className="panel-card role-panel checkpoint-panel">
           <div className="section-head">
             <p className="eyebrow">체크포인트 레일</p>
             <h2>지금 단계와 다음 움직임</h2>
@@ -838,7 +883,7 @@ function App() {
               <h3>내보내기 잠금</h3>
               <p>
                 {state.generation.outputs.final_post
-                  ? '아래에서 최종 원고를 바로 읽고 복사할 수 있습니다.'
+                  ? '아래 발행본 요약에서 바로 읽기 흐름을 확인하고 복사할 수 있습니다.'
                   : '리뷰어 단계가 닫히기 전까지 최종 원고는 잠겨 있습니다.'}
               </p>
             </article>
@@ -853,7 +898,7 @@ function App() {
       >
         <div className="section-head">
           <p className="eyebrow">최종 원고</p>
-          <h2>리뷰 반영 뒤 잠긴 발행본</h2>
+          <h2>리뷰 반영 뒤 잠긴 발행본 미리보기</h2>
         </div>
 
         {state.generation.status === 'error' ? (
@@ -867,13 +912,36 @@ function App() {
         ) : state.generation.outputs.final_post ? (
           <div className="reader-shell">
             {reviewerOutput ? <p className="summary-text">{reviewerOutput.finalizationNote}</p> : null}
-            <div className="reader-meta">
-              <span className="brief-chip">잠금 상태 · {statusLabel}</span>
-              <span className="brief-chip">
-                발행 준비 · {state.generation.outputs.final_post ? '완료' : '대기'}
-              </span>
+            <div className="final-preview-top">
+              <div className="reader-meta">
+                <span className="brief-chip">잠금 상태 · {statusLabel}</span>
+                <span className="brief-chip">
+                  발행 준비 · {state.generation.outputs.final_post ? '완료' : '대기'}
+                </span>
+              </div>
+              <button
+                type="button"
+                className="secondary-button final-copy-button"
+                aria-label="Copy markdown"
+                data-testid="Copy markdown"
+                onClick={handleCopyMarkdown}
+              >
+                최종 원고 복사
+              </button>
             </div>
-            <pre className="markdown-preview">{state.generation.outputs.final_post}</pre>
+            {finalPreview ? <pre className="markdown-preview markdown-preview-compact">{finalPreview.excerpt}</pre> : null}
+            {finalPreview && finalPreview.hiddenLineCount > 0 ? (
+              <p className="summary-text">
+                아래 요약 뒤에 본문 {finalPreview.hiddenLineCount}줄이 더 잠겨 있습니다. 전체 확인이
+                필요할 때만 펼치세요.
+              </p>
+            ) : null}
+            <details className="inline-details final-preview-details">
+              <summary>전체 원고 펼치기</summary>
+              <div className="markdown-block">
+                <pre>{state.generation.outputs.final_post}</pre>
+              </div>
+            </details>
           </div>
         ) : (
           <div className="empty-state">
@@ -1084,6 +1152,7 @@ function renderRoleSurface(
     case 'reviewer':
       return reviewerOutput ? (
         <>
+          <p className="summary-text">{reviewerOutput.finalizationNote}</p>
           <div className="review-stack">
             {reviewerOutput.reviewNotes.map((note) => (
               <article key={note.label} className={`review-note review-${note.severity}`}>
@@ -1095,19 +1164,22 @@ function renderRoleSurface(
               </article>
             ))}
           </div>
-          <div className="edit-list">
-            {reviewerOutput.appliedEdits.map((edit) => (
-              <article key={edit.label} className="edit-card">
-                <h3>{edit.label}</h3>
-                <p>
-                  <strong>이전:</strong> {edit.before}
-                </p>
-                <p>
-                  <strong>이후:</strong> {edit.after}
-                </p>
-              </article>
-            ))}
-          </div>
+          <details className="inline-details review-details">
+            <summary>적용된 편집 {reviewerOutput.appliedEdits.length}건 펼치기</summary>
+            <div className="edit-list">
+              {reviewerOutput.appliedEdits.map((edit) => (
+                <article key={edit.label} className="edit-card">
+                  <h3>{edit.label}</h3>
+                  <p>
+                    <strong>이전:</strong> {edit.before}
+                  </p>
+                  <p>
+                    <strong>이후:</strong> {edit.after}
+                  </p>
+                </article>
+              ))}
+            </div>
+          </details>
         </>
       ) : null
   }
