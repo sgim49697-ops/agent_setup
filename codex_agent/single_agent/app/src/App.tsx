@@ -514,6 +514,22 @@ function App() {
       ? closureMessage
       : '이 작업면은 앞뒤 흐름을 조망하는 보조 단계입니다. 실제 진행은 단계 레일의 현재 위치로 돌아가 이어가면 됩니다.'
   const liveRegionMessage = `${statusLabel(state.generation.status)} | ${focusStageLabel} | ${state.copyFeedback || state.generation.statusMessage}`
+  const heroBriefSupport = finalPost
+    ? '브리프는 잠겼고, 지금은 원고 장면과 복사 준비만 빠르게 확인하면 됩니다.'
+    : state.generation.status === 'initial'
+      ? '브리프 네 줄만 잠그면 리서치부터 최종 원고까지 한 줄로 이어집니다.'
+      : '브리프는 잠긴 채 유지되고, 실제 판단은 오른쪽 작업면에서 다음 행동만 따라가면 됩니다.'
+  const heroDocketTitle = finalPost ? manuscriptDeckTitle : nextActionLabel
+  const heroDocketStatus = finalPost ? exportStateLabel : phasePulseSummary
+  const heroDocketLead = finalPost ? manuscriptDeckLead : commandShortNote
+  const heroDocketPreview =
+    finalPost && finalSections.length > 0
+      ? finalSections.slice(0, 3).map((section, index) => ({
+          label: `장면 ${index + 1}`,
+          value: section,
+        }))
+      : []
+  const heroDocketFootnote = finalPost ? commandShortNote : ''
 
   async function handleGenerate() {
     const runId = runRef.current + 1
@@ -907,84 +923,82 @@ function App() {
           </div>
           <div className="hero-headline hero-headline-tight hero-headline-solo">
             <div className="hero-headline-copy">
-              <p className="section-kicker">집중 작성 흐름</p>
+              <p className="section-kicker">한 사람 원고 데스크</p>
               <h1>{heroHeadline}</h1>
               <p className="hero-deck">{heroLead}</p>
             </div>
           </div>
-          <div className="hero-command-grid">
-            <article className="hero-note-card hero-note-card-brief hero-brief-card">
-              <div className="hero-command-head">
-                <div>
-                  <p className="hero-summary-label">작성 브리프</p>
-                  <strong>{topicSnapshot}</strong>
-                </div>
-                <span className="summary-chip">{briefSealState}</span>
-              </div>
-              <p className="hero-deck">{briefSummaryLine}</p>
+          <div className={`hero-ledger-strip ${state.generation.status === 'initial' ? 'hero-ledger-strip-preflight' : ''}`.trim()}>
+            <section
+              aria-labelledby="hero-brief-ledger-title"
+              className="hero-ledger-panel hero-ledger-panel-spotlight"
+            >
+              <p className="hero-summary-label">브리프 봉인본</p>
+              <h2 className="hero-ledger-heading" id="hero-brief-ledger-title">
+                {topicSnapshot}
+              </h2>
+              <p>{briefSummaryLine}</p>
               <div className="hero-command-note-quiet">
-                <span>현재 단계</span>
+                <span>지금 단계</span>
                 <strong>{focusStageLabel}</strong>
-                <p>{focusStageStatusMessage}</p>
+                <p>{heroBriefSupport}</p>
               </div>
-              <div className="hero-progress-band hero-progress-band-light">
-                <div className="hero-progress-copy">
-                  <span>진행 신호</span>
-                  <strong>{progressSummary}</strong>
-                </div>
-                <div className="progress-track hero-progress-track" aria-hidden="true">
-                  <span style={{ width: `${progress}%` }} />
-                </div>
+              <div className="hero-ledger-meta" aria-hidden="true">
+                <span className="summary-chip">{briefSealState}</span>
+                <span className="summary-chip">{completionSummary}</span>
               </div>
-            </article>
+            </section>
 
-            <article className="hero-note-card hero-command-card hero-command-card-next">
-              <div className="hero-command-head">
+            <section
+              aria-labelledby="hero-action-ledger-title"
+              className={`hero-ledger-panel ${finalPost ? 'hero-ledger-panel-manuscript' : 'hero-ledger-panel-manuscript-soft'}`.trim()}
+            >
+              <div className="hero-docket-head">
                 <div>
-                  <p className="hero-summary-label">다음 작업</p>
-                  <strong>{nextActionLabel}</strong>
+                  <p className="hero-summary-label">{finalPost ? '출고 기준' : '다음 행동'}</p>
+                  <h2 className="hero-ledger-heading" id="hero-action-ledger-title">
+                    {heroDocketTitle}
+                  </h2>
                 </div>
-                <span className="hero-command-pulse">{phasePulseSummary}</span>
+                <span className="hero-docket-status">{heroDocketStatus}</span>
               </div>
-              <div className="hero-command-stack">
-                <div className="hero-command-note-quiet">
-                  <span>작업 지시</span>
-                  <strong>{commandShortNote}</strong>
-                  <p>{nextActionDescription}</p>
-                </div>
-                <div className="hero-action-stack">
-                  <button
-                    aria-label={state.generation.status === 'loading' ? '원고 생성 중' : '원고 생성 시작'}
-                    className="primary-action"
-                    data-testid="Generate post"
-                    disabled={state.generation.status === 'loading'}
-                    onClick={() => void handleGenerate()}
-                    type="button"
-                  >
-                    <span className="button-copy-kr">
-                      {state.generation.status === 'loading' ? '원고 생성 중' : '원고 생성 시작'}
-                    </span>
-                  </button>
-                  <button
-                    aria-label="원고 복사"
-                    className="secondary-action"
-                    data-testid="Copy markdown"
-                    disabled={!finalPost}
-                    onClick={() => void handleCopyMarkdown()}
-                    type="button"
-                  >
-                    <span className="button-copy-kr">원고 복사</span>
-                  </button>
-                </div>
-                {finalPost ? (
-                  <div className="hero-note-strip">
-                    <span>최종 원고</span>
-                    <strong>{manuscriptDeckTitle}</strong>
-                    <p>{manuscriptDeckLead}</p>
-                  </div>
-                ) : null}
+              <p className="hero-docket-lead">{heroDocketLead}</p>
+              {heroDocketPreview.length > 0 ? (
+                <ul className="hero-docket-preview">
+                  {heroDocketPreview.map((item) => (
+                    <li key={`${item.label}-${item.value}`}>
+                      <span>{item.label}</span>
+                      <strong>{item.value}</strong>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              <div className="hero-action-stack hero-ledger-actions">
+                <button
+                  aria-label={state.generation.status === 'loading' ? '원고 생성 중' : '원고 생성 시작'}
+                  className="primary-action"
+                  data-testid="Generate post"
+                  disabled={state.generation.status === 'loading'}
+                  onClick={() => void handleGenerate()}
+                  type="button"
+                >
+                  <span className="button-copy-kr">
+                    {state.generation.status === 'loading' ? '원고 생성 중' : '원고 생성 시작'}
+                  </span>
+                </button>
+                <button
+                  aria-label="원고 복사"
+                  className="secondary-action"
+                  data-testid="Copy markdown"
+                  disabled={!finalPost}
+                  onClick={() => void handleCopyMarkdown()}
+                  type="button"
+                >
+                  <span className="button-copy-kr">원고 복사</span>
+                </button>
               </div>
-            </article>
+              {heroDocketFootnote ? <p className="hero-docket-footnote">{heroDocketFootnote}</p> : null}
+            </section>
           </div>
         </article>
       </section>
@@ -995,7 +1009,7 @@ function App() {
             <div className="rail-section-head">
               <div>
                 <p className="section-kicker">작성 브리프</p>
-                <h3>입력 레일</h3>
+                <h3>브리프 봉인 레일</h3>
               </div>
               <p className="brief-inline">
                 입력은 이 레일에서만 고정하고, 나머지 기록은 뒤 서랍으로 밀어 첫 장면을 가볍게 유지합니다.
@@ -1136,7 +1150,7 @@ function App() {
 
             <details className="support-drawer">
               <summary>
-                <span>원고 워밍업 펼치기</span>
+                <span>주제 프리셋 펼치기</span>
                 <span>{topicPresets.length}개 프리셋</span>
               </summary>
               <div className="preset-list">
@@ -1171,7 +1185,7 @@ function App() {
             <section className="stage-rail-shell">
               <div className="stage-rail-head">
                 <p className="panel-hook">단계 레일</p>
-                <h2>지금 볼 작성 단계</h2>
+                <h2>지금 읽을 한 사람 레일</h2>
                 <p>{stageRailLead}</p>
               </div>
               <div aria-label="작성 단계 선택" aria-orientation="vertical" className="stage-rail" role="tablist">
