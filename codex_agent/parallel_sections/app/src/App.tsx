@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef, useState } from 'react'
+import { useReducer, useRef, useState } from 'react'
 import './App.css'
 import type {
   Audience,
@@ -92,7 +92,7 @@ const initialGeneration: GenerationState = {
   completedStages: [],
   unitStatuses: emptyUnitStatuses(),
   outputs: {},
-  statusMessage: '브리프를 잠그면 세 개의 레인이 동시에 열리고, 마지막에 머지 데스크가 글의 톤을 정렬합니다.',
+  statusMessage: '브리프를 잠그면 세 개 레인이 동시에 열리고, 마지막에 머지 데스크가 문장 흐름을 정리합니다.',
   errorMessage: null,
 }
 
@@ -131,6 +131,9 @@ const lengthOptions: { value: Length; label: string }[] = [
 ]
 
 const screenOrder: WorkspaceScreen[] = ['setup', 'draft', 'publish']
+const emptyOutline: OutlineSection[] = []
+const emptyAssignments: SectionAssignment[] = []
+const emptyLanePackets: LanePacket[] = []
 
 const screenTitles: Record<
   WorkspaceScreen,
@@ -138,18 +141,18 @@ const screenTitles: Record<
 > = {
   setup: {
     kicker: '브리프 설정',
-    title: '공통 논지와 독자 압력을 먼저 잠근 뒤 병렬 레인을 엽니다',
-    description: '첫 화면은 입력과 방향 결정만 남기고, 긴 산출물과 검증 정보는 뒤 단계로 밀어냈습니다.',
+    title: '주제와 독자 조건을 먼저 고정한 뒤, 세 개 레인 초안을 시작합니다',
+    description: '첫 화면은 입력과 방향 결정만 남기고, 긴 산출물과 근거 레이어는 뒤 단계로 밀어냈습니다.',
   },
   draft: {
     kicker: '병렬 작성',
-    title: '세 개 레인이 동시에 쓰고, 머지 레일이 현재 합류 압력을 계속 보여줍니다',
-    description: '각 레인은 비교용 요약만 먼저 보이고, 세부 패킷은 하나씩 선택해서 읽습니다.',
+    title: '세 레인이 동시에 초안을 쓰고, 중앙 레일이 합류 준비 상태를 보여줍니다',
+    description: '각 레인은 짧은 요약만 먼저 보이고, 자세한 패킷은 하나씩 골라 읽게 설계했습니다.',
   },
   publish: {
     kicker: '머지/발행',
-    title: '리뷰 메모와 최종 글을 한 화면에 겹치지 않고, 발행 직전 상태로 마감합니다',
-    description: '리뷰 메모와 최종 글은 같은 자리에서 교대로 열리고, 내보내기는 짧은 미리보기 뒤에 전체 원본 전달본을 둡니다.',
+    title: '리뷰 메모와 최종 글을 번갈아 확인한 뒤, 마지막에 마크다운을 내보냅니다',
+    description: '리뷰 메모와 최종 글은 같은 자리에서 교대로 열리고, 내보내기는 짧은 미리보기 뒤에만 남깁니다.',
   },
 }
 
@@ -429,14 +432,14 @@ function App() {
     direction: 'forward',
     revision: 0,
   })
-  const [activeReaderPanel, setActiveReaderPanel] = useState<'review' | 'final'>('review')
-  const [activeLane, setActiveLane] = useState<WriterLaneId>('writer_a')
-  const lastAutoScreen = useRef<WorkspaceScreen>('setup')
+  const [manualReaderPanel, setManualReaderPanel] = useState<'review' | 'final' | null>(null)
+  const [manualActiveLane, setManualActiveLane] = useState<WriterLaneId | null>(null)
 
   async function handleGenerate() {
     const runId = runRef.current + 1
     runRef.current = runId
-    setActiveReaderPanel('review')
+    setManualReaderPanel(null)
+    setManualActiveLane(null)
 
     dispatch({
       type: 'start-run',
@@ -449,6 +452,7 @@ function App() {
     }
 
     if (/^\s*(fail|error)\b/i.test(state.inputs.topic)) {
+      moveToScreen('setup')
       dispatch({
         type: 'set-error',
         message: '코디네이터가 유효한 공통 브리프를 만들지 못했습니다. 주제를 조금 더 구체적으로 바꿔 다시 시작하세요.',
@@ -465,6 +469,7 @@ function App() {
       assignments,
       message: '브리프와 아웃라인을 고정했습니다. 이제 레인별 초안이 병렬로 채워집니다.',
     })
+    moveToScreen('draft')
 
     await sleep(220)
     if (runRef.current !== runId) {
@@ -501,7 +506,7 @@ function App() {
 
     dispatch({
       type: 'start-merge',
-      message: '머지 데스크가 중복을 줄이고, 전환을 정리하고, 전체 톤을 다시 맞추고 있습니다.',
+      message: '카피 데스크가 중복을 줄이고, 전환을 정리하고, 전체 톤을 다시 맞추고 있습니다.',
     })
 
     await sleep(300)
@@ -516,6 +521,7 @@ function App() {
       report: mergeReport,
       message: '머지 리뷰가 끝났습니다. 이제 최종 글과 내보내기 구성이 열립니다.',
     })
+    moveToScreen('publish')
 
     await sleep(180)
     if (runRef.current !== runId) {
@@ -589,9 +595,9 @@ function App() {
   }
 
   const brief = state.generation.outputs.research_summary
-  const outline = state.generation.outputs.outline ?? []
-  const assignments = state.generation.outputs.assignments ?? []
-  const lanePackets = state.generation.outputs.section_drafts ?? []
+  const outline = state.generation.outputs.outline ?? emptyOutline
+  const assignments = state.generation.outputs.assignments ?? emptyAssignments
+  const lanePackets = state.generation.outputs.section_drafts ?? emptyLanePackets
   const mergeReport = state.generation.outputs.review_notes
   const finalArticle = state.generation.outputs.final_article
   const completedLaneCount = lanePackets.length
@@ -599,60 +605,17 @@ function App() {
   const markdownPreview = finalArticle
     ? finalArticle.markdown.split('\n').slice(0, 10).join('\n')
     : ''
+  const fallbackLane = lanePackets[0]?.writerId ?? assignments[0]?.writerId ?? 'writer_a'
+  const activeLane =
+    manualActiveLane &&
+    (lanePackets.some((packet) => packet.writerId === manualActiveLane) ||
+      assignments.some((assignment) => assignment.writerId === manualActiveLane))
+      ? manualActiveLane
+      : fallbackLane
   const activeLaneAssignment = assignments.find((item) => item.writerId === activeLane) ?? assignments[0] ?? null
   const activeLanePacket = lanePackets.find((item) => item.writerId === activeLane) ?? lanePackets[0] ?? null
-  const autoScreen: WorkspaceScreen = state.generation.errorMessage
-    ? 'setup'
-    : finalArticle || mergeReport
-      ? 'publish'
-      : state.generation.status === 'initial'
-        ? 'setup'
-        : 'draft'
-
-  useEffect(() => {
-    if (lastAutoScreen.current === autoScreen) {
-      return
-    }
-
-    lastAutoScreen.current = autoScreen
-    setScreenMotion((current) => {
-      if (current.current === autoScreen) {
-        return current
-      }
-
-      return {
-        current: autoScreen,
-        direction: screenIndex(autoScreen) >= screenIndex(current.current) ? 'forward' : 'backward',
-        revision: current.revision + 1,
-      }
-    })
-  }, [autoScreen])
-
-  useEffect(() => {
-    if (finalArticle) {
-      setActiveReaderPanel('final')
-      return
-    }
-
-    if (mergeReport) {
-      setActiveReaderPanel('review')
-    }
-  }, [finalArticle, mergeReport])
-
-  useEffect(() => {
-    if (lanePackets.some((packet) => packet.writerId === activeLane)) {
-      return
-    }
-
-    if (lanePackets[0]) {
-      setActiveLane(lanePackets[0].writerId)
-      return
-    }
-
-    if (assignments[0]) {
-      setActiveLane(assignments[0].writerId)
-    }
-  }, [activeLane, assignments, lanePackets])
+  const preferredReaderPanel: 'review' | 'final' = finalArticle ? 'final' : 'review'
+  const activeReaderPanel = manualReaderPanel ?? preferredReaderPanel
 
   const progressValue =
     (state.generation.completedStages.length +
@@ -663,21 +626,21 @@ function App() {
     workflowStages.length
 
   const mergeMoment = !brief
-    ? '코디네이터가 아직 공통 프레임을 잠그기 전입니다.'
+    ? '코디네이터가 아직 공통 브리프를 고정하기 전입니다.'
     : !completedLaneCount
-      ? '브리프는 고정됐고, 레인 패킷이 도착하기를 기다리는 중입니다.'
+      ? '브리프는 고정됐고, 레인별 초안 패킷이 도착하기를 기다리는 중입니다.'
       : !mergeReport
-        ? '모든 패킷이 모이는 즉시 머지 데스크가 중복과 전환을 정리합니다.'
+        ? '모든 패킷이 모이면 머지 데스크가 중복과 전환을 정리합니다.'
         : finalArticle
           ? '머지가 닫혔고 최종 글까지 준비됐습니다. 이제 전달만 남았습니다.'
           : '리뷰는 끝났고 최종 글 조립이 마지막 단계에 있습니다.'
 
   const nextAction = !brief
-    ? '브리프를 잠가 세 개 레인의 소유 범위를 먼저 정하세요.'
+    ? '브리프를 잠가 세 개 레인의 작성 범위를 먼저 정하세요.'
     : completedLaneCount < writerLanes.length
-      ? '레인 카드에서 누락된 초안이 없는지 보고, 합류 전까지 흐름을 기다리세요.'
+      ? '레인 카드에서 누락된 초안이 없는지 보고, 머지 전까지 진행 상황을 확인하세요.'
       : !mergeReport
-        ? '머지 데스크가 중복을 닫을 때까지 레인 요약과 기준을 확인하세요.'
+        ? '머지 데스크가 중복을 정리할 때까지 레인 요약과 기준을 확인하세요.'
         : '최종 글을 검토하고 마크다운을 복사해 발행 단계로 넘기세요.'
 
   const screen = screenMotion.current
@@ -709,46 +672,50 @@ function App() {
     )
   })
 
-  const screenAction =
-    screen === 'setup'
-      ? {
-          primaryLabel: state.generation.status === 'loading' ? '브리프 잠그는 중' : '글 생성',
-          primaryDisabled: state.generation.status === 'loading',
-          primaryHandler: handleGenerate,
-          primaryAriaLabel: 'Generate post',
-        }
-      : screen === 'draft'
-        ? {
-          primaryLabel: mergeReport || finalArticle ? '머지 결과 보기' : '병렬 작성 진행 중',
-          primaryDisabled: !(mergeReport || finalArticle),
-          primaryHandler: () => moveToScreen('publish'),
-          primaryAriaLabel: 'Open publish view',
-        }
-        : {
-            primaryLabel: finalArticle ? '마크다운 복사' : '발행 대기 중',
-            secondaryLabel: '작성 보드로 돌아가기',
-            primaryDisabled: !finalArticle,
-            secondaryDisabled: false,
-            primaryHandler: copyMarkdown,
-            secondaryHandler: () => moveToScreen('draft'),
-            primaryAriaLabel: 'Copy markdown',
-            secondaryAriaLabel: 'Back to drafts',
-          }
+  let primaryLabel = '글 생성'
+  let primaryDisabled = false
+  let primaryHandler: () => void | Promise<void> = handleGenerate
+  let primaryAriaLabel = 'Generate post'
+  let secondaryLabel: string | null = null
+  let secondaryDisabled = false
+  let secondaryHandler: (() => void) | null = null
+  let secondaryAriaLabel: string | null = null
+
+  if (screen === 'setup') {
+    primaryLabel = state.generation.status === 'loading' ? '브리프 잠그는 중' : '글 생성'
+    primaryDisabled = state.generation.status === 'loading'
+    primaryHandler = handleGenerate
+    primaryAriaLabel = 'Generate post'
+  } else if (screen === 'draft') {
+    primaryLabel = mergeReport || finalArticle ? '머지 결과 보기' : '병렬 작성 진행 중'
+    primaryDisabled = !(mergeReport || finalArticle)
+    primaryHandler = () => moveToScreen('publish')
+    primaryAriaLabel = 'Open publish view'
+  } else {
+    primaryLabel = finalArticle ? '마크다운 복사' : '발행 대기 중'
+    primaryDisabled = !finalArticle
+    primaryHandler = copyMarkdown
+    primaryAriaLabel = 'Copy markdown'
+    secondaryLabel = '작성 보드로 돌아가기'
+    secondaryDisabled = false
+    secondaryHandler = () => moveToScreen('draft')
+    secondaryAriaLabel = 'Back to drafts'
+  }
 
   return (
     <main className="workspace-shell">
       <section className="workspace-hero">
         <div className="hero-copy-panel">
           <p className="hero-kicker">병렬 섹션</p>
-          <h1>세 개의 섹션 레인이 각자 쓰고, 하나의 데스크가 마지막 문장을 정렬합니다</h1>
+          <h1>세 레인이 따로 쓰고, 카피 데스크가 마지막 문장을 합칩니다</h1>
           <p className="hero-lead">
-            대시보드처럼 모든 산출물을 한 번에 펼치지 않고, 입력과 병렬 작성, 머지와 발행을
-            순서대로 넘기며 첫 화면의 정보 밀도를 낮췄습니다.
+            입력, 병렬 작성, 머지와 발행만 순서대로 남기고 긴 근거와 전체 산출물은 뒤 단계로
+            밀었습니다.
           </p>
           <div className="hero-chips">
-            <span className="meta-chip">세 레인 소유 분리</span>
-            <span className="meta-chip">합류 레일 시각화</span>
-            <span className="meta-chip">독자 우선 발행 화면</span>
+            <span className="meta-chip">브리프 잠금</span>
+            <span className="meta-chip">합류 도킹 레일</span>
+            <span className="meta-chip">발행용 리더</span>
           </div>
         </div>
 
@@ -781,7 +748,7 @@ function App() {
         <div className="rail-head">
           <div>
             <p className="section-kicker">진행 레일</p>
-            <h2>현재 단계는 항상 위에 남기고, 본문은 한 화면씩만 열어 둡니다</h2>
+            <h2>현재 단계는 위에 고정하고, 본문은 한 화면씩만 열어 둡니다</h2>
           </div>
           <div className="progress-track" aria-hidden="true">
             <span className="progress-fill" style={{ width: `${Math.max(12, progressValue * 100)}%` }} />
@@ -805,21 +772,21 @@ function App() {
               <button
                 type="button"
                 className="action-button is-primary"
-                aria-label={screenAction.primaryAriaLabel}
-                onClick={screenAction.primaryHandler}
-                disabled={screenAction.primaryDisabled}
+                aria-label={primaryAriaLabel}
+                onClick={primaryHandler}
+                disabled={primaryDisabled}
               >
-                {screenAction.primaryLabel}
+                {primaryLabel}
               </button>
-              {'secondaryLabel' in screenAction ? (
+              {secondaryLabel && secondaryHandler && secondaryAriaLabel ? (
                 <button
                   type="button"
                   className="action-button is-secondary"
-                  aria-label={screenAction.secondaryAriaLabel}
-                  onClick={screenAction.secondaryHandler}
-                  disabled={screenAction.secondaryDisabled}
+                  aria-label={secondaryAriaLabel}
+                  onClick={secondaryHandler}
+                  disabled={secondaryDisabled}
                 >
-                  {screenAction.secondaryLabel}
+                  {secondaryLabel}
                 </button>
               ) : null}
             </div>
@@ -892,8 +859,8 @@ function App() {
                   </div>
                 </form>
                 <p className="panel-note">
-                  이 하네스는 결정론적 생성으로 병렬 섹션 오케스트레이션 자체를 검증합니다. 그래서
-                  첫 화면은 입력과 방향 결정만 남기고, 실제 산출물은 뒤 단계에서 열리게 바꿨습니다.
+                  이 하네스는 병렬 섹션 오케스트레이션 자체를 검증합니다. 그래서 첫 화면은 입력과
+                  방향 결정만 남기고, 실제 산출물은 뒤 단계에서 열리게 바꿨습니다.
                 </p>
               </article>
 
@@ -901,7 +868,7 @@ function App() {
                 <article className="panel-sheet" data-stagger>
                   <div className="panel-head">
                     <p className="section-kicker">편집 메모</p>
-                    <h3>현재 브리프는 이런 톤으로 발행됩니다</h3>
+                    <h3>현재 브리프는 이런 설정으로 발행됩니다</h3>
                   </div>
                   <div className="summary-grid">
                     <div className="summary-card">
@@ -924,47 +891,59 @@ function App() {
                   </ul>
                 </article>
 
-                <article className="empty-state" data-stagger>
-                  <span className="empty-icon" aria-hidden="true">◇</span>
-                  <h3>아직 병렬 레인이 열리지 않았습니다</h3>
-                  <p>
-                    대표 프리셋 하나를 불러온 뒤 바로 생성해도 됩니다. 이 카드 자체가 빈 상태와
-                    복구 진입점을 겸합니다.
-                  </p>
-                  <button
-                    type="button"
-                    className="support-button"
-                    onClick={() =>
-                      applyPreset(
-                        topicPresets[1].title,
-                        topicPresets[1].audience,
-                        topicPresets[1].tone,
-                        topicPresets[1].length,
-                      )
-                    }
-                  >
-                    대표 프리셋 적용
-                  </button>
-                </article>
-
                 <article className="panel-sheet" data-stagger>
                   <div className="panel-head">
-                    <p className="section-kicker">빠른 프리셋</p>
-                    <h3>브리프를 짧게 잡고 바로 실험할 때만 씁니다</h3>
+                    <p className="section-kicker">빠른 시작</p>
+                    <h3>대표 복구 CTA만 먼저 두고, 전체 프리셋은 필요할 때만 펼칩니다</h3>
                   </div>
-                  <div className="preset-grid">
-                    {topicPresets.map((preset) => (
-                      <button
-                        key={preset.title}
-                        type="button"
-                        className="preset-card"
-                        onClick={() => applyPreset(preset.title, preset.audience, preset.tone, preset.length)}
-                      >
-                        <strong>{preset.title}</strong>
-                        <span>{preset.rationale}</span>
-                      </button>
-                    ))}
+                  <div className="empty-state compact-empty">
+                    <span className="empty-icon" aria-hidden="true">◇</span>
+                    <h3>아직 병렬 레인이 열리지 않았습니다</h3>
+                    <p>
+                      대표 프리셋 하나를 불러온 뒤 바로 생성해도 됩니다. 이 모듈이 빈 상태와 복구
+                      진입점을 함께 맡습니다.
+                    </p>
+                    <button
+                      type="button"
+                      className="support-button"
+                      onClick={() =>
+                        applyPreset(
+                          topicPresets[1].title,
+                          topicPresets[1].audience,
+                          topicPresets[1].tone,
+                          topicPresets[1].length,
+                        )
+                      }
+                    >
+                      대표 프리셋 적용
+                    </button>
                   </div>
+                  <details className="preset-library">
+                    <summary className="drawer-summary preset-library-summary">
+                      <div>
+                        <p className="section-kicker">프리셋 서랍</p>
+                        <h3>주제 프리셋 전체 보기</h3>
+                      </div>
+                      <p>첫 화면 밀도를 줄이기 위해 빈 상태와 복구 버튼만 먼저 두고, 전체 프리셋은 접어 둡니다.</p>
+                    </summary>
+                    <div className="drawer-body">
+                      <div className="preset-grid">
+                        {topicPresets.map((preset) => (
+                          <button
+                            key={preset.title}
+                            type="button"
+                            className="preset-card"
+                            onClick={() =>
+                              applyPreset(preset.title, preset.audience, preset.tone, preset.length)
+                            }
+                          >
+                            <strong>{preset.title}</strong>
+                            <span>{preset.rationale}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </details>
                 </article>
               </div>
             </div>
@@ -977,7 +956,7 @@ function App() {
                   <div className="panel-head panel-head-inline">
                     <div>
                       <p className="section-kicker">합류 레일</p>
-                      <h3>세 레인이 아래 한 지점으로 모이며 현재 합류 압력을 보여줍니다</h3>
+                      <h3>세 레인이 아래 한 지점으로 접히며 현재 합류 압력을 보여줍니다</h3>
                     </div>
                     <p className="panel-inline-copy">{mergeMoment}</p>
                   </div>
@@ -1005,7 +984,7 @@ function App() {
                         key={lane.id}
                         type="button"
                         className={`lane-card is-${laneStatus} ${activeLane === lane.id ? 'is-selected' : ''}`}
-                        onClick={() => setActiveLane(lane.id)}
+                        onClick={() => setManualActiveLane(lane.id)}
                         aria-pressed={activeLane === lane.id}
                         data-stagger
                         style={{ animationDelay: `${index * 50}ms` }}
@@ -1057,7 +1036,7 @@ function App() {
                       <p className="detail-copy">{activeLaneAssignment.ownershipRule}</p>
                       <div className="info-strip">
                         <span className="info-badge">소유 범위</span>
-                        <p>{activeLaneAssignment.handoffBoundary}</p>
+                        <p>{activeLaneAssignment.laneSummary}</p>
                       </div>
                       {activeLanePacket ? (
                         <>
@@ -1106,7 +1085,7 @@ function App() {
                 <article className="panel-sheet" data-stagger>
                   <div className="panel-head">
                     <p className="section-kicker">머지 데스크</p>
-                    <h3>{mergeReport ? '합류 기준이 정리됐습니다' : '데스크가 보고 있는 기준'}</h3>
+                    <h3>{mergeReport ? '합류 기준이 정리됐습니다' : '카피 데스크가 보고 있는 기준'}</h3>
                   </div>
                   <div className="detail-stack">
                     <p className="detail-copy">{nextAction}</p>
@@ -1147,7 +1126,7 @@ function App() {
                       id="reader-tab-review"
                       aria-controls="reader-panel-review"
                       aria-selected={activeReaderPanel === 'review'}
-                      onClick={() => setActiveReaderPanel('review')}
+                      onClick={() => setManualReaderPanel('review')}
                     >
                       리뷰 메모
                     </button>
@@ -1158,7 +1137,7 @@ function App() {
                       id="reader-tab-final"
                       aria-controls="reader-panel-final"
                       aria-selected={activeReaderPanel === 'final'}
-                      onClick={() => setActiveReaderPanel('final')}
+                      onClick={() => finalArticle && setManualReaderPanel('final')}
                     >
                       최종 글
                     </button>
@@ -1176,7 +1155,7 @@ function App() {
                     >
                       <div className="panel-head">
                         <p className="section-kicker">리뷰 메모</p>
-                        <h3>머지 데스크는 중복, 전환, 톤 밀도를 이 세 축으로 정리합니다</h3>
+                        <h3>카피 데스크는 중복, 전환, 톤 밀도를 이 세 축으로 정리합니다</h3>
                       </div>
                       {mergeReport ? (
                         <div className="detail-stack">
@@ -1212,12 +1191,12 @@ function App() {
                     >
                       <div className="panel-head">
                         <p className="section-kicker">최종 글</p>
-                        <h3>독자용 화면을 먼저 보여 주고 원본 전달본은 따로 둡니다</h3>
+                        <h3>독자용 화면을 먼저 보여 주고 원본 전달본은 뒤로 밀어 둡니다</h3>
                       </div>
                       {finalArticle ? (
                         <div className="article-stack">
                           <article className="article-reader">
-                            <p className="article-kicker">병합 완료</p>
+                            <p className="article-kicker">편집 완료</p>
                             <h3>{finalArticle.title}</h3>
                             <p className="article-intro">{finalArticle.intro}</p>
                             {finalArticle.mergedSections.map((section) => (

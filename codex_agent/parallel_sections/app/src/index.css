@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Noto+Sans+KR:wght@400;500;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Hahmlet:wght@500;700;800&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap');
 
 :root {
   --color-background: #faf8ff;
@@ -6,6 +6,7 @@
   --color-surface-low: #f2f3ff;
   --color-surface-lowest: #ffffff;
   --color-surface-high: #e2e7ff;
+  --color-surface-highest: #dae2fd;
   --color-outline: #c3c5d9;
   --color-text: #131b2e;
   --color-muted: #434656;
@@ -13,22 +14,40 @@
   --color-primary-strong: #0052ff;
   --color-secondary: #515f74;
   --color-inverse: #eef0ff;
+  --color-inverse-surface: #283044;
   --color-tertiary: #952200;
   --color-error: #ba1a1a;
-  --font-heading: 'Manrope', 'Noto Sans KR', sans-serif;
-  --font-body: 'Noto Sans KR', sans-serif;
+  --font-display: 'Hahmlet', serif;
+  --font-heading: 'Hahmlet', serif;
+  --font-body: 'IBM Plex Sans KR', sans-serif;
+  --font-label: 'IBM Plex Sans KR', sans-serif;
+  --text-display: clamp(2.95rem, 6vw, 5rem);
+  --text-headline: clamp(1.5rem, 2.5vw, 2.45rem);
+  --text-title: clamp(1.08rem, 1.45vw, 1.55rem);
+  --text-body: 0.9375rem;
+  --text-label: 0.72rem;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
   --motion-micro: 160ms;
   --motion-screen: 360ms;
   --ease-standard: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-screen: cubic-bezier(0.22, 1, 0.36, 1);
+  --shadow-ambient:
+    0 30px 60px rgba(19, 27, 46, 0.08),
+    0 12px 24px rgba(19, 27, 46, 0.05);
+  --ghost-border: rgba(195, 197, 217, 0.18);
   color: var(--color-text);
   font-family: var(--font-body);
-  font-weight: 400;
-  line-height: 1.5;
+  font-weight: 500;
+  line-height: 1.65;
   background:
-    radial-gradient(circle at top left, rgba(0, 82, 255, 0.14), transparent 24%),
-    radial-gradient(circle at bottom right, rgba(191, 48, 3, 0.1), transparent 26%),
-    linear-gradient(180deg, #fdfcff, #eef2ff);
+    radial-gradient(circle at top left, rgba(183, 196, 255, 0.28), transparent 28%),
+    radial-gradient(circle at 100% 10%, rgba(255, 219, 210, 0.18), transparent 24%),
+    linear-gradient(180deg, #fefcff, #f2f4ff 52%, #f5f2ec 100%);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -72,22 +91,22 @@ h3,
 h4 {
   font-family: var(--font-heading);
   color: var(--color-text);
-  letter-spacing: -0.04em;
+  letter-spacing: -0.025em;
 }
 
 h1 {
-  font-size: clamp(3rem, 6vw, 5.1rem);
-  line-height: 0.98;
-}
-
-h2 {
-  font-size: clamp(1.65rem, 2.6vw, 2.6rem);
+  font-size: var(--text-display);
   line-height: 1.02;
 }
 
+h2 {
+  font-size: var(--text-headline);
+  line-height: 1.1;
+}
+
 h3 {
-  font-size: clamp(1.18rem, 1.6vw, 1.65rem);
-  line-height: 1.08;
+  font-size: var(--text-title);
+  line-height: 1.2;
 }
 
 a {
