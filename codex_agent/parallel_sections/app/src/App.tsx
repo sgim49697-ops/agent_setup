@@ -177,6 +177,30 @@ const screenGuides: Record<
   },
 }
 
+const screenEditions: Record<
+  WorkspaceScreen,
+  { label: string; title: string; note: string; tail: string }
+> = {
+  setup: {
+    label: '입력 데스크',
+    title: '브리프 잠금 전용 1면',
+    note: '첫 화면은 판단과 시작 버튼만 남기고, 긴 산출물은 다음 지면으로 넘깁니다.',
+    tail: '01 · 잠금',
+  },
+  draft: {
+    label: '도킹 데스크',
+    title: '세 레인이 중앙 스파인으로 합류하는 장면',
+    note: '도착한 패킷만 밝게 열고, 나머지는 skeleton과 압력 신호로만 유지합니다.',
+    tail: '02 · 병렬',
+  },
+  publish: {
+    label: '발행 데스크',
+    title: '리뷰와 최종 글이 같은 지면을 번갈아 점유합니다',
+    note: '고스트식 sidecar 사고방식을 적용해, 발행 정보는 리더 surface를 압도하지 않게 유지합니다.',
+    tail: '03 · 출고',
+  },
+}
+
 const stageScreenMap = {
   research: 'setup',
   outline: 'setup',
@@ -689,6 +713,7 @@ function App() {
 
   const screen = screenMotion.current
   const screenGuide = screenGuides[screen]
+  const screenEdition = screenEditions[screen]
   const mergeReady = completedLaneCount === writerLanes.length
   const mergeDockLabel = !brief
     ? '도킹 대기'
@@ -934,6 +959,15 @@ function App() {
             </div>
           </header>
 
+          <div className="desk-marquee" data-stagger>
+            <div className="desk-marquee-copy">
+              <span className="info-badge">{screenEdition.label}</span>
+              <strong>{screenEdition.title}</strong>
+            </div>
+            <p>{screenEdition.note}</p>
+            <span className="desk-marquee-tail">{screenEdition.tail}</span>
+          </div>
+
           <div className="screen-ribbon" data-stagger>
             <div>
               <span className="info-badge">{screenGuide.label}</span>
@@ -1137,14 +1171,17 @@ function App() {
                     <p className="panel-inline-copy">{mergeMoment}</p>
                   </div>
                   <div className="merge-graphic" aria-hidden="true">
+                    <span className={`merge-spine is-${mergeReady ? 'ready' : state.generation.status === 'loading' ? 'loading' : 'pending'}`} />
                     {writerLanes.map((lane) => {
                       const laneStatus = state.generation.unitStatuses[lane.id]
                       return (
                         <div key={lane.id} className={`merge-arm arm-${lane.id} is-${laneStatus}`}>
+                          <span className="merge-ticket">{lane.label}</span>
                           <span className="merge-node" />
                         </div>
                       )
                     })}
+                    <span className="merge-hub-ticket">머지 데스크</span>
                     <span className={`merge-hub is-${mergeReport ? 'complete' : state.generation.status === 'loading' ? 'loading' : 'pending'}`} />
                   </div>
                   <div className={`merge-dock-card is-${mergeReady ? 'ready' : 'pending'}`}>
@@ -1330,77 +1367,79 @@ function App() {
 
                 {mergeReport || finalArticle ? (
                   activeReaderPanel === 'review' ? (
-                    <article
-                      id="reader-panel-review"
-                      className="panel-sheet"
-                      role="tabpanel"
-                      aria-labelledby="reader-tab-review"
-                      data-stagger
-                    >
-                      <div className="panel-head">
-                        <p className="section-kicker">리뷰 메모</p>
-                        <h3>카피 데스크는 중복, 전환, 톤 밀도를 이 세 축으로 정리합니다</h3>
-                      </div>
-                      {mergeReport ? (
-                        <div className="detail-stack">
-                          <ul className="compact-list">
-                            {mergeReport.reviewNotes.map((note) => (
-                              <li key={note}>{note}</li>
-                            ))}
-                          </ul>
-                          <div className="criteria-grid">
-                            {[mergeReport.dedupeFix, mergeReport.transitionFix, mergeReport.toneFix].map((fix) => (
-                              <article key={fix.label} className="criterion-card">
-                                <h4>{fix.label}</h4>
-                                <p><strong>이전</strong> {fix.before}</p>
-                                <p><strong>이후</strong> {fix.after}</p>
-                                <p>{fix.rationale}</p>
-                              </article>
-                            ))}
-                          </div>
-                          <article className="panel-inset">
-                            <p className="section-kicker">최종화 메모</p>
-                            <p>{mergeReport.finalizationNote}</p>
-                          </article>
+                    <div key="review-panel" className="reader-panel-stage" data-panel="review" data-stagger>
+                      <article
+                        id="reader-panel-review"
+                        className="panel-sheet"
+                        role="tabpanel"
+                        aria-labelledby="reader-tab-review"
+                      >
+                        <div className="panel-head">
+                          <p className="section-kicker">리뷰 메모</p>
+                          <h3>카피 데스크는 중복, 전환, 톤 밀도를 이 세 축으로 정리합니다</h3>
                         </div>
-                      ) : null}
-                    </article>
-                  ) : (
-                    <article
-                      id="reader-panel-final"
-                      className="panel-sheet"
-                      role="tabpanel"
-                      aria-labelledby="reader-tab-final"
-                      data-stagger
-                    >
-                      <div className="panel-head">
-                        <p className="section-kicker">최종 글</p>
-                        <h3>독자용 화면을 먼저 보여 주고 원본 전달본은 뒤로 밀어 둡니다</h3>
-                      </div>
-                      {finalArticle ? (
-                        <div className="article-stack">
-                          <article className="article-reader">
-                            <p className="article-kicker">편집 완료</p>
-                            <h3>{finalArticle.title}</h3>
-                            <p className="article-intro">{finalArticle.intro}</p>
-                            {finalArticle.mergedSections.map((section) => (
-                              <section key={section.id} className="article-section">
-                                <h4>{section.title}</h4>
-                                <p className="article-deck">{section.deck}</p>
-                                {section.paragraphs.map((paragraph) => (
-                                  <p key={paragraph}>{paragraph}</p>
-                                ))}
-                                <p className="preview-takeaway">{section.takeaway}</p>
-                              </section>
-                            ))}
-                            <div className="article-closing">
-                              <h4>마무리 체크</h4>
-                              <p>{finalArticle.closing}</p>
+                        {mergeReport ? (
+                          <div className="detail-stack">
+                            <ul className="compact-list">
+                              {mergeReport.reviewNotes.map((note) => (
+                                <li key={note}>{note}</li>
+                              ))}
+                            </ul>
+                            <div className="criteria-grid">
+                              {[mergeReport.dedupeFix, mergeReport.transitionFix, mergeReport.toneFix].map((fix) => (
+                                <article key={fix.label} className="criterion-card">
+                                  <h4>{fix.label}</h4>
+                                  <p><strong>이전</strong> {fix.before}</p>
+                                  <p><strong>이후</strong> {fix.after}</p>
+                                  <p>{fix.rationale}</p>
+                                </article>
+                              ))}
                             </div>
-                          </article>
+                            <article className="panel-inset">
+                              <p className="section-kicker">최종화 메모</p>
+                              <p>{mergeReport.finalizationNote}</p>
+                            </article>
+                          </div>
+                        ) : null}
+                      </article>
+                    </div>
+                  ) : (
+                    <div key="final-panel" className="reader-panel-stage" data-panel="final" data-stagger>
+                      <article
+                        id="reader-panel-final"
+                        className="panel-sheet"
+                        role="tabpanel"
+                        aria-labelledby="reader-tab-final"
+                      >
+                        <div className="panel-head">
+                          <p className="section-kicker">최종 글</p>
+                          <h3>독자용 화면을 먼저 보여 주고 원본 전달본은 뒤로 밀어 둡니다</h3>
                         </div>
-                      ) : null}
-                    </article>
+                        {finalArticle ? (
+                          <div className="article-stack">
+                            <article className="article-reader">
+                              <p className="article-kicker">편집 완료</p>
+                              <h3>{finalArticle.title}</h3>
+                              <p className="article-intro">{finalArticle.intro}</p>
+                              {finalArticle.mergedSections.map((section) => (
+                                <section key={section.id} className="article-section">
+                                  <h4>{section.title}</h4>
+                                  <p className="article-deck">{section.deck}</p>
+                                  {section.paragraphs.map((paragraph) => (
+                                    <p key={paragraph}>{paragraph}</p>
+                                  ))}
+                                  <p className="preview-takeaway">{section.takeaway}</p>
+                                </section>
+                              ))}
+                              <div className="article-closing">
+                                <h4>마무리 체크</h4>
+                                <p>{finalArticle.closing}</p>
+                              </div>
+                            </article>
+                          </div>
+                        ) : null}
+                      </article>
+                    </div>
                   )
                 ) : (
                   <article className="empty-state" data-stagger>

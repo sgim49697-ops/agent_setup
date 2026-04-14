@@ -564,6 +564,60 @@
   margin-bottom: 24px;
 }
 
+.desk-marquee {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 18px;
+  padding: 16px 18px;
+  border-radius: 22px;
+  background:
+    linear-gradient(120deg, rgb(var(--rgb-surface-lowest) / 0.84), rgb(var(--rgb-surface-high) / 0.78)),
+    radial-gradient(circle at top right, rgb(var(--rgb-primary-fixed) / 0.22), transparent 24%);
+  box-shadow:
+    inset 0 1px 0 rgb(var(--rgb-surface-lowest) / 0.72),
+    0 16px 30px rgb(var(--rgb-text) / 0.05);
+}
+
+.desk-marquee-copy {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.desk-marquee-copy strong,
+.desk-marquee p,
+.desk-marquee-tail {
+  margin: 0;
+}
+
+.desk-marquee-copy strong {
+  color: var(--color-text);
+  font-family: var(--font-heading);
+  font-size: 1.04rem;
+}
+
+.desk-marquee p {
+  color: var(--color-muted);
+}
+
+.desk-marquee-tail {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0.42rem 0.82rem;
+  background: rgb(var(--rgb-inverse-surface) / 0.92);
+  color: rgb(var(--rgb-inverse) / 0.9);
+  font-family: var(--font-label);
+  font-size: var(--text-label);
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
 .screen-ribbon {
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(220px, 0.8fr);
@@ -886,7 +940,7 @@
 
 .merge-graphic {
   position: relative;
-  height: 196px;
+  height: 216px;
   margin-top: 14px;
 }
 
@@ -908,6 +962,67 @@
   background: linear-gradient(90deg, rgb(var(--rgb-outline) / 0.25), rgb(var(--rgb-outline) / 0.95));
   transform-origin: left center;
   filter: drop-shadow(0 8px 18px rgb(var(--rgb-primary-strong) / 0.08));
+}
+
+.merge-spine {
+  position: absolute;
+  left: calc(50% - 5px);
+  top: 72px;
+  bottom: 20px;
+  width: 10px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgb(var(--rgb-primary-fixed) / 0.18), rgb(var(--rgb-outline) / 0.92));
+  box-shadow: 0 0 0 12px rgb(var(--rgb-primary-fixed) / 0.1);
+}
+
+.merge-ticket,
+.merge-hub-ticket {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  min-width: 72px;
+  padding: 0.36rem 0.7rem;
+  border-radius: 999px;
+  background: rgb(var(--rgb-surface-lowest) / 0.14);
+  color: rgb(var(--rgb-inverse) / 0.92);
+  font-family: var(--font-label);
+  font-size: var(--text-label);
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  backdrop-filter: blur(10px);
+}
+
+.merge-ticket {
+  top: -34px;
+  left: -18px;
+}
+
+.arm-writer_a .merge-ticket {
+  transform: rotate(-22deg);
+}
+
+.arm-writer_b .merge-ticket {
+  top: -48px;
+  left: 46%;
+  transform: rotate(-90deg) translateX(18%);
+  transform-origin: left center;
+}
+
+.arm-writer_c .merge-ticket {
+  left: auto;
+  right: -18px;
+  transform: rotate(-158deg);
+}
+
+.merge-hub-ticket {
+  left: 50%;
+  bottom: 58px;
+  transform: translateX(-50%);
+  background: rgb(var(--rgb-primary-fixed) / 0.2);
+  color: rgb(var(--rgb-inverse) / 0.96);
 }
 
 .merge-arm .merge-node,
@@ -965,6 +1080,9 @@
 .merge-dock-card.is-ready {
   background:
     linear-gradient(180deg, rgb(var(--rgb-primary-fixed) / 0.92), rgb(var(--rgb-surface-lowest) / 0.96));
+  box-shadow:
+    inset 0 1px 0 rgb(var(--rgb-surface-lowest) / 0.74),
+    0 18px 34px rgb(var(--rgb-primary-strong) / 0.12);
 }
 
 .arm-writer_a {
@@ -1137,6 +1255,10 @@
   display: inline-flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+.reader-panel-stage {
+  display: grid;
 }
 
 .reader-toggle.is-active {
@@ -1400,9 +1522,25 @@ details[open] > .drawer-summary::after {
     animation: screen-slide-right var(--motion-screen) var(--ease-screen) forwards;
   }
 
+  .screen-stage.is-forward.screen-publish .screen-shell {
+    animation: screen-fade-left var(--motion-screen) var(--ease-screen) forwards;
+  }
+
+  .screen-stage.is-backward.screen-publish .screen-shell {
+    animation: screen-fade-right var(--motion-screen) var(--ease-screen) forwards;
+  }
+
   [data-stagger] {
     animation: fade-up 540ms var(--ease-standard) forwards;
     animation-delay: inherit;
+  }
+
+  .reader-panel-stage[data-panel='review'] {
+    animation: panel-swap-right 420ms var(--ease-standard) both;
+  }
+
+  .reader-panel-stage[data-panel='final'] {
+    animation: panel-swap-left 420ms var(--ease-standard) both;
   }
 
   .skeleton-line {
@@ -1418,7 +1556,8 @@ details[open] > .drawer-summary::after {
   }
 
   .merge-arm.is-loading,
-  .merge-hub.is-loading {
+  .merge-hub.is-loading,
+  .merge-spine.is-loading {
     animation: pulse-line 1.3s ease-in-out infinite;
   }
 
@@ -1431,7 +1570,8 @@ details[open] > .drawer-summary::after {
   }
 
   .merge-arm.is-complete .merge-node,
-  .merge-hub.is-complete {
+  .merge-hub.is-complete,
+  .merge-spine.is-ready {
     animation: success-pop 320ms var(--ease-standard) both;
   }
 
@@ -1462,6 +1602,28 @@ details[open] > .drawer-summary::after {
   }
 }
 
+@keyframes screen-fade-left {
+  from {
+    opacity: 0;
+    transform: translateX(24px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes screen-fade-right {
+  from {
+    opacity: 0;
+    transform: translateX(-24px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
 @keyframes fade-up {
   from {
     opacity: 0;
@@ -1470,6 +1632,28 @@ details[open] > .drawer-summary::after {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes panel-swap-left {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes panel-swap-right {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
   }
 }
 
@@ -1561,6 +1745,7 @@ details[open] > .drawer-summary::after {
 
   .lane-grid,
   .criteria-grid,
+  .desk-marquee,
   .screen-ribbon,
   .signal-strip,
   .hero-ledger,
@@ -1600,6 +1785,7 @@ details[open] > .drawer-summary::after {
   .summary-grid,
   .preset-grid,
   .stage-rail,
+  .desk-marquee,
   .screen-ribbon,
   .signal-strip,
   .hero-ledger,
@@ -1655,6 +1841,10 @@ details[open] > .drawer-summary::after {
   .action-button {
     transform: none !important;
     filter: none !important;
+  }
+
+  .reader-panel-stage {
+    animation: none !important;
   }
 
   .drawer-summary::after {
