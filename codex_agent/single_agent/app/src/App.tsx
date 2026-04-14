@@ -90,9 +90,9 @@ const stageMessages: Record<GenerationStageId, string> = {
 }
 
 const screenMeta: Array<{ id: ScreenId; label: string; deck: string }> = [
-  { id: 'brief', label: '브리프', deck: '입력 정리' },
-  { id: 'progress', label: '진행', deck: '단계 집중' },
-  { id: 'publish', label: '게시', deck: '복사 준비' },
+  { id: 'brief', label: '브리프', deck: '원고 의뢰' },
+  { id: 'progress', label: '진행', deck: '편집 진행' },
+  { id: 'publish', label: '게시', deck: '출고 점검' },
 ]
 
 function unique<T>(items: T[]) {
@@ -278,6 +278,12 @@ function App() {
   const lengthLabel =
     lengthOptions.find((option) => option.value === state.inputs.length)?.label ?? ''
   const briefChips = [audienceLabel, toneLabel, lengthLabel].filter(Boolean)
+  const featuredPreset = topicPresets[0]
+  const featuredPresetChips = [
+    audienceOptions.find((option) => option.value === featuredPreset.audience)?.label,
+    toneOptions.find((option) => option.value === featuredPreset.tone)?.label,
+    lengthOptions.find((option) => option.value === featuredPreset.length)?.label,
+  ].filter(Boolean)
   const topicValue = state.inputs.topic.trim() || '주제를 적어 주세요'
   const topicSnapshot =
     topicValue.length > 62 ? `${topicValue.slice(0, 62).trimEnd()}…` : topicValue
@@ -299,6 +305,17 @@ function App() {
           !line.startsWith('-'),
       )
       ?.trim() ?? ''
+  const finalPreviewParagraphs =
+    finalPost
+      ?.split('\n')
+      .filter(
+        (line) =>
+          line.trim().length > 0 &&
+          !line.startsWith('#') &&
+          !line.startsWith('>') &&
+          !line.startsWith('-'),
+      )
+      .slice(0, 2) ?? []
   const finalSections = finalPost
     ? finalPost
         .split('\n')
@@ -708,7 +725,15 @@ function App() {
         <div className="reader-highlight">
           {state.copyFeedback || '최종 화면으로 넘어가면 제목, 섹션 구조, 복사 상태만 먼저 확인할 수 있습니다.'}
         </div>
-        <pre className="markdown-preview final-inline-preview">{finalPost}</pre>
+        <div className="final-proof-strip">
+          <p className="eyebrow">게시 직전 판독</p>
+          <h4>전문은 마지막 화면으로 미루고 핵심 문장만 먼저 읽습니다</h4>
+          <ul className="proof-points">
+            {finalPreviewParagraphs.map((paragraph) => (
+              <li key={paragraph}>{paragraph}</li>
+            ))}
+          </ul>
+        </div>
       </article>
     )
   }
@@ -721,11 +746,11 @@ function App() {
 
       <header className="topbar surface-card">
         <div className="topbar-copy">
-          <p className="kicker">단일 작성 위저드</p>
-          <h1>한 사람이 끝까지 쓰는 원고실</h1>
+          <p className="kicker">단일 작성 편집실</p>
+          <h1>한 명의 필자가 끝까지 넘기는 원고실</h1>
           <p>
-            브리프, 진행, 게시 준비를 세 개의 화면으로 나누고 현재 단계만 전면에 올린 집중형
-            기술 블로그 생성기입니다.
+            브리프, 편집 진행, 출고 점검을 세 개의 화면으로 나누고 현재 단계만 전면에 올린
+            집중형 기술 블로그 생성기입니다.
           </p>
         </div>
         <div aria-label="현재 작업 상태" className="topbar-status-grid">
@@ -925,31 +950,53 @@ function App() {
               <aside className="support-column enter-block" style={{ animationDelay: '150ms' }}>
                 <article className="support-panel">
                   <p className="kicker">빠른 시작 묶음</p>
-                  <h3>빠르게 시작하는 프리셋</h3>
-                  <div className="preset-grid">
-                    {topicPresets.map((preset, index) => (
-                      <button
-                        className="preset-card"
-                        key={preset.title}
-                        onClick={() =>
-                          dispatch({
-                            type: 'apply-preset',
-                            payload: {
-                              topic: preset.title,
-                              audience: preset.audience,
-                              tone: preset.tone,
-                              length: preset.length,
-                            },
-                          })
-                        }
-                        style={{ animationDelay: `${200 + index * 50}ms` }}
-                        type="button"
-                      >
-                        <span>{preset.rationale}</span>
-                        <strong>{preset.title}</strong>
-                      </button>
-                    ))}
+                  <h3>프리셋은 필요할 때만 펼칩니다</h3>
+                  <p className="panel-description">
+                    첫 화면은 브리프 입력에 집중하고, 추천 조합은 서랍 안에서 꺼내 쓰도록 정리했습니다.
+                  </p>
+                  <div className="preset-spotlight">
+                    <div className="preset-spotlight-copy">
+                      <span className="preset-note">오늘의 추천</span>
+                      <strong>{featuredPreset.title}</strong>
+                      <p>{featuredPreset.rationale}</p>
+                    </div>
+                    <div className="tag-row">
+                      {featuredPresetChips.map((chip) => (
+                        <span className="soft-tag" key={chip}>
+                          {chip}
+                        </span>
+                      ))}
+                    </div>
                   </div>
+                  <details className="support-drawer preset-drawer">
+                    <summary>프리셋 펼치기</summary>
+                    <div className="drawer-body">
+                      <div className="preset-grid">
+                        {topicPresets.map((preset, index) => (
+                          <button
+                            className="preset-card"
+                            key={preset.title}
+                            onClick={() =>
+                              dispatch({
+                                type: 'apply-preset',
+                                payload: {
+                                  topic: preset.title,
+                                  audience: preset.audience,
+                                  tone: preset.tone,
+                                  length: preset.length,
+                                },
+                              })
+                            }
+                            style={{ animationDelay: `${200 + index * 50}ms` }}
+                            type="button"
+                          >
+                            <span>{preset.rationale}</span>
+                            <strong>{preset.title}</strong>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </details>
                 </article>
 
                 <article className="support-panel empty-state">
