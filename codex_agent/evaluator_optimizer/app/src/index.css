@@ -1,28 +1,32 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=Manrope:wght@500;600;700;800&family=Noto+Sans+KR:wght@400;500;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Manrope:wght@500;600;700;800&family=Noto+Sans+KR:wght@400;500;700;800&display=swap');
 
 :root {
-  --paper: #faf8ff;
-  --panel: rgba(255, 255, 255, 0.86);
-  --panel-soft: rgba(242, 243, 255, 0.9);
-  --panel-strong: rgba(255, 255, 255, 0.96);
-  --panel-overlay: rgba(250, 248, 255, 0.76);
-  --line: rgba(195, 197, 217, 0.22);
-  --line-soft: rgba(195, 197, 217, 0.12);
-  --line-strong: rgba(0, 82, 255, 0.18);
+  --bg: #faf8ff;
+  --surface: #faf8ff;
+  --surface-low: #f2f3ff;
+  --surface-lowest: #ffffff;
+  --surface-high: #e2e7ff;
+  --surface-highest: #dae2fd;
+  --surface-dim: #d2d9f4;
   --ink: #131b2e;
-  --muted: #57657a;
+  --muted: #515f74;
+  --muted-strong: #434656;
   --accent: #0052ff;
   --accent-strong: #003ec7;
   --accent-cool: #0f7a64;
-  --accent-warm: #b84f1e;
-  --shadow-soft:
-    0 28px 60px rgba(19, 27, 46, 0.08),
-    0 10px 22px rgba(19, 27, 46, 0.04);
+  --warm: #952200;
+  --error: #ba1a1a;
+  --outline: #c3c5d9;
+  --outline-soft: rgba(195, 197, 217, 0.28);
+  --outline-ghost: rgba(195, 197, 217, 0.18);
   --shadow-ambient:
-    0 32px 56px rgba(19, 27, 46, 0.06),
-    0 8px 18px rgba(19, 27, 46, 0.03);
+    0 28px 60px rgba(19, 27, 46, 0.06),
+    0 10px 24px rgba(19, 27, 46, 0.03);
+  --shadow-lift:
+    0 34px 72px rgba(19, 27, 46, 0.08),
+    0 12px 30px rgba(0, 82, 255, 0.08);
   --font-display:
-    'Fraunces',
+    'Cormorant Garamond',
     'Noto Sans KR',
     serif;
   --font-body:
@@ -33,14 +37,20 @@
     'Manrope',
     'Noto Sans KR',
     sans-serif;
+  --radius-xl: 28px;
+  --radius-lg: 22px;
+  --duration-micro: 160ms;
+  --duration-screen: 360ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.2, 0.9, 0.2, 1);
   font-family: var(--font-body);
   line-height: 1.5;
   font-weight: 400;
   color: var(--ink);
   background:
-    radial-gradient(circle at top left, rgba(0, 82, 255, 0.14), transparent 26%),
+    radial-gradient(circle at top left, rgba(0, 82, 255, 0.16), transparent 26%),
     radial-gradient(circle at 82% 10%, rgba(149, 34, 0, 0.08), transparent 22%),
-    linear-gradient(180deg, #faf8ff 0%, #eef2ff 100%);
+    linear-gradient(180deg, #faf8ff 0%, #edf2ff 100%);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -59,6 +69,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  background: transparent;
 }
 
 body,
@@ -76,32 +87,29 @@ textarea {
   font: inherit;
 }
 
-button:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible {
-  outline: 3px solid rgba(0, 82, 255, 0.24);
-  outline-offset: 2px;
-}
-
 h1,
 h2,
 h3,
 h4 {
   font-family: var(--font-display);
-  line-height: 1.15;
+  line-height: 1.08;
+  letter-spacing: -0.045em;
   color: var(--ink);
-  font-weight: 700;
 }
 
 h1 {
-  font-size: clamp(3rem, 6vw, 5.2rem);
-  letter-spacing: -0.05em;
+  font-size: clamp(2.8rem, 5vw, 4.7rem);
+  font-weight: 700;
 }
 
 h2 {
-  font-size: clamp(1.6rem, 2vw, 2.4rem);
-  letter-spacing: -0.04em;
+  font-size: clamp(1.85rem, 2.8vw, 2.65rem);
+  font-weight: 600;
+}
+
+h3 {
+  font-size: clamp(1.2rem, 1.7vw, 1.55rem);
+  font-weight: 600;
 }
 
 a {
