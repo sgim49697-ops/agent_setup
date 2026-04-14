@@ -57,6 +57,26 @@ v2에서는 아래 항목을 별도로 강하게 본다.
 - 서로 다른 하네스가 비슷한 dashboard UI로 수렴하지 않았는가
 - 구조적 차별성이 gimmick이 아니라 interaction model로 드러나는가
 
+### 9. Interactive Design Quality (v2 엄격 기준)
+
+이 항목은 **blocking 평가**다. 아래 기준을 충족하지 못하면 전체 점수가 60점 이하로 캡된다.
+
+**필수 충족 항목 (모두 pass해야 함):**
+- 화면 전환 시 CSS transition 또는 animation 사용 (instant snap = fail)
+- 모든 버튼/인터랙티브 요소에 :hover + :focus-visible 스타일 존재 (cursor:pointer만 = fail)
+- 로딩/비동기 상태에 시각적 진행 표시 존재 (skeleton, shimmer, pulse, 단계별 reveal 중 하나)
+- 완료/성공 상태에 명확한 피드백 애니메이션 존재
+- `@media (prefers-reduced-motion: reduce)` 래퍼가 모든 animation에 적용됨
+- 시스템 폰트(Inter, Roboto, Arial, system-ui) 미사용 — 개성 있는 폰트 페어링 적용
+- 색상이 CSS 변수로만 참조됨 (하드코딩된 hex/rgb 없음)
+- 빈 상태(empty state)가 기본 브라우저 동작이 아닌 설계된 UI로 처리됨
+
+**보너스 (점수 가산):**
+- 화면 입장 시 staggered 애니메이션 (항목별 순차 등장)
+- 버튼 클릭 시 micro-interaction (scale, ripple 등)
+- 에러 상태에 shake/glow 등 시각 피드백
+- 완료 시 checkmark stroke 또는 color fill 애니메이션
+
 ## 점수 파일 계약
 
 ### L3 주관 점수: `scorecard.json`
@@ -67,12 +87,20 @@ v2에서는 아래 항목을 별도로 강하게 본다.
   "ux_score": 0,
   "flow_clarity": 0,
   "visual_quality": 0,
+  "interactive_design": 0,
   "responsiveness": 0,
   "a11y_score": 0,
   "process_adherence": 0,
   "overall_score": 0
 }
 ```
+
+`interactive_design` 점수 기준:
+- 0–40: blocking 기준 2개 이상 미충족
+- 41–59: blocking 기준 1개 미충족 또는 대부분 충족하나 polish 부족
+- 60–74: blocking 기준 전부 충족, 보너스 없음
+- 75–89: blocking 전부 + 보너스 1–2개
+- 90–100: blocking 전부 + 보너스 3개 이상, 실제 premium app 수준
 
 ### 통합 평가: `evaluation_report.json`
 

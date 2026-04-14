@@ -248,32 +248,69 @@ Artifact directory: {artifact_dir}
 
 Required work (single step, not a full cycle):
 
+PHASE 0 — Web reference research (mandatory BEFORE opening Stitch or code):
+Search the web for real-world UI references. You MUST find at least 3 specific references.
+Search queries to try:
+  - "tech blog generator UI design 2024 2025"
+  - "multi-step wizard SaaS onboarding Linear Vercel Loom design"
+  - "pipeline progress UI animation mobile app"
+  - "article editor publish flow interaction design"
+  - "{harness.replace('_', ' ')} UI design pattern"
+For each reference, extract:
+  (a) How screen-to-screen transitions work (slide, fade, morph, shared-element)
+  (b) What happens on button click (scale, ripple, color fill)
+  (c) How loading state is shown (skeleton shimmer, step-by-step reveal, pulse)
+  (d) What happens on hover (lift, glow, underline)
+  (e) How completion/success is signaled (checkmark draw, color fill, bounce)
+Record all 3 references in {artifact_dir}/designer-notes.md BEFORE proceeding.
+
 PHASE 1 — Stitch discovery (mandatory, do this before touching any code):
 1. Call Stitch MCP: explore available components, tokens, and patterns in project 11015732894783859302.
    Search for terms relevant to {harness}: try "wizard", "multi-step", "stepper", "pipeline",
-   "onboarding", "article", "editor", "publish", "flow" — use whatever fits the harness shape.
+   "onboarding", "article", "editor", "publish", "flow", "transition", "animation", "motion".
 2. Extract from Stitch: color tokens, typography scale, spacing system, and at least one
    screen-flow or interaction pattern that fits this harness.
 3. Decide on a screen flow (e.g. 3-screen wizard, tab-based stages, route-per-step).
    Default to multi-screen. Justify single-screen only with explicit Stitch evidence.
 
-PHASE 2 — Design and implement:
-4. Implement the UI patch for {harness} based on what you found in Stitch.
-   Use Stitch tokens and component patterns directly in the code.
-5. Korean-first visible copy. English only in aria/data-testid/test-hook text.
-6. Each screen must have exactly one primary action (single primary action per screen).
+PHASE 2 — Define interaction inventory (mandatory BEFORE writing any component code):
+Write the following 9-item spec into {artifact_dir}/designer-notes.md:
+  Screen transitions:   [animation type + duration, e.g. "slide-left 350ms ease-out"]
+  Button press:         [feedback, e.g. "scale 0.97 + darken 150ms"]
+  Button hover:         [e.g. "lift shadow + color shift 150ms"]
+  Loading state:        [e.g. "skeleton shimmer → step-by-step reveal"]
+  Step completion:      [e.g. "checkmark stroke animation 300ms + color fill"]
+  Error state:          [e.g. "shake 200ms + red border glow"]
+  Input focus:          [e.g. "border highlight + label float"]
+  Empty state:          [e.g. "icon + Korean copy + single CTA"]
+  Page entrance:        [e.g. "staggered fade-up 50ms per item"]
+Every item must be filled. Blank or "TBD" = critic rejects.
+
+PHASE 3 — Design and implement:
+4. Implement the UI patch for {harness} based on what you found in web research + Stitch.
+   Use Stitch tokens as CSS variables. Use a distinctive font pairing (NOT system fonts — NOT
+   Inter, Roboto, Arial, system-ui). Load from Google Fonts or CDN.
+5. Implement ALL 9 interactions defined in Phase 2. Every transition must use CSS
+   transition or animation. Instant snap between screens = critic reject.
+6. Wrap ALL animations in @media (prefers-reduced-motion: reduce). No exceptions.
+7. Every interactive element needs :hover AND :focus-visible styles. cursor:pointer alone = reject.
+8. Korean-first visible copy. English only in aria/data-testid/test-hook text.
+9. Each screen must have exactly one primary action (single primary action per screen).
    FORBIDDEN: showing all pipeline outputs (research, outline, drafts, review, final)
    simultaneously on one page. This is a single-page dump and the critic will reject it.
    Distribute outputs across screens or behind progressive disclosure.
 
-PHASE 3 — Record:
-7. Write {artifact_dir}/designer-notes.md covering:
-   - Stitch search terms used and patterns found (required — critic will check this)
-   - Screen flow defined (Screen 1 → trigger → Screen 2 → ...)
-   - Stitch tokens applied (color vars, type scale, spacing)
-   - Aesthetic direction and the ONE memorable design choice
-   - Files changed
-   - Known gaps for the critic
+PHASE 4 — Record:
+10. Update {artifact_dir}/designer-notes.md (append, don't overwrite) with:
+    - Web references (3+ with specific interaction patterns extracted)
+    - Stitch search terms used and patterns found (required — critic will check this)
+    - Interaction inventory (all 9 items filled)
+    - Screen flow defined (Screen 1 → trigger → Screen 2 → ...)
+    - Stitch tokens applied (color vars, type scale, spacing)
+    - Font pairing chosen and why
+    - Aesthetic direction and the ONE memorable design choice
+    - Files changed
+    - Known gaps for the critic
 
 Do NOT run verify/gate/browser-review in this step. That is handled by later steps.
 Do NOT mutate remaining_harnesses or write completion markers here.
@@ -313,18 +350,26 @@ Required work:
    or says nothing was searched, that is a blocking issue: the designer skipped Stitch.
 3. Evaluate the changes against these criteria (any blocking issue triggers reject):
 
-   BLOCKING — reject if any of these are true:
-   a) All pipeline outputs (research, outline, drafts, review, final) are visible on a single screen
-      simultaneously with no navigation or progressive disclosure between them.
-   b) No Stitch tokens (color vars, typography, spacing) are present in the changed code.
-   c) Stitch discovery is absent from designer-notes.md.
-   d) Korean-first copy violation: user-visible text is predominantly English.
-   e) No clear primary action per screen (multiple competing CTAs or no CTA).
+   BLOCKING — reject if ANY of these are true:
+   a) Single-page dump: all pipeline outputs (research, outline, drafts, review, final) visible
+      simultaneously with no navigation, tabs, or progressive disclosure between them.
+   b) No Stitch tokens: color vars, typography, or spacing not mapped to CSS variables from Stitch.
+   c) Stitch discovery absent from designer-notes.md (search terms + patterns not recorded).
+   d) Korean-first violation: user-visible text is predominantly English (non-aria/testid).
+   e) No primary action per screen: multiple competing CTAs or no CTA on a screen.
+   f) No screen transitions: clicking between screens causes instant snap with no animation.
+   g) System fonts used: Inter, Roboto, Arial, system-ui present in font stack.
+   h) No hover states: interactive elements have only cursor:pointer, no visual feedback.
+   i) Loading state missing: async operations show no visual progress (spinner, skeleton, pulse).
+   j) No prefers-reduced-motion: animations present but @media (prefers-reduced-motion) absent.
+   k) Hardcoded colors: hex/rgb color values directly in component styles, not via CSS variables.
+   l) Interaction inventory absent or incomplete in designer-notes.md (any of 9 items blank/TBD).
+   m) Web references absent: 0 real-world references recorded in designer-notes.md.
 
    WARN — note but do not block:
-   - Minor a11y gaps (missing aria-label, low contrast)
-   - Interaction detail missing (hover state, loading state)
-   - Typography fallback to system font
+   - Fewer than 3 web references (1-2 present but not the required 3)
+   - Minor a11y gaps (missing aria-label, low contrast on non-primary elements)
+   - Shadow system incomplete (less than 3 levels defined)
 
 4. Write your verdict to {artifact_dir}/critic-report.md using this exact format:
 
