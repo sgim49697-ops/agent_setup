@@ -468,33 +468,80 @@ function App() {
     stageButtonRefs.current[targetIndex]?.focus()
   }
 
+  function renderLoadingState(title: string, description: string) {
+    return (
+      <section className="empty-state loading-state" aria-live="polite">
+        <div className="empty-icon" aria-hidden="true">
+          진행
+        </div>
+        <div className="empty-copy">
+          <strong>{title}</strong>
+          <p>{description}</p>
+          <div className="loading-skeleton" aria-hidden="true">
+            <span className="skeleton-line skeleton-line-lg" />
+            <span className="skeleton-line skeleton-line-md" />
+            <span className="skeleton-line skeleton-line-sm" />
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  function renderEmptyState(
+    icon: string,
+    title: string,
+    description: string,
+    actionLabel: string,
+    onAction: () => void,
+    tone: 'default' | 'error' = 'default',
+  ) {
+    return (
+      <section className={`empty-state ${tone === 'error' ? 'error-state' : ''}`.trim()} role={tone === 'error' ? 'alert' : undefined}>
+        <div className="empty-icon" aria-hidden="true">
+          {icon}
+        </div>
+        <div className="empty-copy">
+          <strong>{title}</strong>
+          <p>{description}</p>
+          <button className="ghost-button empty-action" onClick={onAction} type="button">
+            {actionLabel}
+          </button>
+        </div>
+      </section>
+    )
+  }
+
   function renderSelectedStageBody() {
     if (selectedStage === 'research') {
       if (state.generation.status === 'error') {
-        return (
-          <section className="empty-state error-state" role="alert">
-            <div className="empty-icon" aria-hidden="true">
-              !
-            </div>
-            <div>
-              <strong>리서치 단계 전에 브리프를 다시 맞춰야 합니다.</strong>
-              <p>{state.generation.errorMessage}</p>
-            </div>
-          </section>
+        return renderEmptyState(
+          '오류',
+          '리서치 단계 전에 브리프를 다시 맞춰야 합니다.',
+          state.generation.errorMessage ?? '브리프를 수정한 뒤 다시 생성해 주세요.',
+          '브리프 면으로 돌아가기',
+          () => setCurrentScreen('brief'),
+          'error',
+        )
+      }
+
+      if (
+        state.generation.currentStage === 'research' &&
+        state.generation.status === 'loading' &&
+        !researchSummary
+      ) {
+        return renderLoadingState(
+          '리서치 축을 잠그는 중입니다.',
+          '검색 키워드와 핵심 논지를 먼저 묶은 뒤 다음 단계로 넘깁니다.',
         )
       }
 
       if (!researchSummary) {
-        return (
-          <section className="empty-state">
-            <div className="empty-icon" aria-hidden="true">
-              탐색
-            </div>
-            <div>
-              <strong>리서치 결과가 아직 열리지 않았습니다.</strong>
-              <p>원고를 시작하면 핵심 논지와 참고 축이 이 면에 먼저 정리됩니다.</p>
-            </div>
-          </section>
+        return renderEmptyState(
+          '탐색',
+          '리서치 결과가 아직 열리지 않았습니다.',
+          '원고를 시작하면 핵심 논지와 참고 축이 이 면에 먼저 정리됩니다.',
+          '브리프 면으로 가기',
+          () => setCurrentScreen('brief'),
         )
       }
 
@@ -528,17 +575,20 @@ function App() {
     }
 
     if (selectedStage === 'outline') {
+      if (state.generation.currentStage === 'outline' && state.generation.status === 'loading' && !outline) {
+        return renderLoadingState(
+          '개요 흐름을 정리하는 중입니다.',
+          '독자가 따라갈 순서를 먼저 잠그고 나서 섹션 초안을 엽니다.',
+        )
+      }
+
       if (!outline) {
-        return (
-          <section className="empty-state">
-            <div className="empty-icon" aria-hidden="true">
-              윤곽
-            </div>
-            <div>
-              <strong>개요 설계가 아직 준비되지 않았습니다.</strong>
-              <p>리서치가 닫히면 독자가 따라갈 순서가 이 카드에 압축됩니다.</p>
-            </div>
-          </section>
+        return renderEmptyState(
+          '윤곽',
+          '개요 설계가 아직 준비되지 않았습니다.',
+          '리서치가 닫히면 독자가 따라갈 순서가 이 카드에 압축됩니다.',
+          '리서치 결과 보기',
+          () => setSelectedStage('research'),
         )
       }
 
@@ -562,17 +612,24 @@ function App() {
     }
 
     if (selectedStage === 'drafts') {
+      if (
+        state.generation.currentStage === 'drafts' &&
+        state.generation.status === 'loading' &&
+        !sectionDrafts
+      ) {
+        return renderLoadingState(
+          '본문 초안을 이어 쓰는 중입니다.',
+          '섹션별 카드가 순서대로 열리며 초안과 핵심 문장을 채우고 있습니다.',
+        )
+      }
+
       if (!sectionDrafts) {
-        return (
-          <section className="empty-state">
-            <div className="empty-icon" aria-hidden="true">
-              본문
-            </div>
-            <div>
-              <strong>섹션 초안은 진행 화면에서 순서대로 열립니다.</strong>
-              <p>지금은 개요를 잠그는 중이거나 앞선 단계가 아직 닫히지 않았습니다.</p>
-            </div>
-          </section>
+        return renderEmptyState(
+          '본문',
+          '섹션 초안은 진행 화면에서 순서대로 열립니다.',
+          '지금은 개요를 잠그는 중이거나 앞선 단계가 아직 닫히지 않았습니다.',
+          '개요 단계 보기',
+          () => setSelectedStage('outline'),
         )
       }
 
@@ -593,17 +650,20 @@ function App() {
     }
 
     if (selectedStage === 'review') {
+      if (state.generation.currentStage === 'review' && !reviewNotes) {
+        return renderLoadingState(
+          '검토 메모를 추리는 중입니다.',
+          '과한 문장과 빠진 논점을 걸러낸 뒤 게시 준비 화면으로 넘깁니다.',
+        )
+      }
+
       if (!reviewNotes) {
-        return (
-          <section className="empty-state">
-            <div className="empty-icon" aria-hidden="true">
-              검토
-            </div>
-            <div>
-              <strong>검토 메모는 초안 뒤에 이어집니다.</strong>
-              <p>섹션 초안이 모두 채워진 뒤 빠진 논점과 문장 리듬을 여기서 걸러냅니다.</p>
-            </div>
-          </section>
+        return renderEmptyState(
+          '검토',
+          '검토 메모는 초안 뒤에 이어집니다.',
+          '섹션 초안이 모두 채워진 뒤 빠진 논점과 문장 리듬을 여기서 걸러냅니다.',
+          '초안 단계 보기',
+          () => setSelectedStage('drafts'),
         )
       }
 
@@ -623,16 +683,12 @@ function App() {
     }
 
     if (!finalPost) {
-      return (
-        <section className="empty-state">
-          <div className="empty-icon" aria-hidden="true">
-            게시
-          </div>
-          <div>
-            <strong>최종 원고는 마지막 단계에서만 열립니다.</strong>
-            <p>검토 메모까지 닫히면 게시 준비 화면으로 이동할 수 있습니다.</p>
-          </div>
-        </section>
+      return renderEmptyState(
+        '게시',
+        '최종 원고는 마지막 단계에서만 열립니다.',
+        '검토 메모까지 닫히면 게시 준비 화면으로 이동할 수 있습니다.',
+        '검토 단계 보기',
+        () => setSelectedStage('review'),
       )
     }
 
@@ -658,7 +714,7 @@ function App() {
   }
 
   return (
-    <main className="single-agent-shell">
+    <main className={`single-agent-shell screen-${currentScreen} status-${state.generation.status}`.trim()}>
       <div className="assistive-live" aria-atomic="true" aria-live="polite">
         {liveRegionMessage}
       </div>
@@ -1081,15 +1137,13 @@ function App() {
             <div className="publish-grid">
               <article className="publish-panel enter-block" style={{ animationDelay: '100ms' }}>
                 {!finalPost ? (
-                  <section className="empty-state">
-                    <div className="empty-icon" aria-hidden="true">
-                      게시
-                    </div>
-                    <div>
-                      <strong>최종 원고가 아직 준비되지 않았습니다.</strong>
-                      <p>진행 화면에서 마지막 단계를 닫으면 이 화면이 자동으로 복사 준비 면이 됩니다.</p>
-                    </div>
-                  </section>
+                  renderEmptyState(
+                    '게시',
+                    '최종 원고가 아직 준비되지 않았습니다.',
+                    '진행 화면에서 마지막 단계를 닫으면 이 화면이 자동으로 복사 준비 면이 됩니다.',
+                    '진행 면으로 돌아가기',
+                    () => setCurrentScreen('progress'),
+                  )
                 ) : (
                   <>
                     <div className="panel-head">
@@ -1145,14 +1199,14 @@ function App() {
                       ))}
                     </ul>
                   ) : (
-                    <div className="empty-state compact-empty">
-                      <div className="empty-icon" aria-hidden="true">
-                        검토
-                      </div>
-                      <div>
-                        <strong>검토 메모 대기 중</strong>
-                        <p>초안이 채워지면 게시 전 확인 항목이 여기에 모입니다.</p>
-                      </div>
+                    <div className="compact-empty">
+                      {renderEmptyState(
+                        '검토',
+                        '검토 메모 대기 중',
+                        '초안이 채워지면 게시 전 확인 항목이 여기에 모입니다.',
+                        '진행 면 보기',
+                        () => setCurrentScreen('progress'),
+                      )}
                     </div>
                   )}
                 </article>
