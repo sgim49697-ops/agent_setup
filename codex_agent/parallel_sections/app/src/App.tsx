@@ -185,6 +185,12 @@ const stageScreenMap = {
   final: 'publish',
 } as const satisfies Record<(typeof workflowStages)[number]['id'], WorkspaceScreen>
 
+const laneFallbackSections: Record<WriterLaneId, string> = {
+  writer_a: '도입 프레임',
+  writer_b: '구조 판단',
+  writer_c: '최종 체크',
+}
+
 function unique<T>(items: T[]) {
   return Array.from(new Set(items))
 }
@@ -637,6 +643,23 @@ function App() {
   const activeLanePacket = lanePackets.find((item) => item.writerId === activeLane) ?? lanePackets[0] ?? null
   const preferredReaderPanel: 'review' | 'final' = finalArticle ? 'final' : 'review'
   const activeReaderPanel = manualReaderPanel ?? preferredReaderPanel
+  const heroLaneLedger = writerLanes.map((lane) => {
+    const assignment = assignments.find((item) => item.writerId === lane.id)
+    const packet = lanePackets.find((item) => item.writerId === lane.id)
+    const sections = assignment?.sectionIds
+      .map((sectionId) => outline.find((item) => item.id === sectionId)?.title ?? sectionId)
+      .slice(0, 2) ?? []
+
+    return {
+      id: lane.id,
+      label: lane.label,
+      status: state.generation.unitStatuses[lane.id],
+      focus: assignment?.laneSummary ?? lane.focus,
+      detail: packet?.handoffNote ?? lane.mergeDuty,
+      sections,
+      fallbackSection: laneFallbackSections[lane.id],
+    }
+  })
 
   const progressValue =
     (state.generation.completedStages.length +
@@ -676,6 +699,69 @@ function App() {
         : mergeReady
           ? '리뷰 대기'
           : '도킹 진행 중'
+  const screenSignals =
+    screen === 'setup'
+      ? [
+          {
+            label: '브리프 상태',
+            value: brief ? '잠금 완료' : '입력 조율 중',
+            note: brief ? '코디네이터가 공통 프레임을 확보했습니다.' : '주제와 독자 조건을 먼저 정리합니다.',
+            tone: brief ? 'accent' : 'muted',
+          },
+          {
+            label: '레인 배치',
+            value: brief ? `${assignments.length}개 레인 준비` : '생성 전 시뮬레이션',
+            note: brief ? '도입 / 구조 / 마무리 레인이 각각 구간을 맡습니다.' : '현재 입력으로 예상 레인 경계를 먼저 보여 줍니다.',
+            tone: 'accent',
+          },
+          {
+            label: '복구 경로',
+            value: '대표 프리셋',
+            note: '첫 화면에서는 하나의 복구 CTA만 전면에 둡니다.',
+            tone: 'warm',
+          },
+        ]
+      : screen === 'draft'
+        ? [
+            {
+              label: '도착한 레인',
+              value: `${completedLaneCount}/3`,
+              note: completedLaneCount ? '도착한 패킷만 밝게 띄우고 나머지는 잠깐 숨을 고릅니다.' : '아직 패킷이 도착하지 않았습니다.',
+              tone: completedLaneCount === writerLanes.length ? 'accent' : 'muted',
+            },
+            {
+              label: '집중 레인',
+              value: activeLaneAssignment ? laneStatusLabel(activeLaneAssignment.writerId) : '레인 선택 대기',
+              note: activeLanePacket ? '선택된 레인의 preview와 handoff만 깊게 읽습니다.' : '상세는 도착한 레인 하나만 크게 펼칩니다.',
+              tone: 'accent',
+            },
+            {
+              label: '도킹 상태',
+              value: mergeDockLabel,
+              note: mergeReady ? '카피 데스크가 리뷰로 닫을 수 있는 상태입니다.' : '세 레인이 같은 톤으로 수렴할 때까지 중앙 허브가 압력을 유지합니다.',
+              tone: mergeReady ? 'warm' : 'muted',
+            },
+          ]
+        : [
+            {
+              label: '리더 패널',
+              value: activeReaderPanel === 'review' ? '리뷰 메모' : '최종 글',
+              note: '두 패널은 같은 위치를 공유해 첫 인상을 분산시키지 않습니다.',
+              tone: 'accent',
+            },
+            {
+              label: '발행 상태',
+              value: statusLabel(state.generation.status),
+              note: finalArticle ? '읽기용 최종 글과 전달용 마크다운을 분리해 유지합니다.' : '머지 전에는 reader surface를 열지 않습니다.',
+              tone: finalArticle ? 'warm' : 'muted',
+            },
+            {
+              label: '복구 경로',
+              value: '작성 보드 복귀',
+              note: '발행 직전에도 draft 보드로 되돌아가 상태를 다시 확인할 수 있습니다.',
+              tone: 'muted',
+            },
+          ]
   const stageCards = workflowStages.map((stage, index) => {
     const visualState = stageVisualState(stage.id, state.generation)
     return (
@@ -746,8 +832,32 @@ function App() {
           </p>
           <div className="hero-chips">
             <span className="meta-chip">브리프 잠금</span>
-            <span className="meta-chip">압축 도킹 레일</span>
-            <span className="meta-chip">발행용 리더</span>
+            <span className="meta-chip">뉴스와이어 도킹</span>
+            <span className="meta-chip">리더 1면</span>
+          </div>
+          <div className="hero-ledger" aria-label="병렬 레인 개요">
+            {heroLaneLedger.map((lane) => (
+              <article key={lane.id} className={`hero-ledger-card is-${lane.status}`}>
+                <div className="hero-ledger-top">
+                  <div className="lane-topline">
+                    <span className={`lane-orb is-${lane.status}`} aria-hidden="true" />
+                    <span className={`lane-pill lane-${lane.status}`}>{unitStatusLabel(lane.status)}</span>
+                  </div>
+                  <span className="lane-section-id">{lane.label}</span>
+                </div>
+                <strong>{lane.focus}</strong>
+                <p>{lane.detail}</p>
+                {lane.sections.length ? (
+                  <div className="chip-row">
+                    {lane.sections.map((section) => (
+                      <span key={section} className="meta-chip">
+                        {section}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+              </article>
+            ))}
           </div>
         </div>
 
@@ -831,6 +941,15 @@ function App() {
             </div>
             <p>{screenGuide.recovery}</p>
           </div>
+          <div className="signal-strip" data-stagger>
+            {screenSignals.map((signal) => (
+              <article key={signal.label} className={`signal-card is-${signal.tone}`}>
+                <span>{signal.label}</span>
+                <strong>{signal.value}</strong>
+                <p>{signal.note}</p>
+              </article>
+            ))}
+          </div>
 
           {screen === 'setup' ? (
             <div className="screen-grid screen-grid-setup">
@@ -907,10 +1026,32 @@ function App() {
               <div className="stack-column">
                 <article className="panel-sheet" data-stagger>
                   <div className="panel-head">
-                    <p className="section-kicker">편집 메모</p>
-                    <h3>현재 브리프는 이런 설정으로 발행됩니다</h3>
+                    <p className="section-kicker">예상 레인 배정</p>
+                    <h3>브리프를 잠그기 전에도 세 레인의 소유 경계를 먼저 보여 줍니다</h3>
                   </div>
-                  <div className="summary-grid">
+                  <div className="lane-ledger-list">
+                    {heroLaneLedger.map((lane) => (
+                      <article key={lane.id} className={`lane-ledger-card is-${lane.status}`}>
+                        <div className="hero-ledger-top">
+                          <div className="lane-topline">
+                            <span className={`lane-orb is-${lane.status}`} aria-hidden="true" />
+                            <span className={`lane-pill lane-${lane.status}`}>{unitStatusLabel(lane.status)}</span>
+                          </div>
+                          <span className="lane-section-id">{lane.label}</span>
+                        </div>
+                        <strong>{lane.focus}</strong>
+                        <p className="lane-ledger-copy">{lane.detail}</p>
+                        <div className="chip-row">
+                          {(lane.sections.length ? lane.sections : [lane.fallbackSection]).map((section) => (
+                            <span key={section} className="meta-chip">
+                              {section}
+                            </span>
+                          ))}
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                  <div className="summary-grid compact-summary-grid">
                     <div className="summary-card">
                       <span>독자층</span>
                       <strong>{audienceOptions.find((item) => item.value === state.inputs.audience)?.label}</strong>
@@ -924,11 +1065,6 @@ function App() {
                       <strong>{lengthOptions.find((item) => item.value === state.inputs.length)?.label}</strong>
                     </div>
                   </div>
-                  <ul className="compact-list">
-                    <li>1단계는 입력과 방향 결정만 보여 줍니다.</li>
-                    <li>2단계에서 세 레인의 소유 범위를 비교합니다.</li>
-                    <li>3단계에서 리뷰 메모와 최종 글을 한 자리에서 교대로 확인합니다.</li>
-                  </ul>
                 </article>
 
                 <article className="panel-sheet" data-stagger>
