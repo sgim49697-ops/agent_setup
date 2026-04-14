@@ -528,6 +528,21 @@ function App() {
     )
   }
 
+  function renderScreenSequencer(activeScreen: ScreenId) {
+    return (
+      <div className="screen-sequencer" aria-hidden="true">
+        {screenMeta.map((screen, index) => (
+          <span
+            className={`sequencer-dot ${screen.id === activeScreen ? 'is-active' : ''}`.trim()}
+            key={screen.id}
+          >
+            {String(index + 1).padStart(2, '0')}
+          </span>
+        ))}
+      </div>
+    )
+  }
+
   function renderSelectedStageBody() {
     if (selectedStage === 'research') {
       if (state.generation.status === 'error') {
@@ -747,10 +762,10 @@ function App() {
       <header className="topbar surface-card">
         <div className="topbar-copy">
           <p className="kicker">단일 작성 편집실</p>
-          <h1>한 명의 필자가 끝까지 넘기는 원고실</h1>
+          <h1>한 명의 필자가 세 장의 교정지로 넘기는 원고실</h1>
           <p>
-            브리프, 편집 진행, 출고 점검을 세 개의 화면으로 나누고 현재 단계만 전면에 올린
-            집중형 기술 블로그 생성기입니다.
+            브리프를 묶고, 진행 화면에서 한 단계씩 교정하고, 마지막 장에서만 게시 직전 원고를
+            엽니다. 첫 화면은 입력만, 둘째 화면은 현재 단계만, 셋째 화면은 출고 판단만 보여 줍니다.
           </p>
         </div>
         <div aria-label="현재 작업 상태" className="topbar-status-grid">
@@ -815,6 +830,9 @@ function App() {
                 <span className="docket-label">지금 준비된 조합</span>
                 <strong>{topicSnapshot}</strong>
                 <p>{briefChips.join(' · ') || '독자 · 톤 · 길이를 정하는 중입니다.'}</p>
+                <span className="folio-stamp">01 / 03</span>
+                {renderScreenSequencer('brief')}
+                <p className="docket-note">다음 장에서는 리서치 축과 개요가 한 단계씩 잠깁니다.</p>
               </div>
             </div>
 
@@ -999,13 +1017,16 @@ function App() {
                   </details>
                 </article>
 
-                <article className="support-panel empty-state">
-                  <div className="empty-icon" aria-hidden="true">
-                    시작
-                  </div>
-                  <div>
-                    <strong>아직 생성 전입니다.</strong>
-                    <p>원고를 시작하면 다음 화면에서 다섯 단계가 순서대로 드러납니다.</p>
+                <article className="support-panel recovery-panel">
+                  <p className="kicker">복구 메모</p>
+                  <h3>항상 첫 장으로 되돌아와 다시 맞출 수 있습니다</h3>
+                  <p className="panel-description">
+                    생성이 멈추면 오류는 이 장에만 남기고 나머지 화면은 다시 잠급니다. 주제나 톤을
+                    손본 뒤 같은 자리에서 재시작하면 됩니다.
+                  </p>
+                  <div className="recovery-pill-row">
+                    <span className="recovery-pill">안전 지점: 브리프</span>
+                    <span className="recovery-pill">복구 방식: 입력 수정 후 재생성</span>
                   </div>
                 </article>
               </aside>
@@ -1032,6 +1053,9 @@ function App() {
                     ? '게시 화면으로 이동해 제목, 섹션 구조, 복사 준비 상태만 먼저 확인합니다.'
                     : '왼쪽 단계 목록에서 현재 진행 중인 카드가 자동으로 선택됩니다.'}
                 </p>
+                <span className="folio-stamp">02 / 03</span>
+                {renderScreenSequencer('progress')}
+                <p className="docket-note">GitHub Actions처럼 진행 흔적은 남기되, 읽기는 한 단계씩만 허용합니다.</p>
               </div>
             </div>
 
@@ -1178,6 +1202,9 @@ function App() {
                 <span className="docket-label">게시 상태</span>
                 <strong>{finalPost ? '복사 준비 완료' : '잠금 상태'}</strong>
                 <p>{state.copyFeedback || '복사 버튼은 최종 원고가 열릴 때만 활성화됩니다.'}</p>
+                <span className="folio-stamp">03 / 03</span>
+                {renderScreenSequencer('publish')}
+                <p className="docket-note">전문은 서랍 안에 남기고, 첫 판독은 제목과 구조만으로 끝냅니다.</p>
               </div>
             </div>
 
