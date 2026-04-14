@@ -156,6 +156,27 @@ const screenTitles: Record<
   },
 }
 
+const screenGuides: Record<
+  WorkspaceScreen,
+  { label: string; note: string; recovery: string }
+> = {
+  setup: {
+    label: '화면 01 · 브리프 잠금',
+    note: '입력값은 유지한 채 다음 화면으로 넘기고, 첫 화면에는 생성 전 판단만 남깁니다.',
+    recovery: '막히면 대표 프리셋을 불러와 바로 재시작할 수 있습니다.',
+  },
+  draft: {
+    label: '화면 02 · 병렬 레인',
+    note: '세 레인은 동시에 움직이되, 사용자는 한 번에 한 레인만 깊게 읽습니다.',
+    recovery: '비어 있는 레인은 skeleton으로 유지하고, 이전 브리프로 즉시 돌아갈 수 있습니다.',
+  },
+  publish: {
+    label: '화면 03 · 머지/발행',
+    note: '리뷰 메모와 최종 글은 같은 자리를 번갈아 쓰고, 내보내기는 마지막에만 강조합니다.',
+    recovery: '머지가 덜 되었으면 작성 보드로 돌아가 상태를 다시 확인할 수 있습니다.',
+  },
+}
+
 const stageScreenMap = {
   research: 'setup',
   outline: 'setup',
@@ -644,6 +665,17 @@ function App() {
         : '최종 글을 검토하고 마크다운을 복사해 발행 단계로 넘기세요.'
 
   const screen = screenMotion.current
+  const screenGuide = screenGuides[screen]
+  const mergeReady = completedLaneCount === writerLanes.length
+  const mergeDockLabel = !brief
+    ? '도킹 대기'
+    : !completedLaneCount
+      ? '레인 준비 중'
+      : mergeReady && mergeReport
+        ? '도킹 완료'
+        : mergeReady
+          ? '리뷰 대기'
+          : '도킹 진행 중'
   const stageCards = workflowStages.map((stage, index) => {
     const visualState = stageVisualState(stage.id, state.generation)
     return (
@@ -707,14 +739,14 @@ function App() {
       <section className="workspace-hero">
         <div className="hero-copy-panel">
           <p className="hero-kicker">병렬 섹션</p>
-          <h1>세 레인이 따로 쓰고, 카피 데스크가 마지막 문장을 합칩니다</h1>
+          <h1>세 원고실이 동시에 쓰고, 중앙 데스크가 한 편의 글로 조율합니다</h1>
           <p className="hero-lead">
-            입력, 병렬 작성, 머지와 발행만 순서대로 남기고 긴 근거와 전체 산출물은 뒤 단계로
-            밀었습니다.
+            브리프 잠금, 병렬 초안, 머지 발행만 전면에 두고 긴 근거와 평가 레이어는 뒤로 밀어
+            조용한 편집실처럼 읽히게 정리했습니다.
           </p>
           <div className="hero-chips">
             <span className="meta-chip">브리프 잠금</span>
-            <span className="meta-chip">합류 도킹 레일</span>
+            <span className="meta-chip">압축 도킹 레일</span>
             <span className="meta-chip">발행용 리더</span>
           </div>
         </div>
@@ -759,7 +791,7 @@ function App() {
 
       <section
         key={`${screen}-${screenMotion.revision}`}
-        className={`screen-stage is-${screenMotion.direction}`}
+        className={`screen-stage is-${screenMotion.direction} screen-${screen}`}
       >
         <div className="screen-shell">
           <header className="screen-head">
@@ -791,6 +823,14 @@ function App() {
               ) : null}
             </div>
           </header>
+
+          <div className="screen-ribbon" data-stagger>
+            <div>
+              <span className="info-badge">{screenGuide.label}</span>
+              <p>{screenGuide.note}</p>
+            </div>
+            <p>{screenGuide.recovery}</p>
+          </div>
 
           {screen === 'setup' ? (
             <div className="screen-grid screen-grid-setup">
@@ -970,6 +1010,14 @@ function App() {
                       )
                     })}
                     <span className={`merge-hub is-${mergeReport ? 'complete' : state.generation.status === 'loading' ? 'loading' : 'pending'}`} />
+                  </div>
+                  <div className={`merge-dock-card is-${mergeReady ? 'ready' : 'pending'}`}>
+                    <div className="merge-dock-topline">
+                      <span className="status-chip status-populated">{mergeDockLabel}</span>
+                      <span className="status-progress">{completedLaneCount}/3 레인 도착</span>
+                    </div>
+                    <strong>{mergeReady ? '카피 데스크가 바로 리뷰를 닫을 수 있는 상태입니다.' : '모든 레인이 같은 톤으로 도킹될 때까지 흐름을 유지합니다.'}</strong>
+                    <p>{nextAction}</p>
                   </div>
                 </article>
 
