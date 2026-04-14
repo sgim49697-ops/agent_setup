@@ -70,6 +70,7 @@ For an active harness, the orchestrator runs focused steps in order:
    - persona: `.codex/prompts/verifier.md`
    - final bounded proof before Python gates
    - uses `benchmark/real_eval_rubric.md` as a directional UI/UX quality bar for bounded verification notes
+   - writes browser-review evidence using `benchmark/templates/browser_review_report.template.md`
 5. **harness gate**
    - `scripts/master_loop_quality_gate.py`
    - validator + trace + ui language + artifact freshness + regression rescan

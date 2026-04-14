@@ -48,6 +48,8 @@ class MasterLoopOrchestratorTests(unittest.TestCase):
 
         verify_prompt = orch.build_verify_prompt('single_agent', 1, Path('/tmp/artifact'))
         self.assertIn('benchmark/real_eval_rubric.md', verify_prompt)
+        self.assertIn('benchmark/templates/browser_review_report.template.md', verify_prompt)
+        self.assertIn('Desktop and mobile checks are both mandatory', verify_prompt)
         self.assertIn('Do NOT claim a full `real_eval pass`', verify_prompt)
 
 

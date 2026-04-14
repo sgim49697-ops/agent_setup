@@ -478,30 +478,30 @@ Critic report:
 
 Required work:
 1. Use scripts/harness_preview.py ensure {harness} to get the stable preview URL.
-2. Read `benchmark/real_eval_rubric.md` and run a minimal browser-review pass plus a Korean-first spot check.
+2. Read `benchmark/real_eval_rubric.md` and `benchmark/templates/browser_review_report.template.md`, then run a minimal browser-review pass plus a Korean-first spot check.
 3. In your notes, explicitly assess the current build against the rubric's UI/UX-heavy categories:
    - accessibility_responsive
    - design_interaction_quality
    - user_flow_completeness
    - recoverability
    Mark each as pass | warn | fail based on evidence from this bounded verification.
-4. Write {artifact_dir}/verifier-report.md with:
+4. Write {artifact_dir}/verifier-report.md by filling the structure from
+   `benchmark/templates/browser_review_report.template.md`.
+   The report must include:
+   - stable preview URL
+   - desktop and mobile viewport outcomes
+   - screenshot paths or explicit `none`
+   - first-fold hierarchy verdict
+   - hover/focus feedback verdict
+   - transition/feedback verdict
+   - loading/recovery feedback verdict
+   - Korean-first visible copy verdict
+   - bounded real-eval rubric verdicts
+   - final handoff verdict + summary
 
-   # Verifier Report
-   verdict: pass | fail
-   evidence:
-     - preview_url: ...
-     - screenshots or notes
-   real_eval_rubric:
-     - accessibility_responsive: pass | warn | fail
-     - design_interaction_quality: pass | warn | fail
-     - user_flow_completeness: pass | warn | fail
-     - recoverability: pass | warn | fail
-   open_issues:
-     - (empty if pass)
-
-5. Do NOT claim a full `real_eval pass` unless live LLM, repeat-run stability, and recoverability were actually proven.
-6. Do NOT remove the harness from remaining_harnesses here - the python gate + complete step handle that.
+5. Desktop and mobile checks are both mandatory unless the preview is fundamentally broken.
+6. Do NOT claim a full `real_eval pass` unless live LLM, repeat-run stability, and recoverability were actually proven.
+7. Do NOT remove the harness from remaining_harnesses here - the python gate + complete step handle that.
 
 Finish as soon as verifier-report.md is written.
 """
