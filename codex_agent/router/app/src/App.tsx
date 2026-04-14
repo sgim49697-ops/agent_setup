@@ -37,6 +37,13 @@ type AppState = {
   copyFeedback: string
 }
 
+type ScreenMeta = {
+  eyebrow: string
+  title: string
+  summary: string
+  cue: string
+}
+
 type Action =
   | {
       type: 'update-input'
@@ -589,6 +596,40 @@ function App() {
         : screen === 'progress'
           ? 74
           : 100
+  const routeConfidence = routingDecision ? `${(routingDecision.confidence * 100).toFixed(0)}%` : '대기'
+  const fallbackState =
+    routingDecision?.fallbackReason
+      ? '폴백 경로 보존'
+      : routingDecision
+        ? '직행 가능'
+        : '대기 경로 준비'
+  const screenMeta: Record<WizardScreen, ScreenMeta> = {
+    brief: {
+      eyebrow: '화면 1',
+      title: '브리프를 짧고 선명하게 잠급니다',
+      summary: '입력 신호를 정리하면 라우터가 가장 설득력 있는 전문가 경로를 계산합니다.',
+      cue: '이 화면의 유일한 주요 행동은 경로 추천 받기입니다.',
+    },
+    route: {
+      eyebrow: '화면 2',
+      title: '추천 경로를 읽고 한 번 더 확인합니다',
+      summary: '선택 경로, 대안 경로, 폴백 이유를 같은 shell 안에서 비교하고 확정합니다.',
+      cue: '다음 단계에서는 이 경로로 진행 버튼만 전면에 둡니다.',
+    },
+    progress: {
+      eyebrow: '화면 3',
+      title: '활성 경로만 전면에 두고 생성합니다',
+      summary: '선택된 전문가가 리서치부터 검토까지 이끌고, 산출물은 한 작업면씩만 열립니다.',
+      cue: '진행 화면의 주요 행동은 결과 검토로 넘어가는 것 하나뿐입니다.',
+    },
+    final: {
+      eyebrow: '화면 4',
+      title: '출고 직전 확인과 복사에 집중합니다',
+      summary: '최종 포스트를 읽고 복구 경로를 확인한 뒤 바로 복사할 수 있는 편집 마감 화면입니다.',
+      cue: '이 화면의 유일한 주요 행동은 마크다운 복사입니다.',
+    },
+  }
+  const activeScreenMeta = screenMeta[screen]
 
   const primaryAction =
     screen === 'brief'
@@ -651,6 +692,22 @@ function App() {
     process_adherence: 9.1,
     overall_score: 8.6,
   }
+  const artifactSummaryRows = [
+    { label: '검증 캡처', value: '데스크톱 · 모바일 확인용 2종' },
+    { label: '안정 미리보기', value: `${artifactPreview.final_urls.length}개 준비` },
+    { label: '작업 메모', value: artifactPreview.notes.join(' · ') },
+    { label: '출고 산출물', value: `${artifactPreview.deliverables.length}개 항목 정리` },
+  ]
+  const scoreSummaryRows = [
+    { label: '과업 성공', value: `${scorePreview.task_success.toFixed(1)} / 10` },
+    { label: 'UX 점수', value: `${scorePreview.ux_score.toFixed(1)} / 10` },
+    { label: '흐름 명확성', value: `${scorePreview.flow_clarity.toFixed(1)} / 10` },
+    { label: '시각 품질', value: `${scorePreview.visual_quality.toFixed(1)} / 10` },
+    { label: '반응형 대응', value: `${scorePreview.responsiveness.toFixed(1)} / 10` },
+    { label: '접근성', value: `${scorePreview.a11y_score.toFixed(1)} / 10` },
+    { label: '프로세스 준수', value: `${scorePreview.process_adherence.toFixed(1)} / 10` },
+    { label: '종합', value: `${scorePreview.overall_score.toFixed(1)} / 10` },
+  ]
 
   function renderSurfacePanel() {
     if (activeSurface === 'research') {
@@ -848,6 +905,40 @@ function App() {
 
           <div className="progress-meter" aria-hidden="true">
             <span style={{ width: `${screenProgressPercent}%` }} />
+          </div>
+
+          <div key={screen} className={`screen-spotlight screen-spotlight-${screen}`}>
+            <div className="screen-spotlight-copy">
+              <p className="screen-spotlight-kicker">{activeScreenMeta.eyebrow}</p>
+              <strong>{activeScreenMeta.title}</strong>
+              <p>{activeScreenMeta.summary}</p>
+              <small>{activeScreenMeta.cue}</small>
+            </div>
+
+            <div className="screen-spotlight-instrument">
+              <div className="screen-spotlight-meter" aria-hidden="true">
+                <span style={{ width: `${screenProgressPercent}%` }} />
+              </div>
+
+              <div className="screen-spotlight-grid">
+                <article className="screen-spotlight-stat">
+                  <span>선택 경로</span>
+                  <strong>{chosenSpecialist ? chosenSpecialist.label : '진단 대기'}</strong>
+                </article>
+                <article className="screen-spotlight-stat">
+                  <span>신뢰도</span>
+                  <strong>{routeConfidence}</strong>
+                </article>
+                <article className="screen-spotlight-stat">
+                  <span>현재 단계</span>
+                  <strong>{statusLabel(state.generation.status)}</strong>
+                </article>
+                <article className="screen-spotlight-stat">
+                  <span>복구 상태</span>
+                  <strong>{fallbackState}</strong>
+                </article>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1343,12 +1434,26 @@ function App() {
 
           <article className="surface-card">
             <h3>아티팩트 미리보기</h3>
-            <pre className="contract-preview">{JSON.stringify(artifactPreview, null, 2)}</pre>
+            <ul className="summary-list">
+              {artifactSummaryRows.map((row) => (
+                <li key={row.label}>
+                  <span>{row.label}</span>
+                  <strong>{row.value}</strong>
+                </li>
+              ))}
+            </ul>
           </article>
 
           <article className="surface-card">
             <h3>스코어카드 미리보기</h3>
-            <pre className="contract-preview">{JSON.stringify(scorePreview, null, 2)}</pre>
+            <ul className="summary-list">
+              {scoreSummaryRows.map((row) => (
+                <li key={row.label}>
+                  <span>{row.label}</span>
+                  <strong>{row.value}</strong>
+                </li>
+              ))}
+            </ul>
           </article>
         </div>
       </details>
