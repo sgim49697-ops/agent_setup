@@ -1,4 +1,4 @@
-// App.tsx - focused wizard workspace for the single-agent benchmark harness
+// App.tsx - single_agent harness focused 3-screen wizard workspace
 
 import { useReducer, useRef, useState, type KeyboardEvent } from 'react'
 import './App.css'
@@ -15,6 +15,8 @@ import type {
 } from './contracts'
 import { generatePipelineOutputs } from './generator'
 import { deliverables, topicPresets, workflowStages } from './starterData'
+
+type ScreenId = 'brief' | 'progress' | 'publish'
 
 type AppState = {
   inputs: BlogGeneratorInputs
@@ -57,7 +59,7 @@ const initialGeneration: GenerationState = {
   currentStage: null,
   completedStages: [],
   outputs: {},
-  statusMessage: '브리프를 정리한 뒤 포스트 생성을 누르면 단일 작성 흐름이 순서대로 진행됩니다.',
+  statusMessage: '브리프를 정리한 뒤 포스트 생성을 누르면 리서치에서 게시 준비까지 한 화면씩 이어집니다.',
   errorMessage: null,
 }
 
@@ -70,7 +72,7 @@ const audienceOptions: { value: Audience; label: string }[] = [
 const toneOptions: { value: Tone; label: string }[] = [
   { value: 'clear', label: '명료한 설명' },
   { value: 'pragmatic', label: '실무 중심' },
-  { value: 'opinionated', label: '선명한 관점' },
+  { value: 'opinionated', label: '관점을 분명히' },
 ]
 
 const lengthOptions: { value: Length; label: string }[] = [
@@ -80,20 +82,18 @@ const lengthOptions: { value: Length; label: string }[] = [
 ]
 
 const stageMessages: Record<GenerationStageId, string> = {
-  research: '리서치를 정리해 글의 논지와 참고 축을 먼저 잠급니다.',
-  outline: '개요를 잡아 독자가 따라갈 순서를 명확하게 고정합니다.',
-  drafts: '섹션 초안을 작성해 본문 밀도와 전환 흐름을 맞춥니다.',
-  review: '검토 메모로 빠진 논점과 과장을 한 번 더 걷어냅니다.',
-  final: '최종 마크다운을 준비해 내보내기 직전 상태로 정리합니다.',
+  research: '리서치 축을 먼저 잠가 핵심 논지와 참고 방향을 정리합니다.',
+  outline: '독자가 따라갈 순서를 끊기지 않게 개요를 고정합니다.',
+  drafts: '섹션 초안을 이어 붙이며 문장 밀도와 장면 전환을 맞춥니다.',
+  review: '검토 메모로 빠진 논점과 과한 문장을 걸러냅니다.',
+  final: '최종 원고와 복사 준비 상태를 게시 전용 화면으로 넘길 준비를 합니다.',
 }
 
-const stageVisibleHooks: Record<GenerationStageId, string> = {
-  research: '근거 정리',
-  outline: '구조 확정',
-  drafts: '본문 작성',
-  review: '검토 정리',
-  final: '복사 준비',
-}
+const screenMeta: Array<{ id: ScreenId; label: string; deck: string }> = [
+  { id: 'brief', label: '브리프', deck: '입력 정리' },
+  { id: 'progress', label: '진행', deck: '단계 집중' },
+  { id: 'publish', label: '게시', deck: '복사 준비' },
+]
 
 function unique<T>(items: T[]) {
   return Array.from(new Set(items))
@@ -112,7 +112,7 @@ function reducer(state: AppState, action: Action): AppState {
           state.generation.status === 'error'
             ? {
                 ...initialGeneration,
-                statusMessage: '브리프를 수정했습니다. 다시 생성하면 작성 흐름이 처음부터 재시작됩니다.',
+                statusMessage: '브리프를 수정했습니다. 다시 생성하면 리서치 단계부터 같은 흐름을 재시작합니다.',
               }
             : state.generation,
       }
@@ -122,7 +122,7 @@ function reducer(state: AppState, action: Action): AppState {
         inputs: action.payload,
         generation: {
           ...state.generation,
-          statusMessage: '프리셋을 불러왔습니다. 이제 단일 작성 흐름을 바로 시작할 수 있습니다.',
+          statusMessage: '프리셋을 불러왔습니다. 브리프를 조금만 다듬고 바로 생성할 수 있습니다.',
           errorMessage: null,
         },
         copyFeedback: '',
@@ -181,7 +181,7 @@ function reducer(state: AppState, action: Action): AppState {
           currentStage: 'research',
           completedStages: [],
           outputs: {},
-          statusMessage: '작성 흐름이 시작 단계에서 멈췄습니다. 브리프를 조정한 뒤 다시 시도하세요.',
+          statusMessage: '시작 지점에서 멈췄습니다. 브리프를 다듬고 다시 시도하세요.',
           errorMessage: action.message,
         },
         copyFeedback: '',
@@ -197,17 +197,22 @@ function sleep(ms: number) {
 
 function statusLabel(status: GenerationStatus) {
   const labels: Record<GenerationStatus, string> = {
-    initial: '대기 중',
-    loading: '진행 중',
-    populated: '생성 완료',
+    initial: '대기',
+    loading: '진행',
+    populated: '작성 완료',
     'review-complete': '검토 완료',
-    'export-ready': '내보내기 준비',
-    error: '오류',
+    'export-ready': '복사 준비',
+    error: '복구 필요',
   }
+
   return labels[status]
 }
 
-function stageTone(stage: WorkflowStage, generation: GenerationState) {
+function stageVisualState(stage: WorkflowStage, generation: GenerationState) {
+  if (generation.status === 'error' && stage.id === 'research') {
+    return 'error'
+  }
+
   if (
     generation.currentStage === stage.id &&
     generation.status !== 'initial' &&
@@ -221,32 +226,27 @@ function stageTone(stage: WorkflowStage, generation: GenerationState) {
     return 'complete'
   }
 
-  return ''
+  return 'upcoming'
 }
 
-function closureSignal(generation: GenerationState, hasFinalPost: boolean) {
-  if (generation.status === 'error') {
-    return '브리프를 다듬은 뒤 같은 흐름을 다시 시작해야 합니다.'
+function stageProgressCopy(generation: GenerationState, stage: WorkflowStage) {
+  if (generation.status === 'initial') {
+    return '아직 열리지 않았습니다.'
   }
 
-  if (hasFinalPost || generation.status === 'export-ready') {
-    return '마감 직전 확인이 끝났고, 복사 후 게시 흐름으로 넘길 수 있습니다.'
+  if (generation.status === 'error' && stage.id === 'research') {
+    return '브리프를 다시 맞추면 이 단계부터 복구됩니다.'
   }
 
-  switch (generation.currentStage) {
-    case 'review':
-      return '검토 메모만 닫히면 최종 원고와 내보내기 준비가 이어집니다.'
-    case 'drafts':
-      return '본문 밀도를 맞춘 뒤 검토 단계로 넘어갑니다.'
-    case 'outline':
-      return '개요를 잠그면 바로 섹션 초안으로 이어집니다.'
-    case 'research':
-      return '핵심 근거를 정리한 뒤 개요 설계로 자연스럽게 넘어갑니다.'
-    case 'final':
-      return '최종 원고를 읽기 좋은 면으로 정리하는 중입니다.'
-    default:
-      return '브리프를 정리하면 첫 단계부터 차례대로 닫힙니다.'
+  if (generation.currentStage === stage.id && generation.status === 'loading') {
+    return '지금 이 단계가 실제로 움직이고 있습니다.'
   }
+
+  if (generation.completedStages.includes(stage.id)) {
+    return '완료된 결과를 다시 읽을 수 있습니다.'
+  }
+
+  return '앞선 단계가 닫히면 순서대로 열립니다.'
 }
 
 function App() {
@@ -255,46 +255,39 @@ function App() {
     generation: initialGeneration,
     copyFeedback: '',
   })
+  const [currentScreen, setCurrentScreen] = useState<ScreenId>('brief')
   const [selectedStage, setSelectedStage] = useState<GenerationStageId>('research')
   const runRef = useRef(0)
   const stageButtonRefs = useRef<Array<HTMLButtonElement | null>>([])
 
   const currentStage =
     workflowStages.find((stage) => stage.id === state.generation.currentStage) ?? workflowStages[0]
+  const currentStageIndex = workflowStages.findIndex((stage) => stage.id === currentStage.id)
   const selectedStageMeta =
     workflowStages.find((stage) => stage.id === selectedStage) ?? workflowStages[0]
-  const currentStageIndex = workflowStages.findIndex((stage) => stage.id === currentStage.id)
   const selectedStageIndex = workflowStages.findIndex((stage) => stage.id === selectedStage)
-  const nextStage =
-    state.generation.status === 'export-ready' || currentStage.id === 'final'
-      ? null
-      : workflowStages[Math.min(currentStageIndex + (state.generation.status === 'loading' ? 0 : 1), workflowStages.length - 1)]
-  const progress =
+  const progressPercent =
     state.generation.status === 'initial'
       ? 0
       : state.generation.status === 'export-ready'
         ? 100
-        : Math.round((state.generation.completedStages.length / workflowStages.length) * 100)
-
-  const researchSummary = state.generation.outputs.research_summary
-  const outline = state.generation.outputs.outline
-  const sectionDrafts = state.generation.outputs.section_drafts
-  const reviewNotes = state.generation.outputs.review_notes
-  const finalPost = state.generation.outputs.final_post
+        : Math.max(12, Math.round((state.generation.completedStages.length / workflowStages.length) * 100))
   const audienceLabel =
     audienceOptions.find((option) => option.value === state.inputs.audience)?.label ?? ''
   const toneLabel = toneOptions.find((option) => option.value === state.inputs.tone)?.label ?? ''
   const lengthLabel =
     lengthOptions.find((option) => option.value === state.inputs.length)?.label ?? ''
-  const closureMessage = closureSignal(state.generation, Boolean(finalPost))
-  const currentStageNumber = state.generation.status === 'initial' ? 0 : currentStageIndex + 1
-  const briefSummary = [audienceLabel, toneLabel, lengthLabel].filter(Boolean).join(' · ')
-  const briefTags = [audienceLabel || '독자 미정', toneLabel || '톤 미정', lengthLabel || '길이 미정']
-  const topicPreview = state.inputs.topic.trim() || '주제를 입력해 주세요'
+  const briefChips = [audienceLabel, toneLabel, lengthLabel].filter(Boolean)
+  const topicValue = state.inputs.topic.trim() || '주제를 적어 주세요'
   const topicSnapshot =
-    topicPreview.length > 58 ? `${topicPreview.slice(0, 58).trimEnd()}…` : topicPreview
+    topicValue.length > 62 ? `${topicValue.slice(0, 62).trimEnd()}…` : topicValue
+  const researchSummary = state.generation.outputs.research_summary
+  const outline = state.generation.outputs.outline
+  const sectionDrafts = state.generation.outputs.section_drafts
+  const reviewNotes = state.generation.outputs.review_notes
+  const finalPost = state.generation.outputs.final_post
   const finalTitle =
-    finalPost?.split('\n').find((line) => line.startsWith('# '))?.replace(/^#\s+/, '') ?? topicPreview
+    finalPost?.split('\n').find((line) => line.startsWith('# '))?.replace(/^#\s+/, '') ?? topicSnapshot
   const finalExcerpt =
     finalPost
       ?.split('\n')
@@ -313,246 +306,51 @@ function App() {
         .map((line) => line.replace(/^##\s+/, ''))
         .slice(0, 4)
     : []
-  const finalOutlineLead =
-    finalExcerpt || '최종 원고가 열리면 이 영역에 첫 문단 요약과 섹션 흐름이 먼저 표시됩니다.'
-  const finalStructureLabel =
-    finalSections.length > 0 ? `핵심 섹션 ${finalSections.length}개` : '섹션 구조 잠금 전'
-  const focusStageLabel =
-    state.generation.status === 'initial'
-      ? '브리프 입력'
-      : state.generation.status === 'error'
-        ? '브리프 재정리'
-        : currentStage.label
-  const focusStageStatusMessage =
-    state.generation.status === 'initial'
-      ? '주제, 독자, 톤, 길이를 정리하면 리서치부터 최종 원고까지 한 흐름으로 이어집니다.'
-      : state.generation.status === 'error'
-        ? state.generation.errorMessage ?? '브리프를 조정한 뒤 같은 흐름을 다시 시작하세요.'
-        : state.generation.statusMessage
-  const focusProgressLabel =
-    state.generation.status === 'initial' ? '브리프 준비' : `${currentStageNumber} / 5 단계`
-  const progressSummary =
-    state.generation.status === 'initial'
-      ? '브리프를 정리하면 다섯 단계가 순서대로 시작됩니다.'
-      : state.generation.status === 'error'
-        ? '실패 지점을 고치면 같은 흐름을 처음부터 다시 밟습니다.'
-        : `${state.generation.completedStages.length}개 단계를 닫았고 다음 연결만 남았습니다.`
-  const briefSummaryLine = briefSummary || '독자 · 톤 · 길이 조합을 정하는 중입니다.'
-  const nextActionLabel =
-    state.generation.status === 'initial'
-      ? '포스트 생성'
-      : state.generation.status === 'error'
-        ? '브리프 조정 후 다시 생성'
-        : nextStage
-          ? nextStage.label
-          : '마크다운 복사 또는 새 브리프'
-  const nextActionDescription =
-    state.generation.status === 'initial'
-      ? '브리프를 정리한 뒤 생성 버튼을 누르면 리서치부터 최종 원고까지 한 흐름으로 시작합니다.'
-      : state.generation.status === 'error'
-        ? '실패 조건이 포함된 주제를 정리한 뒤 같은 흐름을 처음부터 다시 시작합니다.'
-        : nextStage
-          ? nextStage.description
-          : '최종 원고를 복사한 뒤 같은 흐름으로 다음 주제를 다시 시작할 수 있습니다.'
-  const commandShortNote = finalPost
-    ? '복사와 마지막 확인만 남았습니다.'
-    : state.generation.status === 'loading'
-      ? '오른쪽 결과 영역을 확인하면서 단계 흐름만 따라가면 됩니다.'
-      : '브리프를 정리하면 생성이 시작되고, 최종 원고가 준비될 때까지 복사는 잠겨 있습니다.'
-  const commandPulseLabel =
-    state.generation.status === 'loading'
-      ? '원고 생성 중'
-      : state.generation.status === 'error'
-        ? '브리프 수정 필요'
+  const liveRegionMessage = [
+    statusLabel(state.generation.status),
+    currentStage.label,
+    `status ${state.generation.status}`,
+    state.copyFeedback || state.generation.statusMessage,
+  ].join(' | ')
+  const screenIndex = screenMeta.findIndex((screen) => screen.id === currentScreen)
+  const activeScreenMeta = screenMeta[screenIndex] ?? screenMeta[0]
+  const progressScreenLocked =
+    state.generation.status === 'initial' && state.generation.statusMessage === initialGeneration.statusMessage
+  const publishScreenLocked = !finalPost
+  const stagePanelOrderLabel = String(selectedStageIndex + 1).padStart(2, '0')
+  const topbarStatusSummary =
+    state.copyFeedback ||
+    (currentScreen === 'brief'
+      ? '브리프를 잠그면 다음 화면에서 단계별 작성이 바로 시작됩니다.'
+      : currentScreen === 'progress'
+        ? finalPost
+          ? '최종 원고가 열렸습니다. 게시 화면으로 넘어가 제목과 구조만 먼저 확인하세요.'
+          : '현재 단계 카드 하나만 읽으며 흐름을 유지하는 구간입니다.'
         : finalPost
-          ? '복사 준비 완료'
-          : '생성 준비'
-  const exportStateLabel = finalPost ? '복사 준비 완료' : '복사 전 잠금'
-  const completionSummary = `${state.generation.completedStages.length} / 5 단계`
-  const phasePulseSummary =
-    state.generation.status === 'initial'
-      ? '브리프 준비'
-      : state.generation.status === 'error'
-        ? '브리프 재정비 필요'
-        : state.generation.status === 'loading'
-          ? '원고 전개 중'
-          : finalPost
-            ? '최종 원고 준비 완료'
-            : '다음 단계 정렬 중'
-  const stageRailLead =
-    state.generation.status === 'initial'
-      ? '브리프를 정리하면 다섯 단계가 순서대로 진행됩니다.'
-      : state.generation.status === 'error'
-        ? '브리프를 다듬으면 같은 단계 흐름을 처음부터 다시 시작합니다.'
-        : finalPost
-          ? '모든 단계가 완료됐고, 지금은 복사와 마지막 문장 확인만 남았습니다.'
-          : `${currentStage.label} 단계가 진행 중이고 ${nextActionLabel}이 다음 순서로 이어집니다.`
-  const selectedStageStateLabel =
-    state.generation.status === 'initial'
-      ? selectedStage === 'research'
-        ? '시작 전 준비'
-        : '시작 전 미리보기'
-      : state.generation.status === 'error' && selectedStage === currentStage.id
-        ? '브리프 재정리 필요'
-        : selectedStage === currentStage.id
-          ? '실제 진행 중'
-          : state.generation.completedStages.includes(selectedStage)
-            ? '완료된 단계'
-            : selectedStageIndex < currentStageIndex
-              ? '이전 단계 회고'
-              : '다음 단계'
-  const selectedStageHint =
-    state.generation.status === 'initial'
-      ? selectedStage === 'research'
-        ? '브리프를 정리하면 리서치 결과가 가장 먼저 열리고, 나머지 단계는 순서대로 이어집니다.'
-        : `아직 생성은 시작되지 않았습니다. ${selectedStageMeta.label}은 브리프를 정리한 뒤 앞선 단계가 끝나면 열립니다.`
-      : state.generation.status === 'error'
-        ? selectedStage === currentStage.id
-          ? '실패 지점은 브리프 재정리입니다. 주제를 고친 뒤 같은 흐름을 처음부터 다시 시작하세요.'
-          : `현재 흐름은 ${focusStageLabel}에서 다시 시작을 기다립니다. 이 단계는 복구 후 순서대로 다시 열립니다.`
-        : selectedStage === currentStage.id
-          ? '지금 실제 생성 흐름이 머무는 단계입니다.'
-          : state.generation.completedStages.includes(selectedStage)
-            ? '이미 닫은 단계의 결과를 다시 읽으며 문장 밀도와 논지 흐름을 점검하는 면입니다.'
-            : `현재 생성 흐름은 ${focusStageLabel} 단계에 머물러 있고, 이 카드는 다음에 열릴 산출물을 미리 조망하는 면입니다.`
-  const selectedStageOrderLabel = String(selectedStageIndex + 1).padStart(2, '0')
-  const briefSealState =
-    state.generation.status === 'loading'
-      ? '입력 고정 중'
-      : state.generation.status === 'error'
-        ? '입력 재정비'
-        : finalPost
-          ? '복사 준비'
-          : '입력 준비'
-  const briefSealDescription =
-    state.generation.status === 'loading'
-      ? '생성 중에는 입력을 유지하고 오른쪽 결과 영역만 갱신됩니다.'
-      : state.generation.status === 'error'
-        ? '실패 조건을 정리한 뒤 다시 시작하면 첫 단계부터 이어집니다.'
-        : finalPost
-          ? '입력은 유지되고, 지금은 최종 원고와 복사 준비만 확인하면 됩니다.'
-          : '짧은 브리프만 정리하면 다섯 단계가 순서대로 진행됩니다.'
-  const heroHeadline =
-    state.generation.status === 'initial'
-      ? '짧은 브리프로 오늘의 원고를 시작합니다'
-      : state.generation.status === 'error'
-        ? '문제 지점만 고치고 다시 시작합니다'
-        : finalPost
-          ? '원고가 준비됐고 이제 복사 판단만 남았습니다'
-          : `${focusStageLabel} 단계만 남긴 작성 화면`
-  const heroLead =
-    state.generation.status === 'initial'
-      ? '주제, 독자, 톤, 길이만 정리하면 한 사람의 작성 흐름이 리서치부터 최종 원고까지 곧게 이어집니다.'
-      : state.generation.status === 'error'
-        ? '실패한 흔적을 전부 늘어놓지 않고, 다시 시작에 필요한 정보만 남겼습니다.'
-        : finalPost
-          ? '최종 원고가 준비됐습니다. 지금은 제목, 섹션 흐름, 복사 준비만 먼저 확인하면 됩니다.'
-          : '작성 흐름이 움직이는 동안 첫 화면에는 브리프, 현재 단계, 다음 단계만 남깁니다.'
-  const supportSurfaceDescription = finalPost
-    ? '최종 원고가 열리면 보조 기록을 펼치지 않아도 복사 직전 확인만 끝낼 수 있습니다.'
-    : '검토 메모와 산출물은 뒤쪽 서랍에 남기고, 첫 화면에는 현재 단계와 다음 단계만 남겼습니다.'
-  const briefDrawerLabel =
-    state.generation.status === 'initial'
-      ? '브리프 요약 펼치기'
-      : state.generation.status === 'error'
-        ? '브리프 복구 정보 펼치기'
-        : '브리프 요약과 진행률 펼치기'
-  const briefDrawerMeta =
-    state.generation.status === 'initial'
-      ? '입력 준비 중'
-      : `${focusStageLabel} · ${progress}%`
-  const briefLockLead =
-    state.generation.status === 'loading'
-      ? '입력은 유지되고 결과만 계속 갱신됩니다.'
-      : state.generation.status === 'error'
-        ? '브리프를 다듬어 같은 흐름을 다시 시작합니다.'
-        : '짧은 브리프만 정리하고 바로 단계 흐름으로 넘어갑니다.'
-  const briefLockDescription =
-    state.generation.status === 'loading'
-      ? '생성 중에는 브리프를 유지하고, 실제 읽기와 판단은 오른쪽 결과 영역에서 이어갑니다.'
-      : state.generation.status === 'error'
-        ? '실패 조건을 걷어낸 뒤 다시 시작하면 리서치부터 최종 원고까지 같은 흐름으로 복구됩니다.'
-        : '주제, 독자, 톤, 길이만 정리하면 다섯 단계가 순서대로 이어집니다.'
-  const manuscriptDeckTitle = finalPost ? finalTitle : '최종 원고는 마지막 단계에서 열립니다'
-  const manuscriptDeckLead = finalPost
-    ? finalOutlineLead
-    : '긴 초안과 검토 기록은 뒤 레이어에 두고, 첫 화면에는 현재 단계와 다음 단계만 남깁니다.'
-  const stagePanelMessage =
-    state.generation.status === 'initial'
-      ? selectedStage === 'research'
-        ? '브리프를 정리하면 가장 먼저 열릴 단계입니다.'
-        : `${selectedStageMeta.label}은 브리프를 정리한 뒤 앞선 단계가 끝나면 순서대로 열립니다.`
-      : state.generation.status === 'error'
-        ? selectedStage === currentStage.id
-          ? focusStageStatusMessage
-          : `현재 흐름은 ${focusStageLabel}에서 멈춰 있습니다. 브리프를 다듬으면 ${selectedStageMeta.label}도 다시 이어집니다.`
-        : selectedStage === currentStage.id
-          ? focusStageStatusMessage
-          : state.generation.completedStages.includes(selectedStage)
-            ? '이미 닫은 단계의 결과를 다시 읽으며 문장 밀도와 논지 흐름을 점검하는 면입니다.'
-            : `${selectedStageMeta.label} 단계는 ${nextActionLabel} 이전에 열릴 단계입니다.`
-  const panelFocusTitle =
-    state.generation.status === 'initial'
-      ? `${selectedStageMeta.label} 대기 단계`
-      : state.generation.status === 'error'
-        ? selectedStage === currentStage.id
-          ? '브리프 복구가 먼저 필요한 단계'
-          : `${selectedStageMeta.label}은 복구 뒤 다시 열릴 단계`
-        : selectedStage === currentStage.id
-          ? `${selectedStageMeta.label} 진행 단계`
-          : state.generation.completedStages.includes(selectedStage)
-            ? `${selectedStageMeta.label} 검토 단계`
-            : `${selectedStageMeta.label} 예고 단계`
-  const panelDrawerTitle = finalPost ? '긴 원고는 뒤 레이어에 유지' : '보조 정보는 뒤 레이어에 유지'
-  const panelDrawerNote =
-    selectedStage === currentStage.id
-      ? supportSurfaceDescription
-      : '이 단계는 순서를 미리 읽거나 되짚어 보는 보조 면입니다. 실제 전환은 현재 단계가 닫힌 뒤에만 일어납니다.'
-  const panelBridgeTitle = selectedStage === currentStage.id ? nextActionLabel : focusStageLabel
-  const panelBridgeNote =
-    selectedStage === currentStage.id
-      ? closureMessage
-      : '이 단계는 앞뒤 흐름을 조망하는 보조 단계입니다. 실제 진행은 단계 흐름의 현재 위치로 돌아가 이어가면 됩니다.'
-  const liveRegionMessage = `${statusLabel(state.generation.status)} | ${focusStageLabel} | ${state.copyFeedback || state.generation.statusMessage}`
-  const heroBriefSupport = finalPost
-    ? '브리프는 유지되고, 지금은 원고 요약과 복사 준비만 빠르게 확인하면 됩니다.'
-    : state.generation.status === 'initial'
-      ? '브리프 네 줄만 정리하면 리서치부터 최종 원고까지 한 줄로 이어집니다.'
-      : '브리프는 유지된 채로, 실제 판단은 오른쪽 결과 영역에서 다음 단계만 따라가면 됩니다.'
-  const heroDocketTitle = finalPost ? manuscriptDeckTitle : nextActionLabel
-  const heroDocketStatus = finalPost ? exportStateLabel : phasePulseSummary
-  const heroDocketLead = finalPost ? manuscriptDeckLead : commandShortNote
-  const heroDocketPreview =
-    finalPost && finalSections.length > 0
-      ? finalSections.slice(0, 3).map((section, index) => ({
-          label: `요약 ${index + 1}`,
-          value: section,
-        }))
-      : []
-  const heroDocketFootnote = finalPost ? commandShortNote : ''
-  const generateButtonLabel =
-    state.generation.status === 'loading' ? '원고 생성 중' : '원고 생성 시작'
-  const copyButtonLabel = '최종 원고 복사'
+          ? '복사 직전 제목, 구조, 검토 메모만 남긴 게시 준비 상태입니다.'
+          : '다섯 단계가 모두 닫히면 이 화면이 자동으로 열립니다.')
 
   async function handleGenerate() {
     const runId = runRef.current + 1
     runRef.current = runId
+    setCurrentScreen('progress')
     setSelectedStage('research')
 
     dispatch({
       type: 'start-run',
-      message: '브리프를 읽고 리서치부터 최종 원고까지 단일 작성 흐름을 순서대로 전개하는 중입니다.',
+      message: '브리프를 읽고 리서치에서 최종 원고까지 한 단계씩 펼치는 중입니다.',
     })
 
-    await sleep(220)
+    await sleep(240)
     if (runRef.current !== runId) {
       return
     }
 
     if (/^\s*(fail|error)\b/i.test(state.inputs.topic)) {
+      setCurrentScreen('brief')
       dispatch({
         type: 'set-error',
-        message: '의도적으로 실패 조건이 포함된 주제입니다. 주제를 수정한 뒤 다시 생성하세요.',
+        message: '의도적으로 실패 조건이 들어간 주제입니다. 주제를 바꾼 뒤 다시 생성해 주세요.',
       })
       return
     }
@@ -591,7 +389,7 @@ function App() {
     ]
 
     for (const entry of stageSequence) {
-      await sleep(210)
+      await sleep(240)
       if (runRef.current !== runId) {
         return
       }
@@ -606,7 +404,7 @@ function App() {
       setSelectedStage(entry.stage)
     }
 
-    await sleep(150)
+    await sleep(160)
     if (runRef.current !== runId) {
       return
     }
@@ -614,16 +412,15 @@ function App() {
     dispatch({
       type: 'finalize-run',
       outputs,
-      message: '최종 원고가 준비되었습니다. 내보내기 전에 원고와 검토 메모를 짧게 확인하세요.',
+      message: '최종 원고가 준비되었습니다. 이제 게시 준비 화면에서 제목과 섹션 흐름을 확인할 수 있습니다.',
     })
-    setSelectedStage('final')
   }
 
   async function handleCopyMarkdown() {
     if (!finalPost) {
       dispatch({
         type: 'set-copy-feedback',
-        message: '먼저 포스트 생성을 완료해야 마크다운을 내보낼 수 있습니다.',
+        message: '먼저 원고 생성을 완료해야 마크다운을 복사할 수 있습니다.',
       })
       return
     }
@@ -632,20 +429,18 @@ function App() {
       await navigator.clipboard.writeText(finalPost)
       dispatch({
         type: 'set-copy-feedback',
-        message: '최종 마크다운을 클립보드에 복사했습니다. 게시 전 마지막 문장만 가볍게 점검하세요.',
+        message: '최종 마크다운을 복사했습니다. 이제 게시 화면에서 마지막 문장만 점검하면 됩니다.',
       })
     } catch {
       dispatch({
         type: 'set-copy-feedback',
-        message: '클립보드 접근이 막혀 복사에 실패했습니다. 브라우저 권한을 확인하세요.',
+        message: '브라우저 권한 때문에 복사에 실패했습니다. 권한을 확인한 뒤 다시 시도해 주세요.',
       })
     }
   }
 
   function handleStageKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
-    const navigationKey = event.key
-
-    if (!['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(navigationKey)) {
+    if (!['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
       return
     }
 
@@ -653,19 +448,19 @@ function App() {
 
     let targetIndex = index
 
-    if (navigationKey === 'ArrowDown' || navigationKey === 'ArrowRight') {
+    if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
       targetIndex = Math.min(index + 1, workflowStages.length - 1)
     }
 
-    if (navigationKey === 'ArrowUp' || navigationKey === 'ArrowLeft') {
+    if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
       targetIndex = Math.max(index - 1, 0)
     }
 
-    if (navigationKey === 'Home') {
+    if (event.key === 'Home') {
       targetIndex = 0
     }
 
-    if (navigationKey === 'End') {
+    if (event.key === 'End') {
       targetIndex = workflowStages.length - 1
     }
 
@@ -673,13 +468,16 @@ function App() {
     stageButtonRefs.current[targetIndex]?.focus()
   }
 
-  function renderStageBody() {
+  function renderSelectedStageBody() {
     if (selectedStage === 'research') {
       if (state.generation.status === 'error') {
         return (
-          <section className="empty-block error-block" role="alert">
+          <section className="empty-state error-state" role="alert">
+            <div className="empty-icon" aria-hidden="true">
+              !
+            </div>
             <div>
-              <strong>브리프를 다시 정리해 주세요.</strong>
+              <strong>리서치 단계 전에 브리프를 다시 맞춰야 합니다.</strong>
               <p>{state.generation.errorMessage}</p>
             </div>
           </section>
@@ -688,27 +486,30 @@ function App() {
 
       if (!researchSummary) {
         return (
-          <section className="empty-block">
+          <section className="empty-state">
+            <div className="empty-icon" aria-hidden="true">
+              탐색
+            </div>
             <div>
-              <strong>리서치가 아직 시작되지 않았습니다.</strong>
-              <p>포스트 생성을 누르면 핵심 논지와 참고 포인트를 먼저 정리합니다.</p>
+              <strong>리서치 결과가 아직 열리지 않았습니다.</strong>
+              <p>원고를 시작하면 핵심 논지와 참고 축이 이 면에 먼저 정리됩니다.</p>
             </div>
           </section>
         )
       }
 
       return (
-        <div className="stage-stack">
-          <article className="content-card">
-            <p className="card-eyebrow">리서치 프레임</p>
+        <div className="reader-stack">
+          <article className="reader-card">
+            <p className="eyebrow">리서치 프레임</p>
             <h3>논지와 독자 적합도</h3>
             <p>{researchSummary.angle}</p>
             <p>{researchSummary.thesis}</p>
-            <div className="takeaway-line">{researchSummary.audienceFit}</div>
+            <div className="reader-highlight">{researchSummary.audienceFit}</div>
           </article>
-          <article className="content-card">
-            <p className="card-eyebrow">검색 힌트</p>
-            <h3>참고 출처</h3>
+          <article className="reader-card">
+            <p className="eyebrow">탐색 키워드</p>
+            <h3>검색 힌트와 참고 출처</h3>
             <div className="tag-row">
               {researchSummary.searchTerms.map((term) => (
                 <span className="soft-tag" key={term}>
@@ -721,16 +522,6 @@ function App() {
                 <li key={finding}>{finding}</li>
               ))}
             </ul>
-            <div className="reference-strip">
-              <strong>리서치 참고 축</strong>
-              <div className="tag-row">
-                {researchSummary.references.map((reference) => (
-                  <span className="soft-tag soft-tag-muted" key={reference}>
-                    {reference}
-                  </span>
-                ))}
-              </div>
-            </div>
           </article>
         </div>
       )
@@ -739,23 +530,26 @@ function App() {
     if (selectedStage === 'outline') {
       if (!outline) {
         return (
-          <section className="empty-block">
+          <section className="empty-state">
+            <div className="empty-icon" aria-hidden="true">
+              윤곽
+            </div>
             <div>
-              <strong>개요가 아직 준비되지 않았습니다.</strong>
-              <p>리서치 단계가 끝나면 독자가 따라갈 흐름을 이곳에 압축해 보여줍니다.</p>
+              <strong>개요 설계가 아직 준비되지 않았습니다.</strong>
+              <p>리서치가 닫히면 독자가 따라갈 순서가 이 카드에 압축됩니다.</p>
             </div>
           </section>
         )
       }
 
       return (
-        <article className="content-card">
-          <p className="card-eyebrow">개요 설계</p>
+        <article className="reader-card">
+          <p className="eyebrow">개요 설계</p>
           <h3>문단 흐름</h3>
-          <ol className="outline-stack">
+          <ol className="outline-list">
             {outline.map((section, index) => (
-              <li className="outline-item" key={section.id}>
-                <span className="outline-index">{index + 1}</span>
+              <li key={section.id}>
+                <span>{index + 1}</span>
                 <div>
                   <strong>{section.title}</strong>
                   <p>{section.summary}</p>
@@ -770,25 +564,28 @@ function App() {
     if (selectedStage === 'drafts') {
       if (!sectionDrafts) {
         return (
-          <section className="empty-block">
+          <section className="empty-state">
+            <div className="empty-icon" aria-hidden="true">
+              본문
+            </div>
             <div>
-              <strong>섹션 초안을 작성하는 중입니다.</strong>
-              <p>개요가 확정되면 각 섹션을 읽기 좋은 밀도로 이어서 전개합니다.</p>
+              <strong>섹션 초안은 진행 화면에서 순서대로 열립니다.</strong>
+              <p>지금은 개요를 잠그는 중이거나 앞선 단계가 아직 닫히지 않았습니다.</p>
             </div>
           </section>
         )
       }
 
       return (
-        <div className="stage-stack">
+        <div className="reader-stack">
           {sectionDrafts.map((draft) => (
-            <article className="content-card" key={draft.id}>
-              <p className="card-eyebrow">섹션 초안</p>
+            <article className="reader-card" key={draft.id}>
+              <p className="eyebrow">섹션 초안</p>
               <h3>{draft.title}</h3>
               {draft.body.map((paragraph) => (
                 <p key={paragraph}>{paragraph}</p>
               ))}
-              <div className="takeaway-line">{draft.takeaway}</div>
+              <div className="reader-highlight">{draft.takeaway}</div>
             </article>
           ))}
         </div>
@@ -798,22 +595,25 @@ function App() {
     if (selectedStage === 'review') {
       if (!reviewNotes) {
         return (
-          <section className="empty-block">
+          <section className="empty-state">
+            <div className="empty-icon" aria-hidden="true">
+              검토
+            </div>
             <div>
-              <strong>검토 메모가 아직 없습니다.</strong>
-              <p>초안이 모두 채워지면 빠진 논점과 문장 밀도를 이곳에서 점검합니다.</p>
+              <strong>검토 메모는 초안 뒤에 이어집니다.</strong>
+              <p>섹션 초안이 모두 채워진 뒤 빠진 논점과 문장 리듬을 여기서 걸러냅니다.</p>
             </div>
           </section>
         )
       }
 
       return (
-        <div className="stage-stack">
+        <div className="reader-stack">
           {reviewNotes.map((note) => (
-            <article className={`content-card review-${note.severity}`} key={`${note.label}-${note.detail}`}>
+            <article className={`reader-card review-${note.severity}`} key={`${note.label}-${note.detail}`}>
               <div className="review-head">
                 <h3>{note.label}</h3>
-                <span>검토 메모</span>
+                <span>{note.severity === 'good' ? '유지' : note.severity === 'watch' ? '주의' : '보완'}</span>
               </div>
               <p>{note.detail}</p>
             </article>
@@ -824,540 +624,560 @@ function App() {
 
     if (!finalPost) {
       return (
-        <section className="empty-block">
+        <section className="empty-state">
+          <div className="empty-icon" aria-hidden="true">
+            게시
+          </div>
           <div>
-            <strong>최종 원고가 아직 잠겨 있습니다.</strong>
-            <p>검토 메모까지 끝나면 이 영역이 최종 내보내기 전용 미리보기로 바뀝니다.</p>
+            <strong>최종 원고는 마지막 단계에서만 열립니다.</strong>
+            <p>검토 메모까지 닫히면 게시 준비 화면으로 이동할 수 있습니다.</p>
           </div>
         </section>
       )
     }
 
     return (
-      <div className="stage-stack">
-        <article className="content-card final-editorial-card">
-          <div className="final-editorial-head">
-            <div className="reader-preview-head">
-              <p className="card-eyebrow">최종 확인</p>
-              <h3>최종 원고 요약</h3>
-              <p className="reader-note">
-                전체 원고를 먼저 펼치지 않고, 제목과 섹션 흐름, 그리고 복사 준비 상태만 먼저 읽히도록 정리한 마지막 확인 영역입니다.
-              </p>
+      <article className="reader-card final-card">
+        <p className="eyebrow">최종 요약</p>
+        <h3>{finalTitle}</h3>
+        <p>{finalExcerpt || '첫 문단 요약이 이 위치에 먼저 나타납니다.'}</p>
+        <div className="final-outline">
+          {finalSections.map((section, index) => (
+            <div className="final-outline-item" key={section}>
+              <span>{index + 1}</span>
+              <strong>{section}</strong>
             </div>
-            <div className="reader-meta final-reader-meta">
-              <span className="summary-chip">{finalStructureLabel}</span>
-              <span className="summary-chip">{exportStateLabel}</span>
-            </div>
-          </div>
-          <div className="final-editorial-grid">
-            <div className="reader-shelf final-reader-shelf">
-              <div className="reader-shelf-head">
-                <p className="hero-summary-label">최종 원고</p>
-                <strong>{finalTitle}</strong>
-                <p className="reader-note reader-note-strong">{closureMessage}</p>
-                <p className="reader-note">{finalOutlineLead}</p>
-              </div>
-              <div className="reader-outline">
-                {finalSections.map((section, index) => (
-                  <div className="reader-outline-item" key={section}>
-                    <span>{index + 1}</span>
-                    <strong>{section}</strong>
-                  </div>
-                ))}
-              </div>
-              <div className="reader-shelf-foot">
-                <span className="summary-chip">{finalStructureLabel}</span>
-                <span className="summary-chip">{exportStateLabel}</span>
-              </div>
-            </div>
-            <div className="final-proof-column">
-              <div className="final-checklist">
-                <div className="final-check-item">
-                  <span>독자</span>
-                  <strong>{audienceLabel}</strong>
-                </div>
-                <div className="final-check-item">
-                  <span>톤</span>
-                  <strong>{toneLabel}</strong>
-                </div>
-                <div className="final-check-item">
-                  <span>길이</span>
-                  <strong>{lengthLabel}</strong>
-                </div>
-                <div className="final-check-item">
-                  <span>복사 상태</span>
-                  <strong>{exportStateLabel}</strong>
-                </div>
-              </div>
-              <div className="takeaway-line final-takeaway-line">
-                {state.copyFeedback || '복사 버튼으로 내보낸 뒤 마지막 문장 리듬만 한 번 더 확인하면 됩니다.'}
-              </div>
-              <div className="hero-note-strip final-proof-note">
-                <span>복사 준비</span>
-                <strong>{nextActionLabel}</strong>
-                <p>{nextActionDescription}</p>
-              </div>
-            </div>
-          </div>
-          <details className="reader-drawer">
-            <summary>전문 원고 펼치기</summary>
-            <div className="reader-drawer-body">
-              <pre className="markdown-preview">{finalPost}</pre>
-            </div>
-          </details>
-        </article>
-      </div>
+          ))}
+        </div>
+        <div className="reader-highlight">
+          {state.copyFeedback || '최종 화면으로 넘어가면 제목, 섹션 구조, 복사 상태만 먼저 확인할 수 있습니다.'}
+        </div>
+        <pre className="markdown-preview final-inline-preview">{finalPost}</pre>
+      </article>
     )
   }
 
   return (
-    <main className="app-shell">
+    <main className="single-agent-shell">
       <div className="assistive-live" aria-atomic="true" aria-live="polite">
         {liveRegionMessage}
       </div>
 
-      <section className="workspace-hero">
-        <article className="hero-storyboard">
-          <div className="hero-ribbon">
-            <span className="hero-signal">{focusProgressLabel}</span>
-            <span className="hero-signal hero-signal-live">
-              {commandPulseLabel} · {statusLabel(state.generation.status)}
-            </span>
-          </div>
-          <div className="hero-headline hero-headline-tight hero-headline-solo">
-            <div className="hero-headline-copy">
-              <p className="section-kicker">한 사람 작성 흐름</p>
-              <h1>{heroHeadline}</h1>
-              <p className="hero-deck">{heroLead}</p>
-            </div>
-          </div>
-          <div className={`hero-ledger-strip ${state.generation.status === 'initial' ? 'hero-ledger-strip-preflight' : ''}`.trim()}>
-            <section
-              aria-labelledby="hero-brief-ledger-title"
-              className="hero-ledger-panel hero-ledger-panel-spotlight"
-            >
-              <p className="hero-summary-label">브리프 요약</p>
-              <h2 className="hero-ledger-heading" id="hero-brief-ledger-title">
-                {topicSnapshot}
-              </h2>
-              <p>{briefSummaryLine}</p>
-              <div className="hero-command-note-quiet">
-                <span>현재 단계</span>
-                <strong>{focusStageLabel}</strong>
-                <p>{heroBriefSupport}</p>
-              </div>
-              <div className="hero-ledger-meta" aria-hidden="true">
-                <span className="summary-chip">{briefSealState}</span>
-                <span className="summary-chip">{completionSummary}</span>
-              </div>
-            </section>
+      <header className="topbar surface-card">
+        <div className="topbar-copy">
+          <p className="kicker">단일 작성 위저드</p>
+          <h1>한 사람이 끝까지 쓰는 원고실</h1>
+          <p>
+            브리프, 진행, 게시 준비를 세 개의 화면으로 나누고 현재 단계만 전면에 올린 집중형
+            기술 블로그 생성기입니다.
+          </p>
+        </div>
+        <div aria-label="현재 작업 상태" className="topbar-status-grid">
+          <article className="topbar-status-card">
+            <p className="kicker">지금 열려 있는 면</p>
+            <strong>{activeScreenMeta.label}</strong>
+            <p>{activeScreenMeta.deck}</p>
+          </article>
+          <article className="topbar-status-card">
+            <p className="kicker">집중 메모</p>
+            <strong>{state.generation.status === 'error' ? '복구 우선' : statusLabel(state.generation.status)}</strong>
+            <p>{topbarStatusSummary}</p>
+          </article>
+        </div>
+      </header>
 
-            <section
-              aria-labelledby="hero-action-ledger-title"
-              className={`hero-ledger-panel ${finalPost ? 'hero-ledger-panel-manuscript' : 'hero-ledger-panel-manuscript-soft'}`.trim()}
+      <nav aria-label="화면 이동" className="screen-switcher">
+        {screenMeta.map((screen) => {
+          const locked =
+            screen.id === 'progress'
+              ? progressScreenLocked
+              : screen.id === 'publish'
+                ? publishScreenLocked
+                : false
+
+          return (
+            <button
+              className={`screen-pill ${currentScreen === screen.id ? 'is-active' : ''}`.trim()}
+              disabled={locked}
+              key={screen.id}
+              onClick={() => setCurrentScreen(screen.id)}
+              type="button"
             >
-              <div className="hero-docket-head">
+              <span>{screen.deck}</span>
+              <strong>{screen.label}</strong>
+            </button>
+          )
+        })}
+      </nav>
+
+      <section className="wizard-viewport surface-card">
+        <div
+          className={`wizard-track wizard-screen-${currentScreen}`.trim()}
+          style={{ transform: `translateX(-${screenIndex * 100}%)` }}
+        >
+          <section
+            aria-hidden={currentScreen !== 'brief'}
+            aria-label="브리프 작성 화면"
+            className="wizard-screen"
+            data-screen="brief"
+          >
+            <div className="screen-curtain">
+              <div className="curtain-copy enter-block" style={{ animationDelay: '0ms' }}>
+                <p className="kicker">첫 화면</p>
+                <h2>브리프를 잠그고 바로 시작합니다</h2>
+                <p>
+                  첫 화면에는 입력, 프리셋, 시작 행동만 남겼습니다. 복잡한 산출물은 다음 화면으로
+                  넘기고 지금 필요한 선택만 보이게 만듭니다.
+                </p>
+              </div>
+              <div className="curtain-docket enter-block" style={{ animationDelay: '50ms' }}>
+                <span className="docket-label">지금 준비된 조합</span>
+                <strong>{topicSnapshot}</strong>
+                <p>{briefChips.join(' · ') || '독자 · 톤 · 길이를 정하는 중입니다.'}</p>
+              </div>
+            </div>
+
+            {state.generation.status === 'error' ? (
+              <section className="brief-alert" role="alert">
+                <div className="alert-mark" aria-hidden="true">
+                  !
+                </div>
                 <div>
-                  <p className="hero-summary-label">{finalPost ? '복사 준비' : '다음 단계'}</p>
-                  <h2 className="hero-ledger-heading" id="hero-action-ledger-title">
-                    {heroDocketTitle}
-                  </h2>
+                  <strong>브리프를 다시 조정해 주세요.</strong>
+                  <p>{state.generation.errorMessage}</p>
                 </div>
-                <span className="hero-docket-status">{heroDocketStatus}</span>
-              </div>
-              <p className="hero-docket-lead">{heroDocketLead}</p>
-              {heroDocketPreview.length > 0 ? (
-                <ul className="hero-docket-preview">
-                  {heroDocketPreview.map((item) => (
-                    <li key={`${item.label}-${item.value}`}>
-                      <span>{item.label}</span>
-                      <strong>{item.value}</strong>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-              <div className="hero-action-stack hero-ledger-actions">
-                <button
-                  aria-label={state.generation.status === 'loading' ? '원고 생성 중' : '원고 생성 시작'}
-                  className="primary-action"
-                  data-testid="Generate post"
-                  disabled={state.generation.status === 'loading'}
-                  onClick={() => void handleGenerate()}
-                  type="button"
-                >
-                  <span className="button-copy-kr">{generateButtonLabel}</span>
-                </button>
-                <button
-                  aria-label="원고 복사"
-                  className="secondary-action"
-                  data-testid="Copy markdown"
-                  disabled={!finalPost}
-                  onClick={() => void handleCopyMarkdown()}
-                  type="button"
-                >
-                  <span className="button-copy-kr">{copyButtonLabel}</span>
-                </button>
-              </div>
-              {heroDocketFootnote ? <p className="hero-docket-footnote">{heroDocketFootnote}</p> : null}
-            </section>
-          </div>
-        </article>
-      </section>
+              </section>
+            ) : null}
 
-      <section className="workspace-frame">
-        <aside className="brief-rail">
-          <article className="rail-card rail-card-dark rail-card-input">
-            <div className="rail-section-head">
-              <div>
-                <p className="section-kicker">작성 브리프</p>
-                <h3>브리프 입력 영역</h3>
-              </div>
-              <p className="brief-inline">
-                주제와 설정은 여기에서 정리하고, 오른쪽에는 현재 단계와 다음 단계만 남깁니다.
-              </p>
-            </div>
-            <div className="brief-seal-board">
-              <p className="rail-hook">브리프 요약</p>
-              <strong>{topicSnapshot}</strong>
-              <p>{briefSealDescription}</p>
-              <div className="brief-seal-meta">
-                <span className="soft-tag">{briefSealState}</span>
-                {briefTags.map((tag) => (
-                  <span className="soft-tag soft-tag-muted" key={tag}>
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </div>
-            <div className="brief-lock-strip">
-              <div className="brief-lock-copy">
-                <p className="rail-hook">입력 규칙</p>
-                <strong>{briefLockLead}</strong>
-                <p>{briefLockDescription}</p>
-              </div>
-            </div>
-
-            <form className="brief-form brief-form-ghost">
-              <label>
-                <span>주제</span>
-                <textarea
-                  data-testid="Topic"
-                  onChange={(event) =>
-                    dispatch({
-                      type: 'update-input',
-                      field: 'topic',
-                      value: event.target.value,
-                    })
-                  }
-                  value={state.inputs.topic}
-                />
-              </label>
-              <label>
-                <span>독자</span>
-                <select
-                  data-testid="Audience"
-                  onChange={(event) =>
-                    dispatch({
-                      type: 'update-input',
-                      field: 'audience',
-                      value: event.target.value as Audience,
-                    })
-                  }
-                  value={state.inputs.audience}
-                >
-                  {audienceOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span>톤</span>
-                <select
-                  data-testid="Tone"
-                  onChange={(event) =>
-                    dispatch({
-                      type: 'update-input',
-                      field: 'tone',
-                      value: event.target.value as Tone,
-                    })
-                  }
-                  value={state.inputs.tone}
-                >
-                  {toneOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span>길이</span>
-                <select
-                  data-testid="Length"
-                  onChange={(event) =>
-                    dispatch({
-                      type: 'update-input',
-                      field: 'length',
-                      value: event.target.value as Length,
-                    })
-                  }
-                  value={state.inputs.length}
-                >
-                  {lengthOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </form>
-
-            <details className="support-drawer rail-status-drawer">
-              <summary>
-                <span>{briefDrawerLabel}</span>
-                <span>{briefDrawerMeta}</span>
-              </summary>
-              <div className="brief-status-strip">
-                <div className="brief-status-chip">
-                  <span className={`status-badge status-${state.generation.status}`}>{statusLabel(state.generation.status)}</span>
-                  <strong>{focusStageLabel}</strong>
-                </div>
-                <div className="brief-status-copy">
-                  <p>{focusStageStatusMessage}</p>
-                  <div className="progress-meta">
-                    <span>{state.generation.completedStages.length} / 5 단계 완료</span>
-                    <span>{progress}%</span>
+            <div className="brief-grid">
+              <article className="brief-panel enter-block" style={{ animationDelay: '100ms' }}>
+                <div className="panel-head">
+                  <div>
+                    <p className="kicker">브리프 입력</p>
+                    <h3>작성 기준 네 가지</h3>
                   </div>
-                  <div className="progress-track" aria-hidden="true">
-                    <span style={{ width: `${progress}%` }} />
-                  </div>
-                </div>
-              </div>
-
-              <div className="brief-synopsis">
-                <p className="hero-summary-label">이번 글의 축</p>
-                <strong>{topicPreview}</strong>
-                <div className="tag-row">
-                  {briefTags.map((tag) => (
-                    <span className="soft-tag" key={tag}>
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </details>
-
-            <details className="support-drawer">
-              <summary>
-                <span>시작 주제 불러오기</span>
-                <span>{topicPresets.length}개 샘플</span>
-              </summary>
-              <div className="preset-list">
-                {topicPresets.map((preset) => (
                   <button
-                    className="preset-tile"
-                    key={preset.title}
-                    onClick={() =>
-                      dispatch({
-                        type: 'apply-preset',
-                        payload: {
-                          topic: preset.title,
-                          audience: preset.audience,
-                          tone: preset.tone,
-                          length: preset.length,
-                        },
-                      })
-                    }
+                    aria-label="Generate post"
+                    className="primary-button"
+                    data-testid="Generate post"
+                    disabled={state.generation.status === 'loading'}
+                    onClick={() => void handleGenerate()}
                     type="button"
                   >
-                    <strong>{preset.title}</strong>
-                    <span>{preset.rationale}</span>
+                    {state.generation.status === 'loading' ? '원고 생성 중' : '원고 만들기'}
                   </button>
-                ))}
-              </div>
-            </details>
-          </article>
-        </aside>
+                </div>
 
-        <section className="workspace-main">
-          <div className="stage-workbench">
-            <section className="stage-rail-shell">
-              <div className="stage-rail-head">
-                <p className="panel-hook">단계 흐름</p>
-                <h2>지금 진행할 단계</h2>
-                <p>{stageRailLead}</p>
-              </div>
-              <div aria-label="작성 단계 선택" aria-orientation="vertical" className="stage-rail" role="tablist">
-                {workflowStages.map((stage, index) => {
-                  const isActive =
-                    state.generation.currentStage === stage.id &&
-                    state.generation.status !== 'export-ready' &&
-                    state.generation.status !== 'error'
-                  const isComplete = state.generation.completedStages.includes(stage.id)
-                  const stageStateText = isActive ? '진행 중' : isComplete ? '완료' : '대기'
-                  const stageStateSymbol = isActive ? '●' : isComplete ? '✓' : '○'
+                <form className="brief-form" onSubmit={(event) => event.preventDefault()}>
+                  <label
+                    className={`field-shell field-topic ${state.inputs.topic.trim() ? 'has-value' : ''}`.trim()}
+                  >
+                    <textarea
+                      aria-label="Topic"
+                      data-testid="Topic"
+                      name="topic"
+                      onChange={(event) =>
+                        dispatch({
+                          type: 'update-input',
+                          field: 'topic',
+                          value: event.target.value,
+                        })
+                      }
+                      rows={3}
+                      value={state.inputs.topic}
+                    />
+                    <span className="field-label">주제</span>
+                    <span className="field-underline" aria-hidden="true" />
+                  </label>
 
-                  return (
+                  <div className="brief-select-grid">
+                    <label className="field-shell has-value">
+                      <select
+                        aria-label="Audience"
+                        data-testid="Audience"
+                        name="audience"
+                        onChange={(event) =>
+                          dispatch({
+                            type: 'update-input',
+                            field: 'audience',
+                            value: event.target.value as Audience,
+                          })
+                        }
+                        value={state.inputs.audience}
+                      >
+                        {audienceOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                      <span className="field-label">독자</span>
+                      <span className="field-underline" aria-hidden="true" />
+                    </label>
+
+                    <label className="field-shell has-value">
+                      <select
+                        aria-label="Tone"
+                        data-testid="Tone"
+                        name="tone"
+                        onChange={(event) =>
+                          dispatch({
+                            type: 'update-input',
+                            field: 'tone',
+                            value: event.target.value as Tone,
+                          })
+                        }
+                        value={state.inputs.tone}
+                      >
+                        {toneOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                      <span className="field-label">톤</span>
+                      <span className="field-underline" aria-hidden="true" />
+                    </label>
+
+                    <label className="field-shell has-value">
+                      <select
+                        aria-label="Length"
+                        data-testid="Length"
+                        name="length"
+                        onChange={(event) =>
+                          dispatch({
+                            type: 'update-input',
+                            field: 'length',
+                            value: event.target.value as Length,
+                          })
+                        }
+                        value={state.inputs.length}
+                      >
+                        {lengthOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                      <span className="field-label">길이</span>
+                      <span className="field-underline" aria-hidden="true" />
+                    </label>
+                  </div>
+                </form>
+              </article>
+
+              <aside className="support-column enter-block" style={{ animationDelay: '150ms' }}>
+                <article className="support-panel">
+                  <p className="kicker">빠른 시작 묶음</p>
+                  <h3>빠르게 시작하는 프리셋</h3>
+                  <div className="preset-grid">
+                    {topicPresets.map((preset, index) => (
+                      <button
+                        className="preset-card"
+                        key={preset.title}
+                        onClick={() =>
+                          dispatch({
+                            type: 'apply-preset',
+                            payload: {
+                              topic: preset.title,
+                              audience: preset.audience,
+                              tone: preset.tone,
+                              length: preset.length,
+                            },
+                          })
+                        }
+                        style={{ animationDelay: `${200 + index * 50}ms` }}
+                        type="button"
+                      >
+                        <span>{preset.rationale}</span>
+                        <strong>{preset.title}</strong>
+                      </button>
+                    ))}
+                  </div>
+                </article>
+
+                <article className="support-panel empty-state">
+                  <div className="empty-icon" aria-hidden="true">
+                    시작
+                  </div>
+                  <div>
+                    <strong>아직 생성 전입니다.</strong>
+                    <p>원고를 시작하면 다음 화면에서 다섯 단계가 순서대로 드러납니다.</p>
+                  </div>
+                </article>
+              </aside>
+            </div>
+          </section>
+
+          <section
+            aria-hidden={currentScreen !== 'progress'}
+            aria-label="작성 진행 화면"
+            className="wizard-screen"
+            data-screen="progress"
+          >
+            <div className="screen-curtain">
+              <div className="curtain-copy enter-block" style={{ animationDelay: '0ms' }}>
+                <p className="kicker">둘째 화면</p>
+                <h2>{state.generation.status === 'loading' ? '지금 움직이는 단계만 전면에 둡니다' : '진행 흔적을 정리해 게시 화면으로 넘깁니다'}</h2>
+                <p>{state.generation.statusMessage}</p>
+              </div>
+              <div className="curtain-docket enter-block" style={{ animationDelay: '50ms' }}>
+                <span className="docket-label">다음 행동</span>
+                <strong>{finalPost ? '최종 원고 보기' : '현재 단계 집중'}</strong>
+                <p>
+                  {finalPost
+                    ? '게시 화면으로 이동해 제목, 섹션 구조, 복사 준비 상태만 먼저 확인합니다.'
+                    : '왼쪽 단계 목록에서 현재 진행 중인 카드가 자동으로 선택됩니다.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="progress-grid">
+              <aside className="progress-sidebar enter-block" style={{ animationDelay: '100ms' }}>
+                <article className="progress-panel">
+                  <div className="panel-head">
+                    <div>
+                      <p className="kicker">진행 파형</p>
+                      <h3>{statusLabel(state.generation.status)}</h3>
+                    </div>
                     <button
-                      aria-controls={`stage-panel-${stage.id}`}
-                      aria-selected={selectedStage === stage.id}
-                      className={`stage-chip ${stageTone(stage, state.generation)} ${selectedStage === stage.id ? 'is-selected' : ''}`.trim()}
-                      data-testid={stage.testHook}
-                      id={`stage-tab-${stage.id}`}
-                      key={stage.id}
-                      onKeyDown={(event) => handleStageKeyDown(event, index)}
-                      onClick={() => setSelectedStage(stage.id)}
-                      ref={(element) => {
-                        stageButtonRefs.current[index] = element
-                      }}
-                      role="tab"
-                      tabIndex={selectedStage === stage.id ? 0 : -1}
+                      className="primary-button"
+                      disabled={!finalPost}
+                      onClick={() => setCurrentScreen('publish')}
                       type="button"
                     >
-                      <span className="stage-chip-trace" aria-hidden="true">
-                        <span className="stage-chip-index">{String(index + 1).padStart(2, '0')}</span>
-                        {index < workflowStages.length - 1 ? <span className="stage-chip-line" /> : null}
-                      </span>
-                      <span className="stage-chip-copy">
-                        <strong>{stage.label}</strong>
-                        <em>{stageVisibleHooks[stage.id]}</em>
-                      </span>
-                      <span className="stage-chip-state">
-                        <span aria-hidden="true" className="stage-chip-status-dot">
-                          {stageStateSymbol}
-                        </span>
-                        <span>{stageStateText}</span>
-                      </span>
+                      최종 원고 보기
                     </button>
-                  )
-                })}
-              </div>
-              <div className="stage-rail-foot">
-                <strong>{selectedStageStateLabel}</strong>
-                <p>{selectedStageHint}</p>
-              </div>
-            </section>
-
-            <article
-              aria-labelledby={`stage-tab-${selectedStage}`}
-              className="workspace-panel"
-              id={`stage-panel-${selectedStage}`}
-              role="tabpanel"
-            >
-              <div className="workspace-panel-head">
-                <div>
-                  <p className="panel-hook">{selectedStage === currentStage.id ? '현재 단계' : '선택한 단계'}</p>
-                  <h2>{selectedStageMeta.label}</h2>
-                </div>
-                <div className="panel-actions">
-                  <div className="panel-head-meta" aria-hidden="true">
-                    <span className="summary-chip">{selectedStageStateLabel}</span>
-                    <span className="summary-chip">
-                      {selectedStage === currentStage.id ? phasePulseSummary : completionSummary}
-                    </span>
                   </div>
-                  <button
-                    className="inline-action inline-action-ghost"
-                    onClick={() => setSelectedStage(currentStage.id)}
-                    type="button"
-                  >
-                    <span className="button-copy-kr">현재 단계로 복귀</span>
-                  </button>
-                </div>
-              </div>
-              <div className="panel-focus-band">
-                <article
-                  className={`panel-focus-card ${selectedStage === currentStage.id ? 'panel-focus-card-spotlight' : ''}`.trim()}
-                >
-                  <div className="panel-focus-main">
-                    <span className="panel-focus-index">{selectedStageOrderLabel}</span>
-                    <div>
-                      <p className="card-eyebrow">선택한 단계</p>
-                      <strong>{panelFocusTitle}</strong>
-                      <p>{stagePanelMessage}</p>
-                    </div>
+                  <div className="progress-bar" aria-hidden="true">
+                    <span style={{ width: `${progressPercent}%` }} />
                   </div>
-                  <div className="panel-focus-ribbon" aria-hidden="true">
-                    <span className="summary-chip">{selectedStageStateLabel}</span>
-                    <span className="summary-chip">
-                      {selectedStage === currentStage.id ? completionSummary : focusProgressLabel}
+                  <div className="progress-meta">
+                    <strong>{progressPercent}%</strong>
+                    <span>
+                      {state.generation.status === 'initial'
+                        ? '브리프를 잠그면 단계가 시작됩니다.'
+                        : state.generation.status === 'error'
+                          ? '복구를 위해 브리프를 다시 조정해 주세요.'
+                          : `${state.generation.completedStages.length}개 단계 완료`}
                     </span>
                   </div>
                 </article>
-                <div className="panel-focus-side">
-                  <article className="panel-status-cell panel-status-cell-primary">
-                    <span>다음 단계</span>
-                    <strong>{panelBridgeTitle}</strong>
-                    <p>{selectedStage === currentStage.id ? nextActionDescription : panelBridgeNote}</p>
-                  </article>
-                  <article className="panel-status-cell panel-status-cell-secondary">
-                    <span>보조 정보</span>
-                    <strong>{panelDrawerTitle}</strong>
-                    <p>{panelDrawerNote}</p>
-                  </article>
-                </div>
-              </div>
-              {renderStageBody()}
-              <div className="workspace-panel-copy">
-                <article className={`panel-note-card ${selectedStage === currentStage.id ? 'panel-note-card-ink' : ''}`.trim()}>
-                  <span>{selectedStage === currentStage.id ? '작업 규칙' : '선택한 단계 메모'}</span>
-                  <strong>{selectedStage === currentStage.id ? selectedStageMeta.description : panelBridgeTitle}</strong>
-                  <p>
-                    {selectedStage === currentStage.id
-                      ? `${panelBridgeNote} ${panelDrawerNote}`
-                      : `${selectedStageHint} ${panelBridgeNote}`}
-                  </p>
-                </article>
-                {state.copyFeedback ? <p className="panel-copy-feedback">{state.copyFeedback}</p> : null}
-              </div>
-            </article>
-          </div>
 
-          <details className="support-drawer evidence-drawer">
-            <summary>
-              <span>뒤쪽 기록 서랍</span>
-              <span>증거와 평가는 기본 화면 뒤에 둡니다</span>
-            </summary>
-            <div className="evidence-grid">
-              <article className="evidence-card">
-                <p className="card-eyebrow">산출물 목록</p>
-                <h3>기록 위치</h3>
-                <div className="evidence-row">
-                  <strong>실행 기록 묶음</strong>
-                  <p>실행 시각, 상태, 산출물 연결 정보는 실행 기록 파일과 산출물 인덱스 파일에 남깁니다.</p>
+                <div aria-label="작성 단계 선택" aria-orientation="vertical" className="stage-list" role="tablist">
+                  {workflowStages.map((stage, index) => {
+                    const visualState = stageVisualState(stage, state.generation)
+                    const isSelected = selectedStage === stage.id
+
+                    return (
+                      <button
+                        aria-controls={`stage-panel-${stage.id}`}
+                        aria-selected={isSelected}
+                        className={`stage-card stage-${visualState} ${isSelected ? 'is-selected' : ''}`.trim()}
+                        data-testid={`stage-${stage.id}`}
+                        id={`stage-tab-${stage.id}`}
+                        key={stage.id}
+                        onClick={() => setSelectedStage(stage.id)}
+                        onKeyDown={(event) => handleStageKeyDown(event, index)}
+                        ref={(element) => {
+                          stageButtonRefs.current[index] = element
+                        }}
+                        role="tab"
+                        tabIndex={isSelected ? 0 : -1}
+                        type="button"
+                      >
+                        <div className="stage-card-head">
+                          <span className="stage-order">{String(index + 1).padStart(2, '0')}</span>
+                          <span className={`stage-badge stage-badge-${visualState}`.trim()}>
+                            {visualState === 'complete'
+                              ? '완료'
+                              : visualState === 'current'
+                                ? '진행'
+                                : visualState === 'error'
+                                  ? '오류'
+                                  : '대기'}
+                          </span>
+                        </div>
+                        <div className="stage-card-copy">
+                          <strong>{stage.label}</strong>
+                          <p>{stageProgressCopy(state.generation, stage)}</p>
+                        </div>
+                        <div className="stage-card-mark" aria-hidden="true">
+                          {visualState === 'complete' ? (
+                            <svg className="checkmark" viewBox="0 0 24 24">
+                              <path d="M5 13.2L9.2 17.4L19 7.6" />
+                            </svg>
+                          ) : visualState === 'current' ? (
+                            <span className="pulse-dot" />
+                          ) : visualState === 'error' ? (
+                            <span className="error-dot" />
+                          ) : (
+                            <span className="pending-dot" />
+                          )}
+                        </div>
+                      </button>
+                    )
+                  })}
                 </div>
-                <div className="evidence-row">
-                  <strong>검토 문서 묶음</strong>
-                  <p>리뷰 보고서, 평가 결과, 점수 카드 파일은 뒤쪽 검토 서랍에만 남겨 첫 화면 밀도를 지켰습니다.</p>
+              </aside>
+
+              <section
+                aria-labelledby={`stage-tab-${selectedStage}`}
+                className="reader-panel enter-block"
+                id={`stage-panel-${selectedStage}`}
+                role="tabpanel"
+                style={{ animationDelay: '150ms' }}
+              >
+                <div className="panel-head">
+                  <div>
+                    <p className="kicker">현재 단계 판독</p>
+                    <h3>
+                      {stagePanelOrderLabel}. {selectedStageMeta.label}
+                    </h3>
+                  </div>
+                  <span className="reader-state">
+                    {selectedStage === currentStage.id && state.generation.status !== 'initial'
+                      ? '현재 단계'
+                      : state.generation.completedStages.includes(selectedStage)
+                        ? '완료된 단계'
+                        : '예고 단계'}
+                  </span>
                 </div>
-              </article>
-              <article className="evidence-card">
-                <p className="card-eyebrow">현재 상태</p>
-                <h3>검토 지원</h3>
-                <div className="evidence-row">
-                  <strong>상태 메시지</strong>
-                  <p>{state.generation.statusMessage}</p>
-                </div>
-                <div className="evidence-row">
-                  <strong>내보내기</strong>
-                  <p>{finalPost ? '최종 원고가 준비되어 복사 버튼이 활성화되었습니다.' : '최종 원고가 열릴 때까지 복사 버튼은 잠긴 상태입니다.'}</p>
-                </div>
-                <div className="evidence-row">
-                  <strong>보조 산출물</strong>
-                  <ul className="stack-list">
-                    {deliverables.map((item) => (
-                      <li key={item.id}>
-                        {item.title}: {item.description}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </article>
+                <p className="panel-description">
+                  {selectedStage === currentStage.id
+                    ? state.generation.statusMessage
+                    : selectedStageIndex < currentStageIndex
+                      ? '이미 닫은 결과를 다시 읽으며 논지와 밀도를 점검하는 면입니다.'
+                      : '앞선 단계가 닫히면 이 산출물이 순서대로 열립니다.'}
+                </p>
+                {renderSelectedStageBody()}
+              </section>
             </div>
-          </details>
-        </section>
+          </section>
+
+          <section
+            aria-hidden={currentScreen !== 'publish'}
+            aria-label="게시 준비 화면"
+            className="wizard-screen"
+            data-screen="publish"
+          >
+            <div className="screen-curtain">
+              <div className="curtain-copy enter-block" style={{ animationDelay: '0ms' }}>
+                <p className="kicker">셋째 화면</p>
+                <h2>{finalPost ? '제목과 구조를 마지막으로 확인합니다' : '최종 원고가 아직 잠겨 있습니다'}</h2>
+                <p>
+                  {finalPost
+                    ? '전체 초안을 한 번에 쏟아붓지 않고, 제목과 섹션 구조를 먼저 보여 준 뒤 전문은 펼침 레이어로 넘깁니다.'
+                    : '진행 화면에서 다섯 단계가 모두 닫히면 이 화면이 게시 준비 면으로 바뀝니다.'}
+                </p>
+              </div>
+              <div className="curtain-docket enter-block" style={{ animationDelay: '50ms' }}>
+                <span className="docket-label">게시 상태</span>
+                <strong>{finalPost ? '복사 준비 완료' : '잠금 상태'}</strong>
+                <p>{state.copyFeedback || '복사 버튼은 최종 원고가 열릴 때만 활성화됩니다.'}</p>
+              </div>
+            </div>
+
+            <div className="publish-grid">
+              <article className="publish-panel enter-block" style={{ animationDelay: '100ms' }}>
+                {!finalPost ? (
+                  <section className="empty-state">
+                    <div className="empty-icon" aria-hidden="true">
+                      게시
+                    </div>
+                    <div>
+                      <strong>최종 원고가 아직 준비되지 않았습니다.</strong>
+                      <p>진행 화면에서 마지막 단계를 닫으면 이 화면이 자동으로 복사 준비 면이 됩니다.</p>
+                    </div>
+                  </section>
+                ) : (
+                  <>
+                    <div className="panel-head">
+                      <div>
+                        <p className="kicker">게시 미리보기</p>
+                        <h3>{finalTitle}</h3>
+                      </div>
+                      <button
+                        aria-label="Copy markdown"
+                        className="primary-button"
+                        data-testid="Copy markdown"
+                        onClick={() => void handleCopyMarkdown()}
+                        type="button"
+                      >
+                        마크다운 복사
+                      </button>
+                    </div>
+
+                    <p className="panel-description">
+                      {finalExcerpt || '첫 문단 요약이 이 위치에 먼저 나타나며, 전문은 아래 펼침 레이어에서 확인합니다.'}
+                    </p>
+
+                    <div className="final-structure-grid">
+                      {finalSections.map((section, index) => (
+                        <div className="structure-card" key={section}>
+                          <span>{index + 1}</span>
+                          <strong>{section}</strong>
+                        </div>
+                      ))}
+                    </div>
+
+                    <details className="support-drawer">
+                      <summary>전문 원고 펼치기</summary>
+                      <div className="drawer-body final-panel">
+                        <pre className="markdown-preview">{finalPost}</pre>
+                      </div>
+                    </details>
+                  </>
+                )}
+              </article>
+
+              <aside className="support-column enter-block" style={{ animationDelay: '150ms' }}>
+                <article className="support-panel">
+                  <p className="kicker">검토 메모</p>
+                  <h3>마지막 확인</h3>
+                  {reviewNotes ? (
+                    <ul className="review-list">
+                      {reviewNotes.map((note) => (
+                        <li key={`${note.label}-${note.detail}`}>
+                          <strong>{note.label}</strong>
+                          <p>{note.detail}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="empty-state compact-empty">
+                      <div className="empty-icon" aria-hidden="true">
+                        검토
+                      </div>
+                      <div>
+                        <strong>검토 메모 대기 중</strong>
+                        <p>초안이 채워지면 게시 전 확인 항목이 여기에 모입니다.</p>
+                      </div>
+                    </div>
+                  )}
+                </article>
+
+                <article className="support-panel">
+                  <p className="kicker">지원 레이어</p>
+                  <h3>보조 기록 서랍</h3>
+                  <details className="support-drawer">
+                    <summary>보조 기록 펼치기</summary>
+                    <div className="drawer-body">
+                      <ul className="deliverable-list">
+                        {deliverables.map((deliverable) => (
+                          <li key={deliverable.id}>
+                            <strong>{deliverable.title}</strong>
+                            <p>{deliverable.description}</p>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </details>
+                </article>
+              </aside>
+            </div>
+          </section>
+        </div>
       </section>
     </main>
   )
