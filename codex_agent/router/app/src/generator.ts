@@ -92,7 +92,7 @@ function slugify(value: string) {
 }
 
 function specialistLabel(id: SpecialistId) {
-  return specialistProfiles.find((profile) => profile.id === id)?.label ?? '폴백 스페셜리스트 (Fallback Specialist)'
+  return specialistProfiles.find((profile) => profile.id === id)?.label ?? '폴백 스페셜리스트'
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -268,17 +268,17 @@ function buildReviewNotes(
   if (specialist === 'frontend') {
     return [
       {
-        label: 'Flow clarity',
+        label: '흐름 명료도',
         detail: '사용자 흐름과 구현 포인트가 같은 글 안에서 자연스럽게 연결된다.',
         severity: 'good',
       },
       {
-        label: 'Rendering trade-off',
+        label: '렌더링 트레이드오프',
         detail: '추상적 최적화 조언 대신 실제 UI 비용을 더 직접적으로 적으면 더 좋다.',
         severity: 'watch',
       },
       {
-        label: 'Usability framing',
+        label: '사용성 프레이밍',
         detail: `${inputs.audience} 독자를 위해 예시 한두 개를 더 넣으면 이해 진입점이 더 빨라진다.`,
         severity: 'improve',
       },
@@ -288,17 +288,17 @@ function buildReviewNotes(
   if (specialist === 'orchestration') {
     return [
       {
-        label: 'Stage logic',
+        label: '단계 논리',
         detail: '역할 구조와 단계 논리가 분명하게 이어져서 오케스트레이션 글로 읽힌다.',
         severity: 'good',
       },
       {
-        label: 'Failure mode coverage',
+        label: '실패 대응 범위',
         detail: '실패 복구나 재시도 포인트를 한 줄 더 붙이면 운영 감각이 더 살아난다.',
         severity: 'watch',
       },
       {
-        label: 'Coordination clarity',
+        label: '조율 명료도',
         detail: `${profile.reviewLens} 관점이 충분히 드러난다.`,
         severity: 'good',
       },
@@ -308,17 +308,17 @@ function buildReviewNotes(
   if (specialist === 'infra') {
     return [
       {
-        label: 'Decision criteria',
+        label: '선택 기준',
         detail: '선택 조건과 반대편 downside가 함께 보여서 비교 글로 설득력이 있다.',
         severity: 'good',
       },
       {
-        label: 'Rollout caution',
+        label: '도입 주의점',
         detail: '운영 체크리스트에 rollback 기준이 더 또렷하게 들어가면 더 좋다.',
         severity: 'watch',
       },
       {
-        label: 'Trade-off honesty',
+        label: '트레이드오프 정직성',
         detail: `${inputs.topic}를 단일 해법처럼 보이지 않게 정리한 점이 좋다.`,
         severity: 'good',
       },
@@ -327,17 +327,17 @@ function buildReviewNotes(
 
   return [
     {
-      label: 'Fallback safety',
+      label: '폴백 안정성',
       detail: '불확실한 지점을 과장하지 않고 기록해서 fallback route의 목적을 잘 살렸다.',
       severity: 'good',
     },
     {
-      label: 'Missing certainty',
+      label: '불확실성 분리',
       detail: '확정 정보와 추가 확인 포인트를 시각적으로 더 분리하면 더 읽기 쉬워진다.',
       severity: 'watch',
     },
     {
-      label: 'Balanced framing',
+      label: '균형 잡힌 프레이밍',
       detail: `${inputs.audience} 독자에게는 다음에 무엇을 조사해야 하는지 더 명확히 남기는 편이 좋다.`,
       severity: 'improve',
     },
@@ -368,7 +368,7 @@ function buildFinalPost(
   return [
     `# ${titleCase(inputs.topic)}`,
     '',
-    `> 경로(Route): ${specialistLabel(specialist)} | 신뢰도(Confidence): ${(routing.confidence * 100).toFixed(0)}%`,
+    `> 경로: ${specialistLabel(specialist)} | 신뢰도: ${(routing.confidence * 100).toFixed(0)}%`,
     '',
     '## 시작 메모',
     intro,
