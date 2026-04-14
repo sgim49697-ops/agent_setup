@@ -5,27 +5,27 @@ import type { DeliverableCard, TopicPreset, WorkflowStage, WorkerProfile } from 
 export const workflowStages: WorkflowStage[] = [
   {
     id: 'research',
-    label: '리서치 결과 (Research results)',
+    label: '리서치 결과',
     description: '오케스트레이터가 분해 기준을 먼저 잡고 콘텐츠 워커가 리서치 핵심을 만든다.',
   },
   {
     id: 'outline',
-    label: '아웃라인 (Outline)',
+    label: '아웃라인',
     description: '작업 번들과 워커 소유 범위를 토대로 구조를 고정한다.',
   },
   {
     id: 'drafts',
-    label: '섹션 초안 (Section drafts)',
+    label: '섹션 초안',
     description: '각 워커가 맡은 산출물 미리보기를 만들고 콘텐츠 초안을 연결한다.',
   },
   {
     id: 'review',
-    label: '리뷰 노트 (Review notes)',
+    label: '리뷰 노트',
     description: '통합 담당자가 레이아웃, 상태, 콘텐츠 일관성을 점검한다.',
   },
   {
     id: 'final',
-    label: '최종 글 (Final post)',
+    label: '최종 글',
     description: '통합 리뷰를 거친 최종 마크다운과 내보내기 상태를 제공한다.',
   },
 ]
@@ -33,19 +33,19 @@ export const workflowStages: WorkflowStage[] = [
 export const workerProfiles: WorkerProfile[] = [
   {
     id: 'ui_worker',
-    label: 'UI 워커 (UI Worker)',
-    focus: '단계 추적기, CTA 문구, 빈/오류 UX, 정보 계층을 정리한다.',
+    label: '화면 워커',
+    focus: '단계 추적기, 행동 문구, 빈/오류 화면, 정보 계층을 정리한다.',
     reviewLens: '시각 계층과 다음 행동 선명도',
   },
   {
     id: 'state_worker',
-    label: '상태 워커 (State Worker)',
+    label: '상태 워커',
     focus: '로딩, 초안 준비, 리뷰 완료, 내보내기 준비 의미 체계를 설계한다.',
     reviewLens: '상태 전이와 인터랙션 일관성',
   },
   {
     id: 'content_worker',
-    label: '콘텐츠 워커 (Content Worker)',
+    label: '콘텐츠 워커',
     focus: '리서치, 아웃라인, 초안, 리뷰, 최종 마크다운을 생성한다.',
     reviewLens: '편집 흐름과 콘텐츠 실용성',
   },
@@ -85,7 +85,7 @@ export const topicPresets: TopicPreset[] = [
     audience: 'practitioner',
     tone: 'pragmatic',
     length: 'medium',
-    rationale: '분해 기준과 상태/콘텐츠 ownership을 설명하기 좋은 주제',
+    rationale: '분해 기준과 상태/콘텐츠 소유 범위를 설명하기 좋은 주제',
   },
   {
     title: 'React Compiler 시대의 memoization 전략',
@@ -105,8 +105,8 @@ export const topicPresets: TopicPreset[] = [
 
 export const reviewLenses = [
   '분해 기준이 첫 화면에서 읽히는가',
-  'ownership 분리가 충분히 명확한가',
-  'integration 흐름이 일관되게 느껴지는가',
+  '소유 범위 분리가 충분히 명확한가',
+  '통합 흐름이 일관되게 느껴지는가',
   '반응형 흐름이 안정적인가',
   '기본 접근성이 확보됐는가',
 ]

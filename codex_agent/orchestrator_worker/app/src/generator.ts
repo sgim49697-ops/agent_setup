@@ -29,31 +29,31 @@ const toneGuidance: Record<Tone, string> = {
 }
 
 const audienceDisplayLabels: Record<Audience, string> = {
-  beginner: '입문자 (Beginner)',
-  practitioner: '실무자 (Practitioner)',
-  advanced: '고급 사용자 (Advanced)',
+  beginner: '입문자',
+  practitioner: '실무자',
+  advanced: '고급 사용자',
 }
 
 const toneDisplayLabels: Record<Tone, string> = {
-  clear: '명료함 (Clear)',
-  pragmatic: '실무형 (Pragmatic)',
-  opinionated: '의견형 (Opinionated)',
+  clear: '명료형',
+  pragmatic: '실무형',
+  opinionated: '주장형',
 }
 
 const lengthDisplayLabels: Record<Length, string> = {
-  short: '짧게 (Short)',
-  medium: '보통 (Medium)',
-  long: '길게 (Long)',
+  short: '짧게',
+  medium: '보통',
+  long: '길게',
 }
 
 const sectionTitles: Record<Length, string[]> = {
   short: ['왜 지금 중요한가', '구조와 상태를 나누는 기준', '바로 적용할 체크리스트'],
-  medium: ['문제 정의와 배경', '분해 기준과 ownership', '상태 연결과 흔한 실수', '최종 적용 체크리스트'],
+  medium: ['문제 정의와 배경', '분해 기준과 소유 범위', '상태 연결과 흔한 실수', '최종 적용 체크리스트'],
   long: [
     '문제 정의와 배경',
-    '분해 기준과 ownership',
+    '분해 기준과 소유 범위',
     '상태 연결과 UI 협업',
-    '콘텐츠 통합과 consistency review',
+    '콘텐츠 통합과 일관성 리뷰',
     '최종 적용 체크리스트',
   ],
 }
@@ -106,14 +106,14 @@ function createBundles(inputs: BlogGeneratorInputs): TaskBundle[] {
 
 export function buildOrchestratorPlan(inputs: BlogGeneratorInputs): OrchestratorPlan {
   return {
-    productGoal: `${inputs.topic}용 테크 블로그 생성기를 구현하되, 분해 기준과 ownership, integration trace가 화면에서 명확히 읽히게 만든다.`,
+    productGoal: `${inputs.topic}용 테크 블로그 생성기를 구현하되, 분해 기준과 소유 범위, 통합 흔적이 화면에서 명확히 읽히게 만든다.`,
     decompositionReason:
-      `이 주제는 UI framing, 상태 semantics, 콘텐츠 작성을 나눠야 orchestration이 협업 경계를 어떻게 관리하는지 제품 화면에서 보여주기 좋다. ${audienceGuidance[inputs.audience]}`,
+      `이 주제는 화면 프레이밍, 상태 의미 체계, 콘텐츠 작성을 나눠야 오케스트레이션이 협업 경계를 어떻게 관리하는지 제품 화면에서 보여주기 좋다. ${audienceGuidance[inputs.audience]}`,
     bundles: createBundles(inputs),
     integrationChecklist: [
       'UI 문구는 실제 상태 전이와 어긋나지 않아야 한다.',
       '워커 소유 범위는 책임이 흐려질 만큼 겹치지 않아야 한다.',
-      '최종 글 (Final post)은 세 개의 작업 스트림이 아니라 하나의 제품처럼 읽혀야 한다.',
+      '최종 글은 세 개의 작업 스트림이 아니라 하나의 제품처럼 읽혀야 한다.',
       '리뷰 노트와 최종 내보내기는 통합 이후에도 같은 결론을 유지해야 한다.',
     ],
   }
@@ -127,8 +127,8 @@ export function buildUiWorkerOutput(inputs: BlogGeneratorInputs, plan: Orchestra
     handoffNote:
       '상태 워커는 버튼 비활성 타이밍과 상태 문구를 맞춰야 하고, 콘텐츠 워커는 패널 계층을 존중해 긴 본문을 접힌 표면 안에 가둬야 한다.',
     deliverablePreview: [
-      '기본 CTA: 글 생성 시작 (Generate post)',
-      '보조 CTA: 마크다운 복사 (Copy markdown)',
+      '기본 CTA: 오케스트레이션 시작',
+      '보조 CTA: 마크다운 복사',
       '오케스트레이터 데스크, 워커 보드, 최종 글 빈 상태',
       `톤 프레이밍: ${toneGuidance[inputs.tone]}`,
       `계획 체크포인트: ${plan.integrationChecklist.length}개`,
@@ -142,10 +142,10 @@ export function buildStateWorkerOutput(inputs: BlogGeneratorInputs): WorkerOutpu
     summary:
       '상태 워커가 계획부터 통합 리뷰까지의 순서를 결정론적으로 고정하고, 로딩/초안 준비/리뷰 완료/내보내기 준비/오류 전이를 명시했다.',
     handoffNote:
-      '통합 담당자는 로딩 동안 글 생성 시작 (Generate post)이 비활성화되는지, 오류가 내보내기 준비 상태로 새지 않는지, 리뷰 완료가 최종 내보내기보다 먼저 보이는지 확인해야 한다.',
+      '통합 담당자는 로딩 동안 오케스트레이션 시작이 비활성화되는지, 오류가 내보내기 준비 상태로 새지 않는지, 리뷰 완료가 최종 내보내기보다 먼저 보이는지 확인해야 한다.',
     deliverablePreview: [
-      '로딩 상태에서 글 생성 시작 (Generate post) 비활성화',
-      'fail/error 접두사는 계획 단계 오류를 트리거',
+      '로딩 상태에서 오케스트레이션 시작 비활성화',
+      '실패 접두사는 계획 단계 오류를 트리거',
       '리뷰 완료는 내보내기 준비보다 먼저 노출',
       `독자 가드레일: ${audienceGuidance[inputs.audience]}`,
     ],
@@ -223,10 +223,10 @@ function buildRawFinalPost(
   return [
     `# ${titleCase(inputs.topic)}`,
     '',
-    `> 독자층 (Audience): ${audienceDisplayLabels[inputs.audience]} | 톤 (Tone): ${toneDisplayLabels[inputs.tone]} | 분량 (Length): ${lengthDisplayLabels[inputs.length]}`,
+    `> 독자층: ${audienceDisplayLabels[inputs.audience]} | 톤: ${toneDisplayLabels[inputs.tone]} | 분량: ${lengthDisplayLabels[inputs.length]}`,
     '',
     '## 시작 메모',
-    `${research.thesis} 이 글은 UI, state, content 책임을 따로 본 뒤 최종 통합 기준으로 다시 묶는 흐름을 따른다.`,
+    `${research.thesis} 이 글은 화면, 상태, 콘텐츠 책임을 따로 본 뒤 최종 통합 기준으로 다시 묶는 흐름을 따른다.`,
     '',
     ...drafts.flatMap((draft) => [
       `## ${draft.title}`,
@@ -240,7 +240,7 @@ function buildRawFinalPost(
     ]),
     '## 마무리 체크리스트',
     '',
-    `- 초안 결론: ${inputs.topic}는 분해만 잘해서는 부족하고, 마지막 integration review가 품질을 닫아줘야 실제 제품처럼 보인다.`,
+    `- 초안 결론: ${inputs.topic}는 분해만 잘해서는 부족하고, 마지막 통합 리뷰가 품질을 닫아줘야 실제 제품처럼 보인다.`,
   ].join('\n')
 }
 

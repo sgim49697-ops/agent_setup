@@ -1,7 +1,6 @@
 import { useReducer, useRef, useState } from 'react'
 import './App.css'
 import type {
-  ArtifactIndex,
   Audience,
   BlogGeneratorInputs,
   GenerationState,
@@ -9,7 +8,6 @@ import type {
   Length,
   PipelineOutputs,
   ReviewNote,
-  Scorecard,
   Tone,
   WorkerId,
   WorkerOutput,
@@ -32,6 +30,9 @@ import {
   workerProfiles,
   workflowStages,
 } from './starterData'
+
+type ScreenId = 'brief' | 'board' | 'result'
+type MotionDirection = 'forward' | 'backward'
 
 type AppState = {
   inputs: BlogGeneratorInputs
@@ -80,7 +81,7 @@ type Action =
   | { type: 'set-copy-feedback'; message: string }
   | { type: 'set-error'; message: string }
 
-type ReaderSurface = 'drafts' | 'review' | 'final'
+const screenOrder: ScreenId[] = ['brief', 'board', 'result']
 
 const initialInputs: BlogGeneratorInputs = {
   topic: topicPresets[0].title,
@@ -104,7 +105,7 @@ const initialGeneration: GenerationState = {
   workerStatuses: emptyWorkerStatuses(),
   orchestratorPlan: null,
   outputs: {},
-  statusMessage: '오케스트레이터가 브리프를 기다리고 있습니다. 먼저 글 생성 시작(Generate post)으로 작업 분해를 확인하세요.',
+  statusMessage: '오케스트레이터가 브리프를 기다리고 있습니다. 시작 버튼으로 분해를 잠그면 워커 지휘 보드가 열립니다.',
   errorMessage: null,
 }
 
@@ -125,7 +126,7 @@ function reducer(state: AppState, action: Action): AppState {
           state.generation.status === 'error'
             ? {
                 ...initialGeneration,
-                statusMessage: '브리프를 업데이트했습니다. 다시 생성하면 오케스트레이터 계획이 처음부터 재시작됩니다.',
+                statusMessage: '브리프를 업데이트했습니다. 다시 시작하면 오케스트레이터가 새 분해 기준으로 지휘를 재개합니다.',
               }
             : state.generation,
       }
@@ -135,7 +136,7 @@ function reducer(state: AppState, action: Action): AppState {
         inputs: action.payload,
         generation: {
           ...state.generation,
-          statusMessage: '프리셋을 불러왔습니다. 이제 오케스트레이터가 작업을 워커 번들로 분해할 수 있습니다.',
+          statusMessage: '프리셋을 불러왔습니다. 이제 오케스트레이터가 워커 번들을 잠글 수 있습니다.',
           errorMessage: null,
         },
         copyFeedback: '',
@@ -275,7 +276,7 @@ function reducer(state: AppState, action: Action): AppState {
           workerStatuses: emptyWorkerStatuses(),
           orchestratorPlan: null,
           outputs: {},
-          statusMessage: '워커 소유 범위를 배정하기 전에 오케스트레이터 계획이 중단되었습니다.',
+          statusMessage: '워커 소유 범위를 잠그기 전에 계획이 멈췄습니다.',
           errorMessage: action.message,
         },
         copyFeedback: '',
@@ -292,11 +293,11 @@ function sleep(ms: number) {
 function statusLabel(status: GenerationStatus) {
   const labels: Record<GenerationStatus, string> = {
     initial: '대기 중',
-    loading: '생성 중',
+    loading: '지휘 중',
     populated: '초안 준비됨',
     'review-complete': '리뷰 완료',
-    'export-ready': '내보내기 준비 완료',
-    error: '오류',
+    'export-ready': '릴리스 준비 완료',
+    error: '복구 필요',
   }
   return labels[status]
 }
@@ -304,8 +305,8 @@ function statusLabel(status: GenerationStatus) {
 function workerStatusLabel(status: WorkerStatus) {
   const labels: Record<WorkerStatus, string> = {
     pending: '대기',
-    working: '작업 중',
-    complete: '완료',
+    working: '진행 중',
+    complete: '전달 완료',
     error: '오류',
   }
   return labels[status]
@@ -318,11 +319,27 @@ function App() {
     copyFeedback: '',
   })
   const runRef = useRef(0)
-  const [manualSurface, setManualSurface] = useState<ReaderSurface | null>(null)
+  const [activeScreen, setActiveScreen] = useState<ScreenId>('brief')
+  const [motionDirection, setMotionDirection] = useState<MotionDirection>('forward')
+  const [screenKey, setScreenKey] = useState(0)
+
+  function navigateScreen(nextScreen: ScreenId) {
+    if (nextScreen === activeScreen) {
+      return
+    }
+
+    const currentIndex = screenOrder.indexOf(activeScreen)
+    const nextIndex = screenOrder.indexOf(nextScreen)
+
+    setMotionDirection(nextIndex > currentIndex ? 'forward' : 'backward')
+    setScreenKey((value) => value + 1)
+    setActiveScreen(nextScreen)
+  }
 
   async function handleGenerate() {
     const runId = runRef.current + 1
     runRef.current = runId
+    navigateScreen('board')
 
     dispatch({
       type: 'start-run',
@@ -337,7 +354,7 @@ function App() {
     if (/^\s*(fail|error)\b/i.test(state.inputs.topic)) {
       dispatch({
         type: 'set-error',
-        message: '오케스트레이터 계획 단계에서 유효한 분해안을 만들지 못했습니다. 주제를 수정한 뒤 하니스를 다시 실행하세요.',
+        message: '계획 단계에서 유효한 분해안을 만들지 못했습니다. 주제를 다듬은 뒤 다시 시작하세요.',
       })
       return
     }
@@ -346,7 +363,7 @@ function App() {
     dispatch({
       type: 'set-plan',
       plan,
-      message: '오케스트레이터 계획이 확정되었습니다. 워커 소유 범위와 통합 체크리스트를 바로 확인할 수 있습니다.',
+      message: '오케스트레이터 계획이 확정되었습니다. 이제 워커 소유 범위와 통합 체크리스트가 보드에 나타납니다.',
     })
 
     await sleep(180)
@@ -357,7 +374,7 @@ function App() {
     dispatch({
       type: 'set-worker-working',
       workerId: 'ui_worker',
-      message: 'UI 워커가 기본 화면 계층과 상태 문구를 정리하고 있습니다.',
+      message: '화면 워커가 첫 화면 밀도와 상태 문구를 정리하고 있습니다.',
     })
     await sleep(160)
     if (runRef.current !== runId) {
@@ -368,7 +385,7 @@ function App() {
     dispatch({
       type: 'set-worker-output',
       workerOutput: uiWorkerOutput,
-      message: 'UI 워커가 맡은 범위를 마쳤고, 인터페이스 메모를 통합 담당자에게 넘겼습니다.',
+      message: '화면 워커가 구조 제안을 전달했습니다. 다음은 상태 계약을 맞추는 순서입니다.',
     })
 
     await sleep(140)
@@ -379,7 +396,7 @@ function App() {
     dispatch({
       type: 'set-worker-working',
       workerId: 'state_worker',
-      message: '상태 워커가 리듀서 의미 체계와 완료 규칙을 고정하고 있습니다.',
+      message: '상태 워커가 진행률, 완료 조건, 복구 경로를 고정하고 있습니다.',
     })
     await sleep(160)
     if (runRef.current !== runId) {
@@ -390,7 +407,7 @@ function App() {
     dispatch({
       type: 'set-worker-output',
       workerOutput: stateWorkerOutput,
-      message: '상태 워커가 상태 전이 계약과 핸드오프 규칙을 마쳤습니다.',
+      message: '상태 워커가 전이 계약을 마쳤습니다. 이제 콘텐츠 워커가 글의 골격을 완성합니다.',
     })
 
     await sleep(140)
@@ -401,7 +418,7 @@ function App() {
     dispatch({
       type: 'set-worker-working',
       workerId: 'content_worker',
-      message: '콘텐츠 워커가 리서치, 아웃라인, 초안, 리뷰 콘텐츠를 생성하고 있습니다.',
+      message: '콘텐츠 워커가 리서치, 아웃라인, 초안, 리뷰 메모를 생성하고 있습니다.',
     })
     await sleep(180)
     if (runRef.current !== runId) {
@@ -412,7 +429,7 @@ function App() {
     dispatch({
       type: 'set-worker-output',
       workerOutput: contentBundle.workerOutput,
-      message: '콘텐츠 워커가 글의 뼈대를 완성했습니다. 이제 통합 담당자가 전체 제품 흐름을 연결할 수 있습니다.',
+      message: '콘텐츠 워커가 글의 뼈대를 완성했습니다. 이제 통합 데스크가 한 편의 글로 묶습니다.',
     })
 
     dispatch({
@@ -421,7 +438,7 @@ function App() {
       key: 'research_summary',
       value: contentBundle.researchSummary,
       status: 'loading',
-      message: '리서치 결과가 준비되었습니다. 이제 아웃라인을 오케스트레이터 계획에 연결합니다.',
+      message: '리서치 핵심이 고정되었습니다. 다음은 아웃라인과 작업 분해를 정렬하는 단계입니다.',
     })
 
     await sleep(150)
@@ -435,7 +452,7 @@ function App() {
       key: 'outline',
       value: contentBundle.outline,
       status: 'loading',
-      message: '아웃라인이 연결되었습니다. 이제 워커 보드에 섹션 초안을 노출합니다.',
+      message: '아웃라인이 연결되었습니다. 이제 워커 보드에 초안과 핸드오프를 공개합니다.',
     })
 
     await sleep(150)
@@ -449,7 +466,7 @@ function App() {
       key: 'section_drafts',
       value: contentBundle.sectionDrafts,
       status: 'populated',
-      message: '워커 산출물과 콘텐츠 초안이 채워졌습니다. 다음 단계는 통합 리뷰입니다.',
+      message: '워커 산출물과 초안이 채워졌습니다. 이제 통합 리뷰로 넘어갑니다.',
     })
 
     await sleep(150)
@@ -463,14 +480,14 @@ function App() {
       key: 'review_notes',
       value: contentBundle.reviewNotes,
       status: 'review-complete',
-      message: '콘텐츠 리뷰 노트가 준비되었습니다. 이제 통합 담당자가 워커 간 일관성을 점검합니다.',
+      message: '리뷰 메모가 준비되었습니다. 통합 데스크가 레이아웃과 상태를 최종 조율하고 있습니다.',
     })
 
     const integrationReview = buildIntegrationReview(state.inputs)
     dispatch({
       type: 'set-integration-review',
       review: integrationReview,
-      message: '통합 리뷰가 완료되었습니다. 적용된 수정 사항이 리뷰 데스크에 정리되었습니다.',
+      message: '통합 리뷰가 끝났습니다. 이제 한 편의 릴리스 후보로 조립합니다.',
     })
 
     await sleep(150)
@@ -493,7 +510,7 @@ function App() {
     dispatch({
       type: 'finalize-run',
       finalOutputs,
-      message: '오케스트레이터 파이프라인이 완료되었습니다. 최종 글과 평가 체크리스트가 준비되었습니다.',
+      message: '오케스트레이터 파이프라인이 완료되었습니다. 결과 화면에서 최종 글을 읽고 내보낼 수 있습니다.',
     })
   }
 
@@ -502,7 +519,7 @@ function App() {
     if (!payload) {
       dispatch({
         type: 'set-copy-feedback',
-        message: '먼저 최종 글을 생성하세요. 복사는 내보내기 준비 완료 상태에서만 동작합니다.',
+        message: '먼저 결과 화면까지 진행하세요. 내보내기는 최종 글이 준비된 뒤에만 열립니다.',
       })
       return
     }
@@ -511,12 +528,12 @@ function App() {
       await navigator.clipboard.writeText(payload)
       dispatch({
         type: 'set-copy-feedback',
-        message: '통합된 워커 결과에서 최종 마크다운을 복사했습니다.',
+        message: '최종 마크다운을 클립보드로 복사했습니다.',
       })
     } catch {
       dispatch({
         type: 'set-copy-feedback',
-        message: '클립보드 복사는 실패했지만, 아래에 최종 마크다운은 그대로 보입니다.',
+        message: '클립보드 복사는 실패했지만, 아래 결과 화면에서 내용을 그대로 확인할 수 있습니다.',
       })
     }
   }
@@ -539,6 +556,16 @@ function App() {
     })
   }
 
+  function recoverBriefFromError() {
+    const recoveredTopic = state.inputs.topic.replace(/^\s*(fail|error)\b[:\-\s]*/i, '').trim()
+    updateField('topic', recoveredTopic || '문제를 다시 정의한 브리프를 여기에 적어 주세요.')
+    navigateScreen('brief')
+    dispatch({
+      type: 'set-copy-feedback',
+      message: '브리프를 복구했습니다. 주제를 다듬은 뒤 다시 오케스트레이션을 시작하세요.',
+    })
+  }
+
   const plan = state.generation.orchestratorPlan
   const workerOutputs = state.generation.outputs.worker_outputs ?? []
   const reviewNotes = state.generation.outputs.review_notes as ReviewNote[] | undefined
@@ -548,585 +575,704 @@ function App() {
   const integrationReview = state.generation.outputs.integration_review
   const finalPost = state.generation.outputs.final_post
   const canCopy = Boolean(finalPost)
+  const boardEnabled = state.generation.status !== 'initial'
+  const resultEnabled = canCopy
   const completedWorkerCount = workerOutputs.length
   const currentMoment = !plan
-    ? '오케스트레이터가 워커 소유 범위와 첫 통합 체크포인트를 아직 배정하지 않았습니다.'
+    ? '오케스트레이터가 아직 워커 소유 범위를 잠그지 않았습니다.'
     : completedWorkerCount < workerProfiles.length
-      ? `${completedWorkerCount}/${workerProfiles.length}개 워커가 산출물을 넘겼습니다. 통합을 시작하기 전에 남은 소유 범위를 더 모으는 중입니다.`
+      ? `${completedWorkerCount}/${workerProfiles.length}개 워커가 산출물을 전달했습니다. 남은 소유 범위를 수집하는 중입니다.`
       : !integrationReview
-        ? '모든 워커 산출물이 도착했습니다. 통합 데스크가 레이아웃, 상태, 콘텐츠를 하나의 제품 화면으로 맞추고 있습니다.'
+        ? '모든 워커 산출물이 도착했습니다. 통합 데스크가 하나의 경험으로 맞추는 중입니다.'
         : finalPost
-          ? '통합이 완료되었습니다. 최종 글은 읽을 준비가 되었고 내보내기도 열렸습니다.'
-          : '통합 리뷰는 끝났고, 이제 최종 조립만 남았습니다.'
+          ? '통합이 완료되었습니다. 결과 화면에서 읽고 내보내면 됩니다.'
+          : '통합 리뷰는 끝났고 최종 조립만 남았습니다.'
   const nextAction = !plan
-    ? '글 생성 시작(Generate post)으로 오케스트레이터가 소유 범위를 먼저 정의하게 하세요.'
+    ? '브리프 화면에서 오케스트레이션을 시작하세요.'
     : completedWorkerCount < workerProfiles.length
-      ? '모든 워커 산출물이 도착할 때까지 워커 보드에 집중하세요.'
+      ? '지휘 보드에서 남은 워커의 핸드오프를 기다리세요.'
       : !integrationReview
-        ? '내보내기를 열기 전에 통합 체크포인트에서 겹치는 부분을 먼저 정리하세요.'
+        ? '통합 체크포인트를 검토하며 지휘 보드를 유지하세요.'
         : !finalPost
-          ? '최종 조립을 마친 뒤 리더 표면을 최상단으로 올리세요.'
-          : '통합된 글을 먼저 읽고, 준비됐으면 마크다운을 복사하세요.'
+          ? '결과 화면으로 넘어갈 준비를 하세요.'
+          : '결과 화면에서 글을 읽고 마크다운을 복사하세요.'
   const checkpointLabel = !plan
-    ? '소유 범위 미배정'
+    ? '브리프 대기'
     : completedWorkerCount < workerProfiles.length
-      ? '워커 산출물 수집 중'
+      ? '워커 전달 수집 중'
       : !integrationReview
-        ? '통합 체크포인트 진행 중'
+        ? '통합 체크포인트'
         : finalPost
           ? '릴리스 후보 준비 완료'
           : '최종 조립 진행 중'
-
-  const artifactPreview: ArtifactIndex = {
-    screenshots: ['runs/desktop-verification.png', 'runs/mobile-verification.png'],
-    final_urls: ['http://127.0.0.1:<dev-port>'],
-    notes: ['소유 범위 보드가 먼저 보임', '통합 체크포인트가 바로 읽힘', '평가 드로어는 보조 레이어로 후퇴'],
-    deliverables: deliverables.map((item) => item.title),
-  }
-
-  const scorePreview: Scorecard = {
-    task_success: 8.8,
-    ux_score: 8.5,
-    flow_clarity: 8.7,
-    visual_quality: 8.3,
-    responsiveness: 8.4,
-    a11y_score: 8.2,
-    process_adherence: 9.0,
-    overall_score: 8.6,
-  }
-
-  const recommendedSurface: ReaderSurface =
-    finalPost ? 'final' : integrationReview && reviewNotes ? 'review' : 'drafts'
-  const activeSurface =
-    manualSurface === 'final' && !finalPost
-      ? recommendedSurface
-      : manualSurface === 'review' && !(integrationReview && reviewNotes)
-        ? recommendedSurface
-        : manualSurface ?? recommendedSurface
+  const activeWorker =
+    workerProfiles.find((profile) => state.generation.workerStatuses[profile.id] === 'working') ??
+    workerProfiles.find((profile) => state.generation.workerStatuses[profile.id] === 'pending') ??
+    null
+  const stageIndex = state.generation.currentStage
+    ? workflowStages.findIndex((stage) => stage.id === state.generation.currentStage)
+    : -1
+  const inFlightWeight =
+    state.generation.status === 'loading' && stageIndex >= 0 && !state.generation.completedStages.includes(workflowStages[stageIndex].id)
+      ? 0.55
+      : 0
+  const progressPercent = finalPost
+    ? 100
+    : Math.max(
+        plan ? 18 : 0,
+        Math.round(((state.generation.completedStages.length + inFlightWeight) / workflowStages.length) * 100),
+      )
+  const boardPrimaryLabel =
+    state.generation.status === 'error'
+      ? '브리프로 돌아가기'
+      : finalPost
+        ? '결과 화면으로 이동'
+        : '최종 조립 대기 중'
 
   return (
-    <main className="shell">
-      <section className="hero">
-        <div className="hero-copy">
-          <p className="eyebrow">오케스트레이터 워커 하니스</p>
-          <h1>기술 블로그 포스트 생성기</h1>
-          <p className="lead">
-            오케스트레이터가 제품을 겹치지 않는 워커 소유 범위로 분해한 뒤, 통합 담당자가 UI,
-            상태, 콘텐츠를 다시 하나의 일관된 경험으로 묶습니다.
-          </p>
-
-          <div className="hero-actions">
-            <button
-              type="button"
-              className="primary"
-              disabled={state.generation.status === 'loading'}
-              onClick={handleGenerate}
-            >
-              {state.generation.status === 'loading'
-                ? '생성 중...'
-                : '글 생성 시작 (Generate post)'}
-            </button>
-            <button type="button" className="secondary" disabled={!canCopy} onClick={copyMarkdown}>
-              마크다운 복사 (Copy markdown)
-            </button>
+    <main className="workspace-shell">
+      <aside className="command-rail">
+        <div className="rail-brand entrance-item" style={{ animationDelay: '0ms' }}>
+          <div className="brand-mark" aria-hidden="true">
+            <span />
+            <span />
+            <span />
           </div>
+          <div>
+            <p className="eyebrow">오케스트레이터 워커</p>
+            <h1>기술 지휘자</h1>
+          </div>
+        </div>
 
-          <div className="status-band" aria-live="polite">
-            <span className="sr-only" aria-hidden="true">
-              {state.generation.status}
+        <nav className="screen-nav" aria-label="화면 이동">
+          <button
+            type="button"
+            className={`screen-nav-button ${activeScreen === 'brief' ? 'is-active' : ''}`}
+            aria-current={activeScreen === 'brief' ? 'page' : undefined}
+            onClick={() => navigateScreen('brief')}
+          >
+            <span className="screen-nav-step">01</span>
+            <span className="screen-nav-copy">
+              <strong>브리프</strong>
+              <small>입력과 분해 기준</small>
             </span>
-            <span className={`status-pill status-${state.generation.status}`}>
-              {statusLabel(state.generation.status)}
+          </button>
+          <button
+            type="button"
+            className={`screen-nav-button ${activeScreen === 'board' ? 'is-active' : ''}`}
+            aria-current={activeScreen === 'board' ? 'page' : undefined}
+            disabled={!boardEnabled}
+            onClick={() => navigateScreen('board')}
+          >
+            <span className="screen-nav-step">02</span>
+            <span className="screen-nav-copy">
+              <strong>지휘 보드</strong>
+              <small>워커 흐름과 통합 압력</small>
+            </span>
+          </button>
+          <button
+            type="button"
+            className={`screen-nav-button ${activeScreen === 'result' ? 'is-active' : ''}`}
+            aria-current={activeScreen === 'result' ? 'page' : undefined}
+            disabled={!resultEnabled}
+            onClick={() => navigateScreen('result')}
+          >
+            <span className="screen-nav-step">03</span>
+            <span className="screen-nav-copy">
+              <strong>결과 화면</strong>
+              <small>릴리스 후보와 내보내기</small>
+            </span>
+          </button>
+        </nav>
+
+        <article className="rail-status entrance-item" style={{ animationDelay: '80ms' }}>
+          <p className="eyebrow">현재 지점</p>
+          <h2>{checkpointLabel}</h2>
+          <p>{currentMoment}</p>
+          <div className="rail-status-bar" aria-hidden="true">
+            <span className="rail-status-fill" style={{ width: `${progressPercent}%` }} />
+          </div>
+          <div className="rail-status-meta">
+            <span>{progressPercent}%</span>
+            <span>{statusLabel(state.generation.status)}</span>
+          </div>
+        </article>
+
+        <article className="rail-note-card entrance-item" style={{ animationDelay: '140ms' }}>
+          <p className="eyebrow">핵심 메모</p>
+          <p>
+            첫 화면은 브리프와 다음 행동만 보여주고, 리서치와 증거는 지휘 보드와 결과 화면의
+            보조 레이어로 보냅니다.
+          </p>
+        </article>
+      </aside>
+
+      <section className="workspace-main">
+        <header className="workspace-header">
+          <div>
+            <p className="eyebrow">상태 피드</p>
+            <h2>{statusLabel(state.generation.status)}</h2>
+          </div>
+          <div className="header-status" aria-live="polite">
+            <span className="sr-only" aria-hidden="true">
+              Generation status: {state.generation.status}
             </span>
             <p>{state.generation.statusMessage}</p>
             {state.copyFeedback ? <small>{state.copyFeedback}</small> : null}
           </div>
+        </header>
 
-          <div className="next-move-card">
-            <p className="panel-label">다음 행동</p>
-            <h2>{finalPost ? '통합된 글을 읽고 내보내세요' : '소유 범위 보드를 먼저 정리하세요'}</h2>
-            <p>{nextAction}</p>
-            <div className="chip-row">
-              <span className="meta-chip">워커 소유 범위</span>
-              <span className="meta-chip">통합 체크포인트</span>
-              <span className="meta-chip">최종 글 (Final post)</span>
-            </div>
-          </div>
-
-          {state.generation.errorMessage ? (
-            <div className="error-panel" role="alert">
-              <strong>계획 생성 실패</strong>
-              <p>{state.generation.errorMessage}</p>
-            </div>
-          ) : null}
-        </div>
-
-        <aside className="hero-panel input-rail">
-          <p className="panel-label">입력 레일</p>
-          <form className="input-grid">
-            <label>
-              <span>주제 (Topic)</span>
-              <textarea
-                aria-label="Topic"
-                name="topic"
-                rows={4}
-                value={state.inputs.topic}
-                onChange={(event) => updateField('topic', event.target.value)}
-              />
-            </label>
-            <label>
-              <span>독자층 (Audience)</span>
-              <select
-                aria-label="Audience"
-                name="audience"
-                value={state.inputs.audience}
-                onChange={(event) => updateField('audience', event.target.value as Audience)}
-              >
-                <option value="beginner">입문자</option>
-                <option value="practitioner">실무자</option>
-                <option value="advanced">고급 사용자</option>
-              </select>
-            </label>
-            <label>
-              <span>톤 (Tone)</span>
-              <select
-                aria-label="Tone"
-                name="tone"
-                value={state.inputs.tone}
-                onChange={(event) => updateField('tone', event.target.value as Tone)}
-              >
-                <option value="clear">명료함</option>
-                <option value="pragmatic">실무형</option>
-                <option value="opinionated">의견형</option>
-              </select>
-            </label>
-            <label>
-              <span>분량 (Length)</span>
-              <select
-                aria-label="Length"
-                name="length"
-                value={state.inputs.length}
-                onChange={(event) => updateField('length', event.target.value as Length)}
-              >
-                <option value="short">짧게</option>
-                <option value="medium">보통</option>
-                <option value="long">길게</option>
-              </select>
-            </label>
-          </form>
-          <p className="rail-note">
-            이 하니스는 프론트엔드 전용이며 결정론적 로컬 생성을 사용합니다. 따라서 지금 판단해야
-            할 것은 백엔드 지연이 아니라 오케스트레이션 패턴 자체입니다.
-          </p>
-
-          <details className="quick-briefs">
-            <summary className="quick-briefs-summary">
-              <span className="panel-label">빠른 브리프</span>
-              <div>
-                <strong>시작 브리프를 빠르게 잡고 싶을 때만 프리셋을 여세요.</strong>
-                <p>기본 표면은 소유 범위 보드가 먼저 보이도록 접힌 상태를 유지합니다.</p>
-              </div>
-            </summary>
-            <div className="quick-brief-list">
-              {topicPresets.map((preset) => (
-                <button
-                  key={preset.title}
-                  type="button"
-                  className="preset-chip"
-                  onClick={() => applyPreset(preset.title, preset.audience, preset.tone, preset.length)}
-                >
-                  <strong>{preset.title}</strong>
-                  <span>{preset.rationale}</span>
-                </button>
-              ))}
-            </div>
-          </details>
-        </aside>
-      </section>
-
-      <section className="board-priority">
-        <article className="panel board-main">
-          <div className="section-head">
-            <p className="eyebrow">소유 범위 보드</p>
-            <h2>워커 소유 범위를 먼저 보고, 핸드오프 세부는 필요할 때만 엽니다</h2>
-            <p>기본 표면은 누가 무엇을 맡았는지와 통합을 시작할 수 있는지만 먼저 보여줍니다.</p>
-          </div>
-          <div className="worker-grid">
-            {workerProfiles.map((profile) => {
-              const bundle = plan?.bundles.find((item) => item.workerId === profile.id)
-              const output = workerOutputs.find((item) => item.workerId === profile.id)
-              const status = state.generation.workerStatuses[profile.id]
-
-              return (
-                <article key={profile.id} className={`worker-card status-${status}`}>
-                  <div className="worker-head">
-                    <div>
-                      <p className="eyebrow">워커 상태</p>
-                      <h3>{profile.label}</h3>
-                    </div>
-                    <span className={`worker-pill worker-${status}`}>{workerStatusLabel(status)}</span>
+        <section className="screen-shell">
+          <article
+            key={`${activeScreen}-${screenKey}`}
+            className={`screen-panel direction-${motionDirection} screen-${activeScreen} ${
+              state.generation.status === 'error' ? 'has-error' : ''
+            }`}
+          >
+            {activeScreen === 'brief' ? (
+              <div className="screen-grid brief-grid">
+                <section className="hero-surface entrance-item" style={{ animationDelay: '0ms' }}>
+                  <p className="eyebrow">브리프 스테이지</p>
+                  <h3>세 명의 워커로 끊고, 한 편의 글로 다시 모읍니다.</h3>
+                  <p className="lead-copy">
+                    이 화면은 주제와 톤을 정하는 자리입니다. 시작 버튼을 누르면 오케스트레이터가
+                    분해 기준을 잠그고, 지휘 보드에서 워커 전달 흐름을 순차적으로 보여줍니다.
+                  </p>
+                  <div className="hero-chip-row">
+                    <span className="hero-chip">한국어 우선 카피</span>
+                    <span className="hero-chip">3-스크린 플로우</span>
+                    <span className="hero-chip">복구 가능한 오류 상태</span>
                   </div>
-
-                  <p className="helper-note">{profile.focus}</p>
-                  <p>{profile.reviewLens}</p>
-
-                  {bundle ? (
-                    <div className="summary-stack">
-                      <div className="sub-block">
-                        <h4>소유 범위</h4>
-                        <p>{bundle.scope}</p>
-                      </div>
-                      <div className="sub-block">
-                        <h4>담당 산출물</h4>
-                        <div className="chip-row">
-                          {bundle.ownedDeliverables.map((item) => (
-                            <span key={item} className="meta-chip">
-                              {item}
-                            </span>
-                          ))}
-                        </div>
+                  <div className="hero-metric-band">
+                    <article>
+                      <strong>01</strong>
+                      <span>브리프 입력</span>
+                    </article>
+                    <article>
+                      <strong>02</strong>
+                      <span>워커 지휘</span>
+                    </article>
+                    <article>
+                      <strong>03</strong>
+                      <span>결과 내보내기</span>
+                    </article>
+                  </div>
+                  <button
+                    type="button"
+                    className="primary-button"
+                    data-testid="generate-post"
+                    aria-label="Generate post"
+                    disabled={state.generation.status === 'loading'}
+                    onClick={handleGenerate}
+                  >
+                    {state.generation.status === 'loading' ? '지휘 시작 중' : '오케스트레이션 시작'}
+                  </button>
+                  <p className="action-caption">{nextAction}</p>
+                  {state.generation.errorMessage ? (
+                    <div className="error-banner" role="alert">
+                      <strong>복구 필요</strong>
+                      <p>{state.generation.errorMessage}</p>
+                      <div className="error-banner-actions">
+                        <button type="button" className="ghost-link" onClick={recoverBriefFromError}>
+                          브리프 정리하기
+                        </button>
+                        <small>실패 접두사를 걷어내고 같은 화면에서 다시 시작할 수 있습니다.</small>
                       </div>
                     </div>
-                  ) : (
-                    <div className="empty-state compact-empty">
-                      <p>글 생성 시작 (Generate post)을 눌러야 이 워커의 소유 범위가 배정됩니다.</p>
-                    </div>
-                  )}
+                  ) : null}
+                </section>
 
-                  {output ? (
-                    <details className="detail-drawer">
-                      <summary className="detail-summary">핸드오프와 통합 메모 열기</summary>
-                      <div className="detail-body">
-                        <div className="sub-block">
-                          <h4>워커 요약</h4>
-                          <p>{output.summary}</p>
-                        </div>
-                        <div className="sub-block">
-                          <h4>산출물 미리보기</h4>
-                          <ul className="compact-list">
-                            {output.deliverablePreview.map((item) => (
-                              <li key={item}>{item}</li>
-                            ))}
-                          </ul>
-                        </div>
-                        {bundle ? (
-                          <div className="sub-block">
-                            <h4>통합 리스크</h4>
-                            <ul className="compact-list">
-                              {bundle.integrationRisks.map((risk) => (
-                                <li key={risk}>{risk}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        ) : null}
-                        <div className="sub-block">
-                          <h4>핸드오프 메모</h4>
-                          <p>{output.handoffNote}</p>
-                        </div>
+                <section className="brief-surface entrance-item" style={{ animationDelay: '60ms' }}>
+                  <div className="section-heading">
+                    <p className="eyebrow">지휘 입력</p>
+                    <h3>짧고 선명한 브리프</h3>
+                    <p>입력 노드는 ghost underline 패턴으로 유지해 내용 자체가 먼저 보이게 합니다.</p>
+                  </div>
+                  <form className="brief-form">
+                    <label className="field-shell field-shell-wide">
+                      <span className="field-label">주제</span>
+                      <textarea
+                        aria-label="Topic"
+                        data-testid="topic-input"
+                        name="topic"
+                        placeholder=" "
+                        rows={4}
+                        value={state.inputs.topic}
+                        onChange={(event) => updateField('topic', event.target.value)}
+                      />
+                      <small>오케스트레이터가 분해 기준을 정할 한 줄 문제를 적습니다.</small>
+                    </label>
+                    <label className="field-shell">
+                      <span className="field-label">독자층</span>
+                      <select
+                        aria-label="Audience"
+                        name="audience"
+                        value={state.inputs.audience}
+                        onChange={(event) => updateField('audience', event.target.value as Audience)}
+                      >
+                        <option value="beginner">입문자</option>
+                        <option value="practitioner">실무자</option>
+                        <option value="advanced">고급 사용자</option>
+                      </select>
+                      <small>설명 밀도와 용어 난도를 결정합니다.</small>
+                    </label>
+                    <label className="field-shell">
+                      <span className="field-label">톤</span>
+                      <select
+                        aria-label="Tone"
+                        name="tone"
+                        value={state.inputs.tone}
+                        onChange={(event) => updateField('tone', event.target.value as Tone)}
+                      >
+                        <option value="clear">명료함</option>
+                        <option value="pragmatic">실무형</option>
+                        <option value="opinionated">주장형</option>
+                      </select>
+                      <small>화면 문구와 결론의 강도를 결정합니다.</small>
+                    </label>
+                    <label className="field-shell">
+                      <span className="field-label">분량</span>
+                      <select
+                        aria-label="Length"
+                        name="length"
+                        value={state.inputs.length}
+                        onChange={(event) => updateField('length', event.target.value as Length)}
+                      >
+                        <option value="short">짧게</option>
+                        <option value="medium">보통</option>
+                        <option value="long">길게</option>
+                      </select>
+                      <small>워커가 생성할 섹션 수와 리듬을 조절합니다.</small>
+                    </label>
+                  </form>
+
+                  <details className="drawer-card preset-drawer">
+                    <summary>
+                      <div>
+                        <strong>빠른 시작 프리셋</strong>
+                        <p>브리프를 빠르게 맞추고 싶을 때만 여는 보조 레이어입니다.</p>
                       </div>
-                    </details>
-                  ) : (
-                    <div className="empty-state compact-empty">
-                      <p>이 워커는 아직 산출물을 넘기지 않았습니다.</p>
-                    </div>
-                  )}
-                </article>
-              )
-            })}
-          </div>
-        </article>
-
-        <aside className="panel board-rail">
-          <div className="section-head">
-            <p className="eyebrow">통합 체크포인트</p>
-            <h2>지금 압력이 걸리는 지점과 다음 행동</h2>
-          </div>
-          <div className="summary-stack">
-            <article className="info-card">
-              <p className="panel-label">현재 시점</p>
-              <h3>{checkpointLabel}</h3>
-              <p>{currentMoment}</p>
-            </article>
-            <article className="info-card">
-              <p className="panel-label">소유 범위 커버리지</p>
-              <h3>
-                {completedWorkerCount}/{workerProfiles.length}개 워커 산출물 전달됨
-              </h3>
-              <p>
-                {plan
-                  ? `${plan.bundles.length}개 번들이 잠겼고, 이제 하나의 제품 서사로 통합되기를 기다리고 있습니다.`
-                  : '계획이 확정되면 오케스트레이터가 여기에서 번들 소유 범위를 보여줍니다.'}
-              </p>
-            </article>
-            <article className="info-card">
-              <p className="panel-label">다음 행동</p>
-              <h3>{finalPost ? '검토하거나 내보내기' : '체크포인트를 먼저 고정하기'}</h3>
-              <p>{nextAction}</p>
-            </article>
-          </div>
-        </aside>
-      </section>
-
-      <details className="panel planning-drawer">
-        <summary className="drawer-summary">
-          <span>리서치 결과 (Research results) + 아웃라인 (Outline) + 오케스트레이터 계획</span>
-          <div>
-            <strong>보드 뒤의 공통 프레임이 필요할 때만 계획 맥락을 여세요.</strong>
-            <p>기본 제품 표면은 근거가 많은 계획 세부보다 소유 범위와 통합을 먼저 둡니다.</p>
-          </div>
-        </summary>
-
-        <div className="planning-grid">
-          <article className="info-card">
-            <h3>오케스트레이터 계획</h3>
-            {plan ? (
-              <>
-                <p>{plan.decompositionReason}</p>
-                <strong>{plan.productGoal}</strong>
-              </>
-            ) : (
-              <div className="empty-state compact-empty">
-                <p>글 생성 시작 (Generate post)을 눌러야 오케스트레이터가 이 분해 방식을 고른 이유를 볼 수 있습니다.</p>
-              </div>
-            )}
-          </article>
-
-          <article className="info-card">
-            <h3>리서치 결과 (Research results)</h3>
-            {researchSummary ? (
-              <>
-                <p>{researchSummary.angle}</p>
-                <strong>{researchSummary.thesis}</strong>
-                <ul className="compact-list">
-                  {researchSummary.focusBullets.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-                <p className="helper-note">{researchSummary.supportNote}</p>
-              </>
-            ) : (
-              <div className="empty-state compact-empty">
-                <p>콘텐츠 워커가 첫 패스를 마치면 여기에 리서치 결과가 나타납니다.</p>
-              </div>
-            )}
-          </article>
-
-          <article className="info-card">
-            <h3>아웃라인 (Outline)</h3>
-            {outline.length > 0 ? (
-              <div className="outline-grid">
-                {outline.map((section) => (
-                  <article key={section.id} className="outline-card">
-                    <h4>{section.title}</h4>
-                    <p>{section.goal}</p>
-                  </article>
-                ))}
-              </div>
-            ) : (
-              <div className="empty-state compact-empty">
-                <p>콘텐츠 워커가 리서치를 안정된 구조로 바꾸면 여기에 아웃라인이 나타납니다.</p>
-              </div>
-            )}
-          </article>
-
-          <article className="info-card">
-            <h3>통합 체크리스트</h3>
-            {plan ? (
-              <ul className="compact-list">
-                {plan.integrationChecklist.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            ) : (
-              <div className="empty-state compact-empty">
-                <p>오케스트레이터가 계획을 잠그면 여기에 통합 체크리스트가 나타납니다.</p>
-              </div>
-            )}
-          </article>
-        </div>
-      </details>
-
-      <section className="reader-grid">
-        <article className="panel final-panel">
-          <div className="reader-shell-head">
-            <div className="section-head">
-              <p className="eyebrow">리더 표면</p>
-              <h2>하위 표면은 한 번에 하나만 열어 둡니다</h2>
-            </div>
-            <div className="reader-tabs" role="tablist" aria-label="Orchestrator workspace">
-              <button
-                type="button"
-                className={`reader-tab ${activeSurface === 'drafts' ? 'is-active' : ''}`}
-                onClick={() => setManualSurface(recommendedSurface === 'drafts' ? null : 'drafts')}
-                role="tab"
-                aria-selected={activeSurface === 'drafts'}
-              >
-                섹션 초안 (Section drafts)
-              </button>
-              <button
-                type="button"
-                className={`reader-tab ${activeSurface === 'review' ? 'is-active' : ''}`}
-                onClick={() => setManualSurface(recommendedSurface === 'review' ? null : 'review')}
-                role="tab"
-                aria-selected={activeSurface === 'review'}
-              >
-                리뷰 노트 (Review notes)
-              </button>
-              <button
-                type="button"
-                className={`reader-tab ${activeSurface === 'final' ? 'is-active' : ''}`}
-                onClick={() => setManualSurface(recommendedSurface === 'final' ? null : 'final')}
-                role="tab"
-                aria-selected={activeSurface === 'final'}
-              >
-                최종 글 (Final post)
-              </button>
-            </div>
-          </div>
-
-          {activeSurface === 'drafts' ? (
-            sectionDrafts.length > 0 ? (
-              <div className="draft-grid">
-                {sectionDrafts.map((draft) => (
-                  <article key={draft.id} className="draft-card">
-                    <h3>{draft.title}</h3>
-                    <p>{draft.summary}</p>
-                    <ul className="compact-list">
-                      {draft.paragraphs.map((paragraph) => (
-                        <li key={paragraph}>{paragraph}</li>
+                      <span className="summary-pill">선택형</span>
+                    </summary>
+                    <div className="preset-grid">
+                      {topicPresets.map((preset, index) => (
+                        <button
+                          key={preset.title}
+                          type="button"
+                          className="preset-card"
+                          onClick={() => applyPreset(preset.title, preset.audience, preset.tone, preset.length)}
+                          style={{ animationDelay: `${index * 60}ms` }}
+                        >
+                          <strong>{preset.title}</strong>
+                          <span>{preset.rationale}</span>
+                        </button>
                       ))}
-                    </ul>
-                    <p className="takeaway">{draft.takeaway}</p>
-                  </article>
-                ))}
-              </div>
-            ) : (
-              <div className="empty-state">
-                <p>콘텐츠 워커가 맡은 범위를 마치면 여기에 섹션 초안이 나타납니다.</p>
-              </div>
-            )
-          ) : null}
+                    </div>
+                  </details>
+                </section>
 
-          {activeSurface === 'review' ? (
-            integrationReview && reviewNotes ? (
-              <div className="review-layout">
-                <div className="info-card">
-                  <h3>리뷰 노트 (Review notes)</h3>
-                  <div className="review-stack">
-                    {reviewNotes.map((note) => (
-                      <article key={note.label} className={`review-card severity-${note.severity}`}>
-                        <h4>{note.label}</h4>
-                        <p>{note.detail}</p>
+                <section className="story-surface entrance-item" style={{ animationDelay: '120ms' }}>
+                  <div className="section-heading">
+                    <p className="eyebrow">흐름 미리보기</p>
+                    <h3>한 화면에 한 가지 압력만 남깁니다</h3>
+                  </div>
+                  <div className="story-track">
+                    {[
+                      '브리프에서 분해 기준을 잠근다',
+                      '지휘 보드에서 워커 전달을 본다',
+                      '결과 화면에서 최종 글만 읽고 복사한다',
+                    ].map((item, index) => (
+                      <article
+                        key={item}
+                        className="story-card"
+                        style={{ animationDelay: `${index * 60}ms` }}
+                      >
+                        <span>{String(index + 1).padStart(2, '0')}</span>
+                        <p>{item}</p>
                       </article>
                     ))}
                   </div>
-                </div>
-                <div className="info-card">
-                  <h3>통합 리뷰</h3>
-                  <p>
-                    <strong>레이아웃:</strong> {integrationReview.layoutConsistency}
-                  </p>
-                  <p>
-                    <strong>상태:</strong> {integrationReview.stateConsistency}
-                  </p>
-                  <p>
-                    <strong>콘텐츠:</strong> {integrationReview.contentConsistency}
-                  </p>
-                  <h4>적용한 수정</h4>
-                  <ul className="compact-list">
-                    {integrationReview.fixesApplied.map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ul>
-                  <p className="helper-note">{integrationReview.finalizationNote}</p>
-                </div>
+                </section>
               </div>
-            ) : (
-              <div className="empty-state">
-                <p>모든 워커 산출물이 모이고 통합 데스크가 조정을 시작하면 여기에 리뷰 노트가 나타납니다.</p>
-              </div>
-            )
-          ) : null}
+            ) : null}
 
-          {activeSurface === 'final' ? (
-            finalPost ? (
-              <pre className="markdown-preview">{finalPost}</pre>
-            ) : (
-              <div className="empty-state">
-                <p>통합 담당자가 일관성 리뷰를 마치면 여기에 최종 글이 나타납니다.</p>
-              </div>
-            )
-          ) : null}
-        </article>
+            {activeScreen === 'board' ? (
+              <div className="screen-grid board-grid">
+                <section className="route-surface entrance-item" style={{ animationDelay: '0ms' }}>
+                  <div className="route-header">
+                    <div className="section-heading compact">
+                      <p className="eyebrow">지휘 보드</p>
+                      <h3>{checkpointLabel}</h3>
+                      <p>{currentMoment}</p>
+                    </div>
+                    <button
+                      type="button"
+                      className="primary-button"
+                      disabled={state.generation.status !== 'error' && !finalPost}
+                      onClick={() =>
+                        state.generation.status === 'error' ? navigateScreen('brief') : navigateScreen('result')
+                      }
+                    >
+                      {boardPrimaryLabel}
+                    </button>
+                  </div>
 
-        <article className="panel stage-panel">
-          <div className="section-head">
-            <p className="eyebrow">단계 추적기</p>
-            <h2>먼저 분해하고, 마지막에 통합합니다</h2>
-          </div>
-          <div className="stage-grid">
-            {workflowStages.map((stage) => {
-              const isComplete = state.generation.completedStages.includes(stage.id)
-              const isCurrent =
-                state.generation.currentStage === stage.id && state.generation.status !== 'error'
-              return (
-                <article
-                  key={stage.id}
-                  className={`stage-card ${isComplete ? 'is-complete' : ''} ${isCurrent ? 'is-current' : ''}`}
-                >
-                  <h3>{stage.label}</h3>
-                  <p>{stage.description}</p>
-                </article>
-              )
-            })}
-          </div>
-        </article>
+                  <div className="route-progress">
+                    <div className="route-progress-meta">
+                      <span>지휘 진행률</span>
+                      <strong>{progressPercent}%</strong>
+                    </div>
+                    <div className="progress-track" aria-hidden="true">
+                      <span className="progress-fill" style={{ width: `${progressPercent}%` }} />
+                    </div>
+                  </div>
+
+                  <div className="stage-strip">
+                    {workflowStages.map((stage, index) => {
+                      const isComplete = state.generation.completedStages.includes(stage.id)
+                      const isCurrent =
+                        state.generation.currentStage === stage.id && state.generation.status !== 'error'
+                      const isDormant = !isCurrent && !isComplete
+                      return (
+                        <article
+                          key={stage.id}
+                          className={`stage-pill ${isCurrent ? 'is-current' : ''} ${isComplete ? 'is-complete' : ''} ${
+                            isDormant ? 'is-dormant' : ''
+                          }`}
+                          style={{ animationDelay: `${index * 60}ms` }}
+                        >
+                          <span className="stage-pill-index">{String(index + 1).padStart(2, '0')}</span>
+                          <div className="stage-pill-copy">
+                            <strong>{stage.label}</strong>
+                            <p>{stage.description}</p>
+                          </div>
+                          <svg className="stage-checkmark" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M6.5 12.5 10.25 16.25 18 8.5" />
+                          </svg>
+                        </article>
+                      )
+                    })}
+                  </div>
+                </section>
+
+                <section className="worker-surface entrance-item" style={{ animationDelay: '60ms' }}>
+                  <div className="section-heading">
+                    <p className="eyebrow">워커 전달 보드</p>
+                    <h3>현재 필요한 워커만 밝히고 나머지는 뒤로 눕힙니다</h3>
+                    <p>각 카드에는 상태, 소유 범위, 핸드오프 메모만 남기고 자세한 근거는 접습니다.</p>
+                  </div>
+
+                  <div className="worker-grid">
+                    {workerProfiles.map((profile, index) => {
+                      const bundle = plan?.bundles.find((item) => item.workerId === profile.id)
+                      const output = workerOutputs.find((item) => item.workerId === profile.id)
+                      const status = state.generation.workerStatuses[profile.id]
+                      const isActive = activeWorker?.id === profile.id && status === 'working'
+                      const isDimmed = !isActive && status === 'pending'
+
+                      return (
+                        <article
+                          key={profile.id}
+                          className={`worker-card worker-${status} ${isActive ? 'is-spotlight' : ''} ${
+                            isDimmed ? 'is-dimmed' : ''
+                          }`}
+                          style={{ animationDelay: `${index * 60}ms` }}
+                        >
+                          <div className="worker-card-top">
+                            <div>
+                              <div className="worker-card-meta">
+                                <span className={`worker-dot ${isActive ? 'is-pulsing' : ''}`} aria-hidden="true" />
+                                <span>{profile.label}</span>
+                              </div>
+                              <h4>{profile.reviewLens}</h4>
+                            </div>
+                            <span className={`status-badge status-${status}`}>{workerStatusLabel(status)}</span>
+                          </div>
+
+                          <p className="worker-focus">{profile.focus}</p>
+
+                          {bundle ? (
+                            <div className="worker-stack">
+                              <div>
+                                <strong>소유 범위</strong>
+                                <p>{bundle.scope}</p>
+                              </div>
+                              <div className="token-row">
+                                {bundle.ownedDeliverables.map((item) => (
+                                  <span key={item} className="ghost-token">
+                                    {item}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          ) : state.generation.status === 'loading' ? (
+                            <div className="skeleton-stack" aria-hidden="true">
+                              <span className="skeleton-line" />
+                              <span className="skeleton-line short" />
+                              <span className="skeleton-line" />
+                            </div>
+                          ) : (
+                            <div className="empty-state-card">
+                              <div className="empty-icon" aria-hidden="true">
+                                ◎
+                              </div>
+                              <strong>대기 중인 워커</strong>
+                              <p>브리프를 잠그면 이 카드에 소유 범위가 채워집니다.</p>
+                              <button type="button" className="ghost-link" onClick={() => navigateScreen('brief')}>
+                                브리프로 돌아가기
+                              </button>
+                            </div>
+                          )}
+
+                          {output ? (
+                            <details className="drawer-card">
+                              <summary>
+                                <div>
+                                  <strong>핸드오프 메모</strong>
+                                  <p>전달된 산출물과 통합 리스크를 확인합니다.</p>
+                                </div>
+                                <span className="summary-pill">열기</span>
+                              </summary>
+                              <div className="drawer-body">
+                                <p>{output.summary}</p>
+                                <ul className="detail-list">
+                                  {output.deliverablePreview.map((item) => (
+                                    <li key={item}>{item}</li>
+                                  ))}
+                                </ul>
+                                {bundle ? (
+                                  <ul className="detail-list detail-list-muted">
+                                    {bundle.integrationRisks.map((risk) => (
+                                      <li key={risk}>{risk}</li>
+                                    ))}
+                                  </ul>
+                                ) : null}
+                                <p className="handoff-note">{output.handoffNote}</p>
+                              </div>
+                            </details>
+                          ) : null}
+                        </article>
+                      )
+                    })}
+                  </div>
+                </section>
+
+                <aside className="board-aside">
+                  <article className="checkpoint-surface entrance-item" style={{ animationDelay: '120ms' }}>
+                    <p className="eyebrow">통합 체크포인트</p>
+                    <h3>{activeWorker ? `${activeWorker.label} 집중 구간` : '통합 준비 구간'}</h3>
+                    <p>{nextAction}</p>
+                    <div className="checkpoint-list">
+                      {(plan?.integrationChecklist ?? reviewLenses).slice(0, 4).map((item) => (
+                        <article key={item}>
+                          <span aria-hidden="true">•</span>
+                          <p>{item}</p>
+                        </article>
+                      ))}
+                    </div>
+                  </article>
+
+                  <details className="drawer-card entrance-item" style={{ animationDelay: '180ms' }}>
+                    <summary>
+                      <div>
+                        <strong>리서치와 아웃라인</strong>
+                        <p>배경 프레임이 필요할 때만 여는 보조 레이어입니다.</p>
+                      </div>
+                      <span className="summary-pill">보조</span>
+                    </summary>
+                    <div className="drawer-body">
+                      {researchSummary ? (
+                        <article className="drawer-section">
+                          <strong>{researchSummary.thesis}</strong>
+                          <p>{researchSummary.angle}</p>
+                          <ul className="detail-list">
+                            {researchSummary.focusBullets.map((item) => (
+                              <li key={item}>{item}</li>
+                            ))}
+                          </ul>
+                          <p className="handoff-note">{researchSummary.supportNote}</p>
+                        </article>
+                      ) : (
+                        <p className="drawer-empty">리서치 결과는 오케스트레이션이 시작되면 이곳에 나타납니다.</p>
+                      )}
+
+                      {outline.length > 0 ? (
+                        <div className="outline-stack">
+                          {outline.map((section) => (
+                            <article key={section.id} className="outline-card">
+                              <strong>{section.title}</strong>
+                              <p>{section.goal}</p>
+                            </article>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  </details>
+
+                  <details className="drawer-card entrance-item" style={{ animationDelay: '240ms' }}>
+                    <summary>
+                      <div>
+                        <strong>초안 프리뷰</strong>
+                        <p>한 번에 하나의 섹션 리듬만 읽게 설계합니다.</p>
+                      </div>
+                      <span className="summary-pill">초안</span>
+                    </summary>
+                    <div className="drawer-body">
+                      {sectionDrafts.length > 0 ? (
+                        <div className="draft-stack">
+                          {sectionDrafts.map((draft) => (
+                            <article key={draft.id} className="draft-card">
+                              <strong>{draft.title}</strong>
+                              <p>{draft.summary}</p>
+                              <p className="handoff-note">{draft.takeaway}</p>
+                            </article>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="drawer-empty">콘텐츠 워커가 전달을 시작하면 여기에 섹션 프리뷰가 쌓입니다.</p>
+                      )}
+                    </div>
+                  </details>
+                </aside>
+              </div>
+            ) : null}
+
+            {activeScreen === 'result' ? (
+              <div className="screen-grid result-grid">
+                <section className="result-surface entrance-item" style={{ animationDelay: '0ms' }}>
+                  <div className="result-header">
+                    <div className="section-heading compact">
+                      <p className="eyebrow">결과 화면</p>
+                      <h3>{finalPost ? '릴리스 후보가 준비되었습니다' : '최종 결과를 기다리는 중입니다'}</h3>
+                      <p>이 화면은 최종 글과 복사 행동만 전면에 둡니다.</p>
+                    </div>
+                    <button
+                      type="button"
+                      className="primary-button"
+                      data-testid="copy-markdown"
+                      aria-label="Copy markdown"
+                      disabled={!canCopy}
+                      onClick={copyMarkdown}
+                    >
+                      마크다운 복사
+                    </button>
+                  </div>
+
+                  <div className="result-meta">
+                    <span className={`status-badge status-${state.generation.status}`}>
+                      {statusLabel(state.generation.status)}
+                    </span>
+                    <span className="ghost-token">워커 {completedWorkerCount}명 전달 완료</span>
+                    <span className="ghost-token">최종 단계 {progressPercent}%</span>
+                  </div>
+
+                  <div className="markdown-canvas">
+                    {finalPost ? (
+                      <pre>{finalPost}</pre>
+                    ) : (
+                      <div className="empty-state-card empty-state-large">
+                        <div className="empty-icon" aria-hidden="true">
+                          ↗
+                        </div>
+                        <strong>아직 결과가 없습니다</strong>
+                        <p>지휘 보드에서 워커 전달을 마치면 이 화면이 자동으로 준비됩니다.</p>
+                        <button type="button" className="ghost-link" onClick={() => navigateScreen('board')}>
+                          지휘 보드로 돌아가기
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </section>
+
+                <aside className="result-aside">
+                  <article className="release-card entrance-item" style={{ animationDelay: '60ms' }}>
+                    <p className="eyebrow">출시 메모</p>
+                    <h3>{integrationReview ? '통합 리뷰 반영 완료' : '통합 대기 중'}</h3>
+                    <p>{integrationReview ? integrationReview.finalizationNote : '통합 리뷰가 끝나면 이 카드가 활성화됩니다.'}</p>
+                    {state.copyFeedback ? <small>{state.copyFeedback}</small> : null}
+                  </article>
+
+                  <details className="drawer-card entrance-item" style={{ animationDelay: '120ms' }}>
+                    <summary>
+                      <div>
+                        <strong>리뷰 메모</strong>
+                        <p>교정 포인트와 적용된 수정만 묶어 보여줍니다.</p>
+                      </div>
+                      <span className="summary-pill">리뷰</span>
+                    </summary>
+                    <div className="drawer-body">
+                      {reviewNotes && integrationReview ? (
+                        <>
+                          <div className="review-summary">
+                            <p>
+                              <strong>레이아웃</strong>
+                              {integrationReview.layoutConsistency}
+                            </p>
+                            <p>
+                              <strong>상태</strong>
+                              {integrationReview.stateConsistency}
+                            </p>
+                            <p>
+                              <strong>콘텐츠</strong>
+                              {integrationReview.contentConsistency}
+                            </p>
+                          </div>
+                          <div className="review-stack">
+                            {reviewNotes.map((note) => (
+                              <article key={note.label} className={`review-card severity-${note.severity}`}>
+                                <strong>{note.label}</strong>
+                                <p>{note.detail}</p>
+                              </article>
+                            ))}
+                          </div>
+                        </>
+                      ) : (
+                        <p className="drawer-empty">리뷰 메모는 결과 조립 직전에 이 레이어로 들어옵니다.</p>
+                      )}
+                    </div>
+                  </details>
+
+                  <details className="drawer-card entrance-item" style={{ animationDelay: '180ms' }}>
+                    <summary>
+                      <div>
+                        <strong>아카이브와 평가</strong>
+                        <p>근거 파일과 검토 기준은 기본 흐름 뒤에 숨깁니다.</p>
+                      </div>
+                      <span className="summary-pill">근거</span>
+                    </summary>
+                    <div className="drawer-body">
+                      <div className="archive-grid">
+                        {deliverables.map((item) => (
+                          <article key={item.id} className="archive-card">
+                            <strong>{item.title}</strong>
+                            <p>{item.description}</p>
+                          </article>
+                        ))}
+                      </div>
+                      <div className="checklist-block">
+                        <strong>후속 검토 기준</strong>
+                        <ul className="detail-list">
+                          {evaluationChecklist.map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div className="checklist-block">
+                        <strong>리뷰 렌즈</strong>
+                        <ul className="detail-list detail-list-muted">
+                          {reviewLenses.map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </details>
+                </aside>
+              </div>
+            ) : null}
+          </article>
+        </section>
       </section>
-
-      <details className="panel utility-drawer">
-        <summary className="drawer-summary">
-          <span>근거 + 평가</span>
-          <div>
-            <strong>감사 레이어가 필요할 때만 벤치마크 근거를 여세요.</strong>
-            <p>소유 범위 보드, 통합 체크포인트, 리더 표면은 기본 제품 경로에 남아 있습니다.</p>
-          </div>
-        </summary>
-
-        <div className="utility-grid">
-          <div className="artifact-list">
-            {deliverables.map((item) => (
-              <article key={item.id} className="artifact-card">
-                <h3>{item.title}</h3>
-                <p>{item.description}</p>
-              </article>
-            ))}
-          </div>
-          <div className="info-card checklist-card">
-            <h3>평가 체크리스트</h3>
-            <ul className="compact-list">
-              {evaluationChecklist.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-          </div>
-          <div className="info-card">
-            <h3>리뷰 관점</h3>
-            <ul className="compact-list">
-              {reviewLenses.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-          </div>
-          <div className="info-card">
-            <h3>아티팩트 미리보기</h3>
-            <pre className="contract-preview">{JSON.stringify(artifactPreview, null, 2)}</pre>
-          </div>
-          <div className="info-card">
-            <h3>스코어카드 미리보기</h3>
-            <pre className="contract-preview">{JSON.stringify(scorePreview, null, 2)}</pre>
-          </div>
-        </div>
-      </details>
     </main>
   )
 }
