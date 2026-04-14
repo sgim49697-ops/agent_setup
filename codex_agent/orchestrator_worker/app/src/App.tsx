@@ -1,4 +1,4 @@
-import { useReducer, useRef, useState } from 'react'
+import { startTransition, useReducer, useRef, useState } from 'react'
 import './App.css'
 import type {
   Audience,
@@ -331,9 +331,11 @@ function App() {
     const currentIndex = screenOrder.indexOf(activeScreen)
     const nextIndex = screenOrder.indexOf(nextScreen)
 
-    setMotionDirection(nextIndex > currentIndex ? 'forward' : 'backward')
-    setScreenKey((value) => value + 1)
-    setActiveScreen(nextScreen)
+    startTransition(() => {
+      setMotionDirection(nextIndex > currentIndex ? 'forward' : 'backward')
+      setScreenKey((value) => value + 1)
+      setActiveScreen(nextScreen)
+    })
   }
 
   async function handleGenerate() {
@@ -628,6 +630,66 @@ function App() {
       : finalPost
         ? '결과 화면으로 이동'
         : '최종 조립 대기 중'
+  const audienceLabel =
+    {
+      beginner: '입문자',
+      practitioner: '실무자',
+      advanced: '고급 사용자',
+    }[state.inputs.audience]
+  const toneLabel =
+    {
+      clear: '명료함',
+      pragmatic: '실무형',
+      opinionated: '주장형',
+    }[state.inputs.tone]
+  const lengthLabel =
+    {
+      short: '짧게',
+      medium: '보통',
+      long: '길게',
+    }[state.inputs.length]
+  const cueNotes = [
+    {
+      label: '현재 큐',
+      value: activeWorker ? activeWorker.label : '오케스트레이터 대기',
+      detail: activeWorker ? activeWorker.focus : '브리프를 잠그면 활성 워커가 지정됩니다.',
+    },
+    {
+      label: '통합 압력',
+      value: checkpointLabel,
+      detail: currentMoment,
+    },
+    {
+      label: '다음 행동',
+      value: boardPrimaryLabel,
+      detail: nextAction,
+    },
+  ]
+  const releaseReadiness = [
+    {
+      label: '분해 기준 고정',
+      ready: Boolean(plan),
+      detail: plan ? '브리프가 워커 번들로 잠겼습니다.' : '브리프 잠금 전',
+    },
+    {
+      label: '워커 전달 수집',
+      ready: completedWorkerCount === workerProfiles.length,
+      detail: `${completedWorkerCount}/${workerProfiles.length}명 전달 완료`,
+    },
+    {
+      label: '릴리스 후보',
+      ready: Boolean(finalPost),
+      detail: finalPost ? '복사 가능한 최종 글 준비 완료' : '최종 조립 대기 중',
+    },
+  ]
+  const recoveryChecklist =
+    state.generation.status === 'error'
+      ? [
+          '실패 접두사가 들어간 주제를 정리합니다.',
+          '브리프로 돌아가 다시 오케스트레이션을 시작합니다.',
+          '같은 화면에서 복구 메시지를 확인한 뒤 재시도합니다.',
+        ]
+      : (plan?.integrationChecklist ?? reviewLenses).slice(0, 4)
 
   return (
     <main className="workspace-shell">
@@ -739,7 +801,7 @@ function App() {
                     분해 기준을 잠그고, 지휘 보드에서 워커 전달 흐름을 순차적으로 보여줍니다.
                   </p>
                   <div className="hero-chip-row">
-                    <span className="hero-chip">한국어 우선 카피</span>
+                    <span className="hero-chip">큐 레일 중심 지휘</span>
                     <span className="hero-chip">3-스크린 플로우</span>
                     <span className="hero-chip">복구 가능한 오류 상태</span>
                   </div>
@@ -755,6 +817,20 @@ function App() {
                     <article>
                       <strong>03</strong>
                       <span>결과 내보내기</span>
+                    </article>
+                  </div>
+                  <div className="hero-context-grid">
+                    <article className="hero-context-card">
+                      <span>독자층</span>
+                      <strong>{audienceLabel}</strong>
+                    </article>
+                    <article className="hero-context-card">
+                      <span>톤</span>
+                      <strong>{toneLabel}</strong>
+                    </article>
+                    <article className="hero-context-card">
+                      <span>분량</span>
+                      <strong>{lengthLabel}</strong>
                     </article>
                   </div>
                   <button
@@ -873,14 +949,14 @@ function App() {
 
                 <section className="story-surface entrance-item" style={{ animationDelay: '120ms' }}>
                   <div className="section-heading">
-                    <p className="eyebrow">흐름 미리보기</p>
+                    <p className="eyebrow">큐 시트</p>
                     <h3>한 화면에 한 가지 압력만 남깁니다</h3>
                   </div>
                   <div className="story-track">
                     {[
-                      '브리프에서 분해 기준을 잠근다',
-                      '지휘 보드에서 워커 전달을 본다',
-                      '결과 화면에서 최종 글만 읽고 복사한다',
+                      '브리프에서 문제 정의를 잠그고 지휘 시작점을 만든다',
+                      '지휘 보드에서 현재 워커와 통합 압력만 밝힌다',
+                      '결과 화면에서 최종 글과 내보내기만 남긴다',
                     ].map((item, index) => (
                       <article
                         key={item}
@@ -917,41 +993,62 @@ function App() {
                     </button>
                   </div>
 
-                  <div className="route-progress">
-                    <div className="route-progress-meta">
-                      <span>지휘 진행률</span>
-                      <strong>{progressPercent}%</strong>
-                    </div>
-                    <div className="progress-track" aria-hidden="true">
-                      <span className="progress-fill" style={{ width: `${progressPercent}%` }} />
-                    </div>
-                  </div>
+                  <div className="cue-layout">
+                    <div className="cue-column">
+                      <div className="route-progress">
+                        <div className="route-progress-meta">
+                          <span>지휘 진행률</span>
+                          <strong>{progressPercent}%</strong>
+                        </div>
+                        <div className="progress-track" aria-hidden="true">
+                          <span className="progress-fill" style={{ width: `${progressPercent}%` }} />
+                        </div>
+                      </div>
 
-                  <div className="stage-strip">
-                    {workflowStages.map((stage, index) => {
-                      const isComplete = state.generation.completedStages.includes(stage.id)
-                      const isCurrent =
-                        state.generation.currentStage === stage.id && state.generation.status !== 'error'
-                      const isDormant = !isCurrent && !isComplete
-                      return (
-                        <article
-                          key={stage.id}
-                          className={`stage-pill ${isCurrent ? 'is-current' : ''} ${isComplete ? 'is-complete' : ''} ${
-                            isDormant ? 'is-dormant' : ''
-                          }`}
-                          style={{ animationDelay: `${index * 60}ms` }}
-                        >
-                          <span className="stage-pill-index">{String(index + 1).padStart(2, '0')}</span>
-                          <div className="stage-pill-copy">
-                            <strong>{stage.label}</strong>
-                            <p>{stage.description}</p>
-                          </div>
-                          <svg className="stage-checkmark" viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M6.5 12.5 10.25 16.25 18 8.5" />
-                          </svg>
-                        </article>
-                      )
-                    })}
+                      <div className="stage-strip cue-strip">
+                        {workflowStages.map((stage, index) => {
+                          const isComplete = state.generation.completedStages.includes(stage.id)
+                          const isCurrent =
+                            state.generation.currentStage === stage.id && state.generation.status !== 'error'
+                          const isDormant = !isCurrent && !isComplete
+                          return (
+                            <article
+                              key={stage.id}
+                              className={`stage-pill ${isCurrent ? 'is-current' : ''} ${isComplete ? 'is-complete' : ''} ${
+                                isDormant ? 'is-dormant' : ''
+                              }`}
+                              style={{ animationDelay: `${index * 60}ms` }}
+                            >
+                              <span className="stage-pill-index">{String(index + 1).padStart(2, '0')}</span>
+                              <div className="stage-pill-copy">
+                                <strong>{stage.label}</strong>
+                                <p>{stage.description}</p>
+                              </div>
+                              <svg className="stage-checkmark" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M6.5 12.5 10.25 16.25 18 8.5" />
+                              </svg>
+                            </article>
+                          )
+                        })}
+                      </div>
+                    </div>
+
+                    <article className="cue-desk">
+                      <div className="section-heading compact">
+                        <p className="eyebrow">큐 레일</p>
+                        <h4>현재 지휘 압력을 한 열에 묶습니다</h4>
+                        <p>활성 워커, 통합 압력, 다음 행동을 한곳에서 읽게 해 보드의 판단 비용을 낮춥니다.</p>
+                      </div>
+                      <div className="cue-desk-grid">
+                        {cueNotes.map((note) => (
+                          <article key={note.label} className="cue-note">
+                            <span>{note.label}</span>
+                            <strong>{note.value}</strong>
+                            <p>{note.detail}</p>
+                          </article>
+                        ))}
+                      </div>
+                    </article>
                   </div>
                 </section>
 
@@ -1059,11 +1156,11 @@ function App() {
 
                 <aside className="board-aside">
                   <article className="checkpoint-surface entrance-item" style={{ animationDelay: '120ms' }}>
-                    <p className="eyebrow">통합 체크포인트</p>
+                    <p className="eyebrow">{state.generation.status === 'error' ? '복구 가이드' : '통합 체크포인트'}</p>
                     <h3>{activeWorker ? `${activeWorker.label} 집중 구간` : '통합 준비 구간'}</h3>
-                    <p>{nextAction}</p>
+                    <p>{state.generation.status === 'error' ? '실패 이후에도 같은 플로우 안에서 바로 복구할 수 있어야 합니다.' : nextAction}</p>
                     <div className="checkpoint-list">
-                      {(plan?.integrationChecklist ?? reviewLenses).slice(0, 4).map((item) => (
+                      {recoveryChecklist.map((item) => (
                         <article key={item}>
                           <span aria-hidden="true">•</span>
                           <p>{item}</p>
@@ -1164,6 +1261,18 @@ function App() {
                     </span>
                     <span className="ghost-token">워커 {completedWorkerCount}명 전달 완료</span>
                     <span className="ghost-token">최종 단계 {progressPercent}%</span>
+                  </div>
+
+                  <div className="release-readiness">
+                    {releaseReadiness.map((item) => (
+                      <article
+                        key={item.label}
+                        className={`readiness-card ${item.ready ? 'is-ready' : ''}`}
+                      >
+                        <span>{item.label}</span>
+                        <strong>{item.detail}</strong>
+                      </article>
+                    ))}
                   </div>
 
                   <div className="markdown-canvas">

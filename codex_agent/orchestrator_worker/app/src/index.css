@@ -1,44 +1,179 @@
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700;800&family=Noto+Serif+KR:wght@500;600;700;800&display=swap');
 
 :root {
-  --surface: #faf8ff;
-  --surface-low: #f2f3ff;
-  --surface-high: #e2e7ff;
-  --surface-lowest: #ffffff;
-  --surface-card: rgba(255, 255, 255, 0.92);
-  --primary: #003ec7;
-  --primary-strong: #0052ff;
-  --primary-container: #0052ff;
-  --primary-fixed: #dde1ff;
-  --primary-fixed-dim: #b7c4ff;
-  --secondary: #515f74;
-  --on-background: #131b2e;
-  --inverse-surface: #283044;
-  --inverse-on-surface: #eef0ff;
-  --muted: rgba(19, 27, 46, 0.78);
-  --outline-variant: #c3c5d9;
-  --outline-ghost: rgba(195, 197, 217, 0.15);
-  --ghost-line: rgba(195, 197, 217, 0.22);
-  --error: #ba1a1a;
-  --error-soft: #ffdad6;
+  --stitch-surface: #faf8ff;
+  --stitch-surface-rgb: 250, 248, 255;
+  --stitch-surface-low: #f2f3ff;
+  --stitch-surface-low-rgb: 242, 243, 255;
+  --stitch-surface-high: #e2e7ff;
+  --stitch-surface-high-rgb: 226, 231, 255;
+  --stitch-surface-container: #eaedff;
+  --stitch-surface-container-rgb: 234, 237, 255;
+  --stitch-surface-lowest: #ffffff;
+  --stitch-surface-lowest-rgb: 255, 255, 255;
+  --stitch-primary: #003ec7;
+  --stitch-primary-rgb: 0, 62, 199;
+  --stitch-primary-container: #0052ff;
+  --stitch-primary-container-rgb: 0, 82, 255;
+  --stitch-primary-fixed: #dde1ff;
+  --stitch-primary-fixed-rgb: 221, 225, 255;
+  --stitch-primary-fixed-dim: #b7c4ff;
+  --stitch-primary-fixed-dim-rgb: 183, 196, 255;
+  --stitch-secondary: #515f74;
+  --stitch-secondary-rgb: 81, 95, 116;
+  --stitch-on-background: #131b2e;
+  --stitch-on-background-rgb: 19, 27, 46;
+  --stitch-inverse-surface: #283044;
+  --stitch-inverse-surface-rgb: 40, 48, 68;
+  --stitch-inverse-on-surface: #eef0ff;
+  --stitch-inverse-on-surface-rgb: 238, 240, 255;
+  --stitch-outline-variant: #c3c5d9;
+  --stitch-outline-variant-rgb: 195, 197, 217;
+  --stitch-error: #ba1a1a;
+  --stitch-error-rgb: 186, 26, 26;
+  --stitch-error-soft: #ffdad6;
+  --stitch-error-soft-rgb: 255, 218, 214;
+  --stitch-error-ink: #93000a;
+  --stitch-error-ink-rgb: 147, 0, 10;
+
+  --state-success: #1d8f5f;
+  --state-success-rgb: 29, 143, 95;
+  --state-warning-soft: #ffe2c9;
+  --state-warning-soft-rgb: 255, 226, 201;
+  --page-base-top: #fbfaff;
+  --page-base-mid: #f3f5ff;
+  --page-base-bottom: #edf1ff;
+
+  --surface: var(--stitch-surface);
+  --surface-low: var(--stitch-surface-low);
+  --surface-high: var(--stitch-surface-high);
+  --surface-lowest: var(--stitch-surface-lowest);
+  --surface-card: rgba(var(--stitch-surface-lowest-rgb), 0.92);
+  --surface-card-soft: rgba(var(--stitch-surface-lowest-rgb), 0.78);
+  --surface-card-ghost: rgba(var(--stitch-surface-lowest-rgb), 0.94);
+  --surface-card-strong: rgba(var(--stitch-surface-lowest-rgb), 0.95);
+  --surface-card-stronger: rgba(var(--stitch-surface-lowest-rgb), 0.98);
+  --surface-base-78: rgba(var(--stitch-surface-rgb), 0.78);
+  --surface-base-82: rgba(var(--stitch-surface-rgb), 0.82);
+  --surface-low-90: rgba(var(--stitch-surface-low-rgb), 0.9);
+  --surface-low-92: rgba(var(--stitch-surface-low-rgb), 0.92);
+  --surface-high-60: rgba(var(--stitch-surface-high-rgb), 0.6);
+  --surface-high-72: rgba(var(--stitch-surface-high-rgb), 0.72);
+  --surface-high-88: rgba(var(--stitch-surface-high-rgb), 0.88);
+  --surface-high-92: rgba(var(--stitch-surface-high-rgb), 0.92);
+  --surface-high-96: rgba(var(--stitch-surface-high-rgb), 0.96);
+  --surface-container-78: rgba(var(--stitch-surface-container-rgb), 0.78);
+  --surface-fixed-10: rgba(var(--stitch-primary-fixed-rgb), 0.1);
+  --surface-fixed-12: rgba(var(--stitch-primary-fixed-rgb), 0.12);
+  --surface-fixed-40: rgba(var(--stitch-primary-fixed-rgb), 0.4);
+  --surface-fixed-44: rgba(var(--stitch-primary-fixed-rgb), 0.44);
+  --surface-fixed-62: rgba(var(--stitch-primary-fixed-rgb), 0.62);
+  --surface-fixed-78: rgba(var(--stitch-primary-fixed-rgb), 0.78);
+  --surface-fixed-94: rgba(var(--stitch-primary-fixed-rgb), 0.94);
+  --surface-fixed-dim-14: rgba(var(--stitch-primary-fixed-dim-rgb), 0.14);
+  --surface-fixed-dim-28: rgba(var(--stitch-primary-fixed-dim-rgb), 0.28);
+  --surface-fixed-dim-30: rgba(var(--stitch-primary-fixed-dim-rgb), 0.3);
+  --surface-fixed-dim-80: rgba(var(--stitch-primary-fixed-dim-rgb), 0.8);
+
+  --primary: var(--stitch-primary);
+  --primary-strong: var(--stitch-primary-container);
+  --primary-hover: #0034aa;
+  --primary-ink: #002f98;
+  --primary-container: var(--stitch-primary-container);
+  --primary-fixed: var(--stitch-primary-fixed);
+  --primary-fixed-dim: var(--stitch-primary-fixed-dim);
+  --primary-12: rgba(var(--stitch-primary-rgb), 0.12);
+  --primary-14: rgba(var(--stitch-primary-rgb), 0.14);
+  --primary-container-00: rgba(var(--stitch-primary-container-rgb), 0);
+  --primary-container-08: rgba(var(--stitch-primary-container-rgb), 0.08);
+  --primary-container-10: rgba(var(--stitch-primary-container-rgb), 0.1);
+  --primary-container-12: rgba(var(--stitch-primary-container-rgb), 0.12);
+  --primary-container-14: rgba(var(--stitch-primary-container-rgb), 0.14);
+  --primary-container-16: rgba(var(--stitch-primary-container-rgb), 0.16);
+  --primary-container-18: rgba(var(--stitch-primary-container-rgb), 0.18);
+  --primary-container-20: rgba(var(--stitch-primary-container-rgb), 0.2);
+  --primary-container-24: rgba(var(--stitch-primary-container-rgb), 0.24);
+  --primary-container-25: rgba(var(--stitch-primary-container-rgb), 0.25);
+  --primary-container-26: rgba(var(--stitch-primary-container-rgb), 0.26);
+  --primary-container-32: rgba(var(--stitch-primary-container-rgb), 0.32);
+  --primary-container-35: rgba(var(--stitch-primary-container-rgb), 0.35);
+  --primary-container-62: rgba(var(--stitch-primary-container-rgb), 0.62);
+  --primary-container-72: rgba(var(--stitch-primary-container-rgb), 0.72);
+
+  --secondary: var(--stitch-secondary);
+  --secondary-08: rgba(var(--stitch-secondary-rgb), 0.08);
+  --secondary-14: rgba(var(--stitch-secondary-rgb), 0.14);
+  --secondary-28: rgba(var(--stitch-secondary-rgb), 0.28);
+  --on-background: var(--stitch-on-background);
+  --on-background-72: rgba(var(--stitch-on-background-rgb), 0.72);
+  --on-background-78: rgba(var(--stitch-on-background-rgb), 0.78);
+  --on-background-96: rgba(var(--stitch-on-background-rgb), 0.96);
+  --on-background-98: rgba(var(--stitch-on-background-rgb), 0.98);
+  --inverse-surface: var(--stitch-inverse-surface);
+  --inverse-surface-94: rgba(var(--stitch-inverse-surface-rgb), 0.94);
+  --inverse-surface-96: rgba(var(--stitch-inverse-surface-rgb), 0.96);
+  --inverse-surface-98: rgba(var(--stitch-inverse-surface-rgb), 0.98);
+  --inverse-on-surface: var(--stitch-inverse-on-surface);
+  --inverse-on-surface-08: rgba(var(--stitch-inverse-on-surface-rgb), 0.08);
+  --inverse-on-surface-66: rgba(var(--stitch-inverse-on-surface-rgb), 0.66);
+  --inverse-on-surface-72: rgba(var(--stitch-inverse-on-surface-rgb), 0.72);
+  --inverse-on-surface-74: rgba(var(--stitch-inverse-on-surface-rgb), 0.74);
+  --inverse-on-surface-76: rgba(var(--stitch-inverse-on-surface-rgb), 0.76);
+  --inverse-on-surface-78: rgba(var(--stitch-inverse-on-surface-rgb), 0.78);
+  --muted: var(--on-background-78);
+  --outline-variant: var(--stitch-outline-variant);
+  --outline-ghost: rgba(var(--stitch-outline-variant-rgb), 0.15);
+  --outline-22: rgba(var(--stitch-outline-variant-rgb), 0.22);
+  --outline-68: rgba(var(--stitch-outline-variant-rgb), 0.68);
+  --ghost-line: var(--outline-22);
+  --error: var(--stitch-error);
+  --error-08: rgba(var(--stitch-error-rgb), 0.08);
+  --error-18: rgba(var(--stitch-error-rgb), 0.18);
+  --error-soft: var(--stitch-error-soft);
+  --error-soft-66: rgba(var(--stitch-error-soft-rgb), 0.66);
+  --error-soft-80: rgba(var(--stitch-error-soft-rgb), 0.8);
+  --error-soft-88: rgba(var(--stitch-error-soft-rgb), 0.88);
+  --error-ink: var(--stitch-error-ink);
+  --error-ink-82: rgba(var(--stitch-error-ink-rgb), 0.82);
+  --success-ring-12: rgba(var(--state-success-rgb), 0.12);
+  --warning-soft-72: rgba(var(--state-warning-soft-rgb), 0.72);
+
+  --text-on-primary: var(--stitch-surface-lowest);
+  --text-on-primary-94: rgba(var(--stitch-surface-lowest-rgb), 0.94);
+  --white-08: rgba(var(--stitch-surface-lowest-rgb), 0.08);
+  --white-38: rgba(var(--stitch-surface-lowest-rgb), 0.38);
+  --white-72: rgba(var(--stitch-surface-lowest-rgb), 0.72);
+  --white-78: rgba(var(--stitch-surface-lowest-rgb), 0.78);
+
+  --shadow-on-background-04: rgba(var(--stitch-on-background-rgb), 0.04);
+  --shadow-on-background-05: rgba(var(--stitch-on-background-rgb), 0.05);
+  --shadow-on-background-06: rgba(var(--stitch-on-background-rgb), 0.06);
+  --shadow-on-background-08: rgba(var(--stitch-on-background-rgb), 0.08);
+  --shadow-on-background-18: rgba(var(--stitch-on-background-rgb), 0.18);
+  --shadow-primary-14: rgba(var(--stitch-primary-container-rgb), 0.14);
+  --shadow-primary-25: rgba(var(--stitch-primary-container-rgb), 0.25);
+  --shadow-primary-26: rgba(var(--stitch-primary-container-rgb), 0.26);
+  --shadow-primary-32: rgba(var(--stitch-primary-container-rgb), 0.32);
+
+  --focus-outline: var(--primary-container-24);
   --duration-micro: 180ms;
   --duration-screen: 360ms;
   --ease-screen: cubic-bezier(0.22, 1, 0.36, 1);
   --shadow-ambient:
-    0 32px 72px rgba(19, 27, 46, 0.08),
-    0 8px 18px rgba(19, 27, 46, 0.04);
+    0 32px 72px var(--shadow-on-background-08),
+    0 8px 18px var(--shadow-on-background-04);
   --shadow-soft:
-    0 24px 56px rgba(19, 27, 46, 0.08),
-    0 8px 18px rgba(19, 27, 46, 0.05);
+    0 24px 56px var(--shadow-on-background-08),
+    0 8px 18px var(--shadow-on-background-05);
   font-family: 'IBM Plex Sans KR', 'Noto Serif KR', sans-serif;
   line-height: 1.55;
   font-weight: 400;
   color: var(--on-background);
   background:
-    radial-gradient(circle at 0% 0%, rgba(0, 82, 255, 0.16), transparent 28%),
-    radial-gradient(circle at 100% 0%, rgba(81, 95, 116, 0.14), transparent 22%),
-    radial-gradient(circle at 55% 100%, rgba(0, 82, 255, 0.1), transparent 26%),
-    linear-gradient(180deg, #fbfaff 0%, #f3f5ff 42%, #edf1ff 100%);
+    radial-gradient(circle at 0% 0%, var(--primary-container-16), transparent 28%),
+    radial-gradient(circle at 100% 0%, var(--secondary-14), transparent 22%),
+    radial-gradient(circle at 55% 100%, var(--primary-container-10), transparent 26%),
+    linear-gradient(180deg, var(--page-base-top) 0%, var(--page-base-mid) 42%, var(--page-base-bottom) 100%);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -80,7 +215,7 @@ input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
 summary:focus-visible {
-  outline: 3px solid rgba(0, 82, 255, 0.24);
+  outline: 3px solid var(--focus-outline);
   outline-offset: 2px;
 }
 
