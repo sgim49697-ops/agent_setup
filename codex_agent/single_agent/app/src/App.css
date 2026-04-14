@@ -237,7 +237,7 @@
 .primary-button {
   color: var(--inverse-text);
   background:
-    linear-gradient(135deg, var(--accent) 6%, var(--accent-strong) 72%, #2970ff 100%);
+    linear-gradient(135deg, var(--accent) 6%, var(--accent-strong) 72%, var(--accent-bright) 100%);
   box-shadow: var(--shadow-primary-action);
 }
 
@@ -246,7 +246,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(120deg, transparent 18%, rgba(255, 255, 255, 0.24) 46%, transparent 74%);
+  background: linear-gradient(120deg, transparent 18%, var(--surface-glint) 46%, transparent 74%);
   transform: translateX(-125%);
   transition: transform 220ms var(--ease-out);
   pointer-events: none;
@@ -435,6 +435,10 @@
   gap: 24px;
 }
 
+.wizard-screen[aria-hidden='true'] {
+  pointer-events: none;
+}
+
 .screen-curtain {
   position: relative;
   overflow: hidden;
@@ -565,6 +569,36 @@
   margin: 0;
   color: rgba(244, 239, 228, 0.72);
   font-size: 0.88rem;
+}
+
+.docket-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.docket-metric {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04)),
+    var(--inverse-panel);
+  box-shadow: inset 0 1px 0 var(--surface-tint-whisper);
+}
+
+.docket-metric span {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: rgba(244, 239, 228, 0.72);
+}
+
+.docket-metric strong {
+  font-size: 0.96rem;
+  line-height: 1.4;
+  color: var(--inverse-text);
 }
 
 .brief-alert {
@@ -958,6 +992,83 @@
   color: var(--muted);
 }
 
+.progress-rail {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(84px, 1fr));
+  gap: 10px;
+  margin-top: 18px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.progress-rail-node {
+  position: relative;
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  min-width: 0;
+  padding-top: 4px;
+}
+
+.rail-status-dot {
+  position: relative;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--neutral-fill-strong);
+  box-shadow: inset 0 0 0 1px rgba(81, 95, 116, 0.08);
+}
+
+.rail-link {
+  position: absolute;
+  top: 11px;
+  left: 24px;
+  width: calc(100% - 14px);
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--neutral-fill-strong), rgba(195, 197, 217, 0.12));
+}
+
+.rail-label {
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.progress-rail-node.rail-current .rail-status-dot {
+  background: linear-gradient(180deg, var(--accent-strong), var(--accent-bright));
+  box-shadow: 0 0 0 8px var(--accent-glow-faint);
+  animation: pulse-ring 1.4s ease infinite;
+}
+
+.progress-rail-node.rail-current .rail-link,
+.progress-rail-node.rail-complete .rail-link {
+  background: linear-gradient(90deg, var(--accent-fill-strong), var(--success-fill-mid));
+}
+
+.progress-rail-node.rail-current .rail-label,
+.progress-rail-node.rail-complete .rail-label {
+  color: var(--text);
+}
+
+.progress-rail-node.rail-complete .rail-status-dot {
+  background: linear-gradient(180deg, var(--accent-soft), var(--success-fill-strong));
+  box-shadow: 0 0 0 7px var(--success-ring-soft);
+}
+
+.progress-rail-node.rail-error .rail-status-dot {
+  background: linear-gradient(180deg, var(--danger-soft-surface), var(--danger));
+  box-shadow: 0 0 0 7px var(--danger-ring-soft);
+}
+
+.progress-rail-node.rail-error .rail-link {
+  background: linear-gradient(90deg, var(--danger-fill-mid), var(--outline-wash));
+}
+
+.progress-rail-node.rail-error .rail-label {
+  color: var(--danger);
+}
+
 .stage-list {
   display: grid;
   gap: 12px;
@@ -1108,6 +1219,17 @@
 .checkmark {
   width: 26px;
   height: 26px;
+}
+
+.checkmark-shell {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(221, 225, 255, 0.96), rgba(24, 129, 89, 0.2));
+  box-shadow: 0 0 0 8px rgba(24, 129, 89, 0.08);
+  animation: success-bloom 320ms ease forwards;
 }
 
 .checkmark path {
@@ -1281,6 +1403,64 @@
 
 .structure-card {
   padding: 14px 16px;
+}
+
+.handoff-panel {
+  background:
+    radial-gradient(circle at top right, rgba(0, 82, 255, 0.1), transparent 24%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(235, 238, 248, 0.94)),
+    var(--surface);
+}
+
+.handoff-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.handoff-card {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid var(--outline-faint);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(242, 243, 250, 0.9)),
+    var(--surface-low-mist);
+}
+
+.handoff-card span {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+
+.handoff-card strong {
+  font-size: 1rem;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.handoff-card.tone-ready {
+  border-color: var(--success-border-soft);
+  background:
+    linear-gradient(180deg, var(--surface-tint-strong), var(--success-panel-soft)),
+    var(--surface);
+}
+
+.handoff-card.tone-current {
+  border-color: var(--accent-border);
+  background:
+    linear-gradient(180deg, var(--surface-tint-strong), var(--accent-panel-soft)),
+    var(--surface);
+}
+
+.handoff-card.tone-error {
+  border-color: var(--danger-border);
+  background:
+    linear-gradient(180deg, var(--surface-tint-strong), var(--danger-panel-soft)),
+    var(--surface);
 }
 
 .support-drawer {
@@ -1466,6 +1646,18 @@
   }
 }
 
+@keyframes success-bloom {
+  from {
+    transform: scale(0.84);
+    box-shadow: 0 0 0 0 rgba(24, 129, 89, 0.18);
+  }
+
+  to {
+    transform: scale(1);
+    box-shadow: 0 0 0 8px rgba(24, 129, 89, 0);
+  }
+}
+
 @keyframes shake-x {
   0%,
   100% {
@@ -1488,7 +1680,8 @@
   .brief-grid,
   .progress-grid,
   .publish-grid,
-  .screen-curtain {
+  .screen-curtain,
+  .handoff-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1548,6 +1741,10 @@
   }
 
   .topbar-status-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .docket-metrics {
     grid-template-columns: 1fr;
   }
 

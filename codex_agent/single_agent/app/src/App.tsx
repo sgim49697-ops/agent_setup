@@ -1,6 +1,6 @@
 // App.tsx - single_agent harness focused 3-screen wizard workspace
 
-import { useReducer, useRef, useState, type KeyboardEvent } from 'react'
+import { useReducer, useRef, useState, type HTMLAttributes, type KeyboardEvent } from 'react'
 import './App.css'
 import type {
   Audience,
@@ -94,6 +94,8 @@ const screenMeta: Array<{ id: ScreenId; label: string; deck: string }> = [
   { id: 'progress', label: '진행', deck: '편집 진행' },
   { id: 'publish', label: '게시', deck: '출고 점검' },
 ]
+
+type WizardScreenProps = HTMLAttributes<HTMLElement> & { inert?: boolean }
 
 function unique<T>(items: T[]) {
   return Array.from(new Set(items))
@@ -272,6 +274,13 @@ function App() {
       : state.generation.status === 'export-ready'
         ? 100
         : Math.max(12, Math.round((state.generation.completedStages.length / workflowStages.length) * 100))
+  const completedStageCount =
+    state.generation.status === 'initial' || state.generation.status === 'error'
+      ? 0
+      : state.generation.status === 'export-ready'
+        ? workflowStages.length
+        : state.generation.completedStages.length
+  const remainingStageCount = Math.max(workflowStages.length - completedStageCount, 0)
   const audienceLabel =
     audienceOptions.find((option) => option.value === state.inputs.audience)?.label ?? ''
   const toneLabel = toneOptions.find((option) => option.value === state.inputs.tone)?.label ?? ''
@@ -332,7 +341,7 @@ function App() {
   const screenIndex = screenMeta.findIndex((screen) => screen.id === currentScreen)
   const activeScreenMeta = screenMeta[screenIndex] ?? screenMeta[0]
   const progressScreenLocked =
-    state.generation.status === 'initial' && state.generation.statusMessage === initialGeneration.statusMessage
+    state.generation.status === 'initial' || state.generation.status === 'error'
   const publishScreenLocked = !finalPost
   const stagePanelOrderLabel = String(selectedStageIndex + 1).padStart(2, '0')
   const topbarStatusSummary =
@@ -346,6 +355,45 @@ function App() {
         : finalPost
           ? '복사 직전 제목, 구조, 검토 메모만 남긴 게시 준비 상태입니다.'
           : '다섯 단계가 모두 닫히면 이 화면이 자동으로 열립니다.')
+  const copyStatus =
+    state.copyFeedback.includes('실패')
+      ? { label: '다시 시도 필요', tone: 'error' as const }
+      : state.copyFeedback.includes('복사했습니다')
+        ? { label: '복사 완료', tone: 'ready' as const }
+        : finalPost
+          ? { label: '복사 준비', tone: 'current' as const }
+          : { label: '잠금 상태', tone: 'pending' as const }
+  const publishChecklist = [
+    {
+      label: '제목 판독',
+      value: finalPost ? '확인 가능' : '대기',
+      tone: finalPost ? ('ready' as const) : ('pending' as const),
+    },
+    {
+      label: '섹션 구조',
+      value: finalSections.length ? `${finalSections.length}개 섹션` : '대기',
+      tone: finalSections.length ? ('ready' as const) : ('pending' as const),
+    },
+    {
+      label: '검토 메모',
+      value: reviewNotes ? `${reviewNotes.length}개 정리` : '대기',
+      tone: reviewNotes ? ('current' as const) : ('pending' as const),
+    },
+    {
+      label: '복사 상태',
+      value: copyStatus.label,
+      tone: copyStatus.tone,
+    },
+  ]
+
+  const screenFrameProps = (screenId: ScreenId): WizardScreenProps => {
+    const hidden = currentScreen !== screenId
+
+    return {
+      'aria-hidden': hidden,
+      inert: hidden || undefined,
+    }
+  }
 
   async function handleGenerate() {
     const runId = runRef.current + 1
@@ -812,7 +860,7 @@ function App() {
           style={{ transform: `translateX(-${screenIndex * 100}%)` }}
         >
           <section
-            aria-hidden={currentScreen !== 'brief'}
+            {...screenFrameProps('brief')}
             aria-label="브리프 작성 화면"
             className="wizard-screen"
             data-screen="brief"
@@ -833,6 +881,16 @@ function App() {
                 <span className="folio-stamp">01 / 03</span>
                 {renderScreenSequencer('brief')}
                 <p className="docket-note">다음 장에서는 리서치 축과 개요가 한 단계씩 잠깁니다.</p>
+                <div className="docket-metrics" aria-hidden="true">
+                  <div className="docket-metric">
+                    <span>입력 기준</span>
+                    <strong>{briefChips.length ? `${briefChips.length}개 고정` : '선택 중'}</strong>
+                  </div>
+                  <div className="docket-metric">
+                    <span>다음 행동</span>
+                    <strong>원고 만들기</strong>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -1034,7 +1092,7 @@ function App() {
           </section>
 
           <section
-            aria-hidden={currentScreen !== 'progress'}
+            {...screenFrameProps('progress')}
             aria-label="작성 진행 화면"
             className="wizard-screen"
             data-screen="progress"
@@ -1055,7 +1113,17 @@ function App() {
                 </p>
                 <span className="folio-stamp">02 / 03</span>
                 {renderScreenSequencer('progress')}
-                <p className="docket-note">GitHub Actions처럼 진행 흔적은 남기되, 읽기는 한 단계씩만 허용합니다.</p>
+                <p className="docket-note">파이프라인 그래프처럼 진행 흔적은 남기되, 읽기는 한 단계씩만 허용합니다.</p>
+                <div className="docket-metrics" aria-hidden="true">
+                  <div className="docket-metric">
+                    <span>현재 단계</span>
+                    <strong>{currentStage.label}</strong>
+                  </div>
+                  <div className="docket-metric">
+                    <span>남은 단계</span>
+                    <strong>{remainingStageCount}개</strong>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -1088,6 +1156,22 @@ function App() {
                           ? '복구를 위해 브리프를 다시 조정해 주세요.'
                           : `${state.generation.completedStages.length}개 단계 완료`}
                     </span>
+                  </div>
+                  <div className="progress-rail" aria-hidden="true">
+                    {workflowStages.map((stage, index) => {
+                      const visualState = stageVisualState(stage, state.generation)
+
+                      return (
+                        <div
+                          className={`progress-rail-node rail-${visualState}`.trim()}
+                          key={stage.id}
+                        >
+                          <span className="rail-status-dot" />
+                          {index < workflowStages.length - 1 ? <span className="rail-link" /> : null}
+                          <span className="rail-label">{stage.label}</span>
+                        </div>
+                      )
+                    })}
                   </div>
                 </article>
 
@@ -1131,9 +1215,11 @@ function App() {
                         </div>
                         <div className="stage-card-mark" aria-hidden="true">
                           {visualState === 'complete' ? (
-                            <svg className="checkmark" viewBox="0 0 24 24">
-                              <path d="M5 13.2L9.2 17.4L19 7.6" />
-                            </svg>
+                            <span className="checkmark-shell">
+                              <svg className="checkmark" viewBox="0 0 24 24">
+                                <path d="M5 13.2L9.2 17.4L19 7.6" />
+                              </svg>
+                            </span>
                           ) : visualState === 'current' ? (
                             <span className="pulse-dot" />
                           ) : visualState === 'error' ? (
@@ -1183,7 +1269,7 @@ function App() {
           </section>
 
           <section
-            aria-hidden={currentScreen !== 'publish'}
+            {...screenFrameProps('publish')}
             aria-label="게시 준비 화면"
             className="wizard-screen"
             data-screen="publish"
@@ -1205,6 +1291,16 @@ function App() {
                 <span className="folio-stamp">03 / 03</span>
                 {renderScreenSequencer('publish')}
                 <p className="docket-note">전문은 서랍 안에 남기고, 첫 판독은 제목과 구조만으로 끝냅니다.</p>
+                <div className="docket-metrics" aria-hidden="true">
+                  <div className="docket-metric">
+                    <span>구조 판독</span>
+                    <strong>{finalSections.length ? `${finalSections.length}개 섹션` : '대기'}</strong>
+                  </div>
+                  <div className="docket-metric">
+                    <span>복사 상태</span>
+                    <strong>{copyStatus.label}</strong>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -1260,6 +1356,26 @@ function App() {
               </article>
 
               <aside className="support-column enter-block" style={{ animationDelay: '150ms' }}>
+                <article className="support-panel handoff-panel">
+                  <p className="kicker">출고 체크</p>
+                  <h3>넘길 준비를 네 줄로 끝냅니다</h3>
+                  <p className="panel-description">
+                    글쓰기 에디터의 미리보기-게시 전환처럼, 이 면에서는 제목과 구조와 복사 상태만
+                    빠르게 확인합니다.
+                  </p>
+                  <div className="handoff-grid">
+                    {publishChecklist.map((item) => (
+                      <article
+                        className={`handoff-card tone-${item.tone}`.trim()}
+                        key={item.label}
+                      >
+                        <span>{item.label}</span>
+                        <strong>{item.value}</strong>
+                      </article>
+                    ))}
+                  </div>
+                </article>
+
                 <article className="support-panel">
                   <p className="kicker">검토 메모</p>
                   <h3>마지막 확인</h3>

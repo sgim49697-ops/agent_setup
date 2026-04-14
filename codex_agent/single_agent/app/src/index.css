@@ -79,6 +79,7 @@
   --accent-soft-panel: rgba(221, 225, 255, 0.76);
   --accent-soft-highlight: rgba(221, 225, 255, 0.56);
   --accent-soft-stripe: rgba(221, 225, 255, 0.48);
+  --accent-bright: #2970ff;
   --accent-ring: rgba(0, 82, 255, 0.24);
   --accent-border: rgba(0, 82, 255, 0.2);
   --accent-glow-strong: rgba(0, 82, 255, 0.2);
@@ -95,10 +96,20 @@
   --danger-glow: rgba(186, 26, 26, 0.12);
   --danger-ring: rgba(186, 26, 26, 0.14);
   --danger-fill: rgba(186, 26, 26, 0.32);
+  --danger-fill-mid: rgba(186, 26, 26, 0.72);
   --danger-fill-strong: rgba(186, 26, 26, 0.92);
   --danger-soft-fill: rgba(186, 26, 26, 0.12);
   --danger-soft-card: rgba(255, 218, 214, 0.64);
   --danger-soft-surface: rgba(255, 218, 214, 0.92);
+  --danger-panel-soft: rgba(255, 235, 231, 0.92);
+  --danger-ring-soft: rgba(186, 26, 26, 0.08);
+  --outline-faint: rgba(195, 197, 217, 0.14);
+  --outline-wash: rgba(195, 197, 217, 0.12);
+  --success-fill-mid: rgba(24, 129, 89, 0.78);
+  --success-panel-soft: rgba(230, 247, 239, 0.9);
+  --success-ring-soft: rgba(24, 129, 89, 0.08);
+  --accent-panel-soft: rgba(228, 234, 255, 0.9);
+  --surface-glint: rgba(255, 255, 255, 0.24);
   --neutral-fill: rgba(81, 95, 116, 0.12);
   --neutral-fill-strong: rgba(81, 95, 116, 0.16);
   --inverse-text: #f8f5ee;
