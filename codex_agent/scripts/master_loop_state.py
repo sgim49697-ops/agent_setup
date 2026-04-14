@@ -269,6 +269,17 @@ def normalize_state(state: dict[str, Any]) -> dict[str, Any]:
     normalized["remaining_cycle_history"] = normalize_json_list(normalized.get("remaining_cycle_history"))
     normalized["phase_history"] = normalize_json_list(normalized.get("phase_history"))
     normalized["current_harness"] = infer_current_harness(normalized)
+    remaining = normalize_remaining_harnesses(normalized.get("remaining_harnesses"))
+    if normalized.get("project_status") == "project_completed" and not remaining:
+        normalized["status"] = "completed"
+        normalized["cycle_status"] = "completed"
+        normalized["current_harness"] = QUALITY_GATE_ALIAS
+        normalized["current_phase"] = "quality-gate"
+        normalized["next_cycle_required"] = False
+        normalized["deferred_harnesses"] = []
+        normalized["quality_gate_error_count"] = 0
+        normalized["quality_gate_failure_streak"] = 0
+        normalized["last_quality_gate_signature"] = ""
     return normalized
 
 

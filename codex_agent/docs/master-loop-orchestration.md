@@ -59,15 +59,17 @@ For an active harness, the orchestrator runs focused steps in order:
      - `design.log`
      - `design.last.txt`
      - `designer-notes.md`
-2. **critic step**
-   - persona: `.codex/prompts/critic.md`
-   - reads designer artifacts and produces a reject/approve critique
-3. **ko-copy gate**
+2. **ko-copy gate**
    - `scripts/master_loop_ui_language_gate.py`
+   - runs immediately after design so Korean-first corrections happen even if critique later rejects
    - enforces Korean-first visible copy ratio
+3. **critic step**
+   - persona: `.codex/prompts/critic.md`
+   - reads designer + ko-copy artifacts and produces a reject/approve critique
 4. **verifier step**
    - persona: `.codex/prompts/verifier.md`
    - final bounded proof before Python gates
+   - uses `benchmark/real_eval_rubric.md` as a directional UI/UX quality bar for bounded verification notes
 5. **harness gate**
    - `scripts/master_loop_quality_gate.py`
    - validator + trace + ui language + artifact freshness + regression rescan
@@ -142,6 +144,33 @@ If the completed harness changed shared roots (`benchmark/`, `scripts/`, `docs/`
 
 Purpose:
 - catch cross-harness regressions caused by shared-file edits
+
+### Reset / relaunch brief
+When a project was previously completed and manual design or ko-copy edits are made afterward,
+reset the loop before relaunching.
+
+- primary operator guide: `docs/master-loop-reset-watchdog-guidance.md`
+- reset entrypoint: `scripts/openclaw_master_loop_reset.sh`
+
+The reset path archives prior completion markers plus derived quality reports so the next
+watchdog/worker cycle starts from a clean `in_progress` state instead of inheriting stale
+completion metadata.
+
+### Real-eval rubric as a design/UX bar
+`benchmark/real_eval_rubric.md` is not the same as the lab-comparison rubric.
+
+Current usage in the bounded loop:
+- **designer step** reads it as a product-quality target, especially for
+  - 접근성/반응형
+  - 디자인 완성도와 인터랙션 품질
+  - 사용자 플로우 완성도
+  - 복구 가능성
+- **critic step** evaluates the patch against those same categories
+- **verifier step** records a bounded evidence-based pass/warn/fail note for those categories
+
+Important:
+- bounded-cycle evidence does **not** automatically mean full real-eval pass
+- full real-eval still requires live LLM, repeated runs, and recoverability proof
 
 ## Observability
 

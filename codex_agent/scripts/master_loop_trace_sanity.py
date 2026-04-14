@@ -94,6 +94,30 @@ def read_progress_events(path: Path, state: dict[str, Any], max_events: int = 80
 
 
 def analyze_trace(events: list[dict[str, Any]], state: dict[str, Any]) -> dict[str, Any]:
+    completed_project = state.get('project_status') == 'project_completed' and not normalize_remaining_harnesses(state.get('remaining_harnesses'))
+    if completed_project:
+        phase = derive_effective_phase(
+            str(state.get('current_phase') or ''),
+            str(state.get('current_harness') or ''),
+            str(state.get('last_progress_summary') or ''),
+        )
+        return {
+            'ok': True,
+            'phase_event_count': 1 if phase else 0,
+            'analysis_window_size': 1 if phase else 0,
+            'unique_phase_count': 1 if phase else 0,
+            'consecutive_repeat_events': 0,
+            'max_same_phase_streak': 1 if phase else 0,
+            'churn_rate': 0.0,
+            'tail_replan_only': False,
+            'recent_remaining_lengths': [0],
+            'recent_phases': [phase] if phase else [],
+            'recent_raw_phases': [str(state.get('current_phase') or '')] if phase else [],
+            'recent_summaries': [str(state.get('last_progress_summary') or '')] if state.get('last_progress_summary') else [],
+            'errors': [],
+            'warnings': [],
+        }
+
     errors: list[str] = []
     warnings: list[str] = []
 

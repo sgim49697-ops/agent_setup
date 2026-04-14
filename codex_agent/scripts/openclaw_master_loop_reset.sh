@@ -9,9 +9,21 @@ PROJECT_FINAL="$ROOT/.omx/logs/master-ux-benchmark-v2-project-final.md"
 CYCLE_FINAL="$ROOT/.omx/logs/master-ux-benchmark-v2-cycle-complete.md"
 LAST="$ROOT/.omx/logs/master-ux-benchmark-v2.last.txt"
 BLOCK="$ROOT/.omx/logs/master-ux-benchmark-v2.blocked"
+QUALITY_GATE="$ROOT/.omx/state/master-loop-quality-gate.json"
+VALIDATOR="$ROOT/.omx/state/master-loop-validator.json"
+TRACE="$ROOT/.omx/state/master-loop-trace-sanity.json"
+UI_LANGUAGE="$ROOT/.omx/state/master-loop-ui-language.json"
+BASELINE="$ROOT/.omx/state/master-loop-baseline-metrics.json"
+GIT_CHECKPOINT="$ROOT/.omx/state/git-checkpoint-state.json"
+RESET_GUIDE="docs/master-loop-reset-watchdog-guidance.md"
 ARCHIVE_DIR="$ROOT/.omx/logs/archive/$(date -u +%Y%m%dT%H%M%SZ)"
 mkdir -p "$ARCHIVE_DIR" "$ROOT/.omx/logs" "$ROOT/.omx/state"
 for f in "$FINAL" "$PROJECT_FINAL" "$CYCLE_FINAL" "$LAST" "$BLOCK"; do
+  if [ -f "$f" ]; then
+    mv "$f" "$ARCHIVE_DIR/$(basename "$f")"
+  fi
+done
+for f in "$QUALITY_GATE" "$VALIDATOR" "$TRACE" "$UI_LANGUAGE" "$BASELINE" "$GIT_CHECKPOINT"; do
   if [ -f "$f" ]; then
     mv "$f" "$ARCHIVE_DIR/$(basename "$f")"
   fi
@@ -36,7 +48,7 @@ state = {
     'regression_count': 0,
     'hard_blocker': False,
     'next_cycle_required': True,
-    'current_phase': 'benchmark_foundation',
+    'current_phase': 'cycle-resume',
     'current_harness': 'benchmark_foundation',
     'remaining_harnesses': HARNESSES,
     'remaining_cycle_history': [],
@@ -48,11 +60,11 @@ state = {
     'updated_at': now,
     'reset_at': now,
     'last_progress_at': now,
-    'last_progress_summary': 'master loop reset and awaiting next cycle launch',
+    'last_progress_summary': 'master loop reset and awaiting next cycle launch; read docs/master-loop-reset-watchdog-guidance.md before restarting',
     'blocker_reason': '',
 }
 save_state(state_path, state)
 PY
-printf '[%s] master loop reset; archived previous completion markers under %s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$ARCHIVE_DIR" >> "$LOG"
+printf '[%s] master loop reset; archived previous completion markers and derived state under %s (guide=%s)\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$ARCHIVE_DIR" "$RESET_GUIDE" >> "$LOG"
 python3 "$ROOT/scripts/openclaw_master_loop_watchdog.py"
 echo "reset complete"

@@ -15,8 +15,8 @@ session.
 
 Step order:
   1. design    -> codex run with designer persona produces patch + notes
-  2. critique  -> codex run with critic persona independently reviews changes
-  3. ko-copy   -> python gate + optional codex run to fix Korean copy
+  2. ko-copy   -> python gate + optional codex run to fix Korean copy
+  3. critique  -> codex run with critic persona independently reviews changes
   4. verify    -> codex run with verifier persona final review
   5. gates     -> validator + trace-sanity + baseline + quality-gate (python)
   6. complete  -> master_loop_complete_harness.py if gates pass
@@ -235,6 +235,15 @@ def load_ko_copy_report() -> dict:
 
 def build_design_prompt(harness: str, cycle: int, ctx: str, artifact_dir: Path) -> str:
     persona = load_prompt_md("designer")
+    single_agent_guard = ""
+    if harness == "single_agent":
+        single_agent_guard = """
+10. single_agent Korean-first guard:
+    - This harness is especially sensitive to the ko-copy gate because visible copy often lives in a single surface.
+    - Write Korean-first copy not only in quoted strings but also in JSX text nodes such as
+      <p>...</p>, <span>...</span>, <button>...</button>, <label>...</label>.
+    - Do not leave visible English placeholders behind in the first-fold UI.
+"""
     return f"""You are the designer step of a bounded UX cycle. Execute ONLY the design/edit phase.
 
 <designer_persona>
@@ -263,6 +272,17 @@ For each reference, extract:
   (d) What happens on hover (lift, glow, underline)
   (e) How completion/success is signaled (checkmark draw, color fill, bounce)
 Record all 3 references in {artifact_dir}/designer-notes.md BEFORE proceeding.
+
+PHASE 0.5 — Real-eval rubric alignment (mandatory):
+Read `benchmark/real_eval_rubric.md` before implementing. Treat the following as the
+highest-priority UI/UX outcome bars for this edit:
+  - 접근성/반응형 (20.0)
+  - 디자인 완성도와 인터랙션 품질 (20.0)
+  - 사용자 플로우 완성도 (10.0)
+  - 복구 가능성 (6.7)
+Your design choices must improve the product against those categories, not just visual polish.
+If this harness is not currently a default real-eval target, still use the rubric as a directional
+quality bar for UI/UX decisions rather than as an eligibility gate.
 
 PHASE 1 — Stitch discovery (mandatory, do this before touching any code):
 1. Call Stitch MCP: explore available components, tokens, and patterns in project 11015732894783859302.
@@ -299,9 +319,10 @@ PHASE 3 — Design and implement:
    FORBIDDEN: showing all pipeline outputs (research, outline, drafts, review, final)
    simultaneously on one page. This is a single-page dump and the critic will reject it.
    Distribute outputs across screens or behind progressive disclosure.
+{single_agent_guard}
 
 PHASE 4 — Record:
-10. Update {artifact_dir}/designer-notes.md (append, don't overwrite) with:
+11. Update {artifact_dir}/designer-notes.md (append, don't overwrite) with:
     - Web references (3+ with specific interaction patterns extracted)
     - Stitch search terms used and patterns found (required — critic will check this)
     - Interaction inventory (all 9 items filled)
@@ -309,6 +330,8 @@ PHASE 4 — Record:
     - Stitch tokens applied (color vars, type scale, spacing)
     - Font pairing chosen and why
     - Aesthetic direction and the ONE memorable design choice
+    - real_eval_rubric alignment notes for accessibility/responsive, design/interaction quality,
+      user-flow completeness, and recoverability
     - Files changed
     - Known gaps for the critic
 
@@ -348,7 +371,13 @@ Required work:
 1. Open the changed files via git diff or ls-files and read them fresh. Do not trust the designer's self-report.
 2. Check the designer-notes.md for Stitch discovery evidence. If "Stitch search terms used" is absent
    or says nothing was searched, that is a blocking issue: the designer skipped Stitch.
-3. Evaluate the changes against these criteria (any blocking issue triggers reject):
+3. Read `benchmark/real_eval_rubric.md` and evaluate the patch against the rubric's strongest UI/UX categories:
+   - 접근성/반응형
+   - 디자인 완성도와 인터랙션 품질
+   - 사용자 플로우 완성도
+   - 복구 가능성
+   Use it as a directional product-quality bar even if this harness is not currently in the default real-eval set.
+4. Evaluate the changes against these criteria (any blocking issue triggers reject):
 
    BLOCKING — reject if ANY of these are true:
    a) Single-page dump: all pipeline outputs (research, outline, drafts, review, final) visible
@@ -365,16 +394,24 @@ Required work:
    k) Hardcoded colors: hex/rgb color values directly in component styles, not via CSS variables.
    l) Interaction inventory absent or incomplete in designer-notes.md (any of 9 items blank/TBD).
    m) Web references absent: 0 real-world references recorded in designer-notes.md.
+   n) Desktop/mobile responsiveness is visibly weak or broken on first-pass inspection.
+   o) Failure/retry/recovery states remain unclear enough that a user would not know how to recover.
 
    WARN — note but do not block:
    - Fewer than 3 web references (1-2 present but not the required 3)
    - Minor a11y gaps (missing aria-label, low contrast on non-primary elements)
    - Shadow system incomplete (less than 3 levels defined)
+   - Real-eval-rubric alignment is partial even though the patch is directionally better
 
-4. Write your verdict to {artifact_dir}/critic-report.md using this exact format:
+5. Write your verdict to {artifact_dir}/critic-report.md using this exact format:
 
    # Critic Report
    verdict: approve | reject
+   real_eval_rubric:
+     - accessibility_responsive: pass | warn | fail
+     - design_interaction_quality: pass | warn | fail
+     - user_flow_completeness: pass | warn | fail
+     - recoverability: pass | warn | fail
    blocking_issues:
      - (one line per blocking issue, empty list if approve)
    suggestions:
@@ -382,8 +419,8 @@ Required work:
    evidence:
      - (file:line references for each issue)
 
-5. If verdict is reject, DO NOT edit code. List the issues and stop.
-6. If verdict is approve, note that the patch is ready for ko-copy + verify.
+6. If verdict is reject, DO NOT edit code. List the issues and stop.
+7. If verdict is approve, note that the patch is ready for verify.
 
 Finish as soon as critic-report.md is written.
 """
@@ -407,8 +444,14 @@ ko-copy gate findings (JSON):
 Required work:
 1. Convert visible English copy to Korean for the affected harness only.
 2. Preserve English ONLY in aria-label / data-testid / live-region hook text.
-3. Do not change layout, logic, or unrelated files.
-4. After edits, write a one-line summary to {artifact_dir}/ko-copy-fix.md listing the files touched.
+3. Hunt and replace common AI/Stitch placeholder leftovers first:
+   - Submit, Cancel, Loading, Next, Back, Skip, Done, Save
+   - Continue, Finish, Placeholder, Enter text, Lorem ipsum
+   - Flow clarity, Depth balance, Editorial polish
+4. Check both quoted strings AND JSX text nodes. Visible text inside
+   <p>, <span>, <button>, <label>, <h1>-<h6>, helper text, and empty states must also be Korean-first.
+5. Do not change layout, logic, or unrelated files.
+6. After edits, write a one-line summary to {artifact_dir}/ko-copy-fix.md listing the files touched.
 
 Finish as soon as the fix is applied.
 """
@@ -435,18 +478,30 @@ Critic report:
 
 Required work:
 1. Use scripts/harness_preview.py ensure {harness} to get the stable preview URL.
-2. Run a minimal browser-review pass and a Korean-first spot check.
-3. Write {artifact_dir}/verifier-report.md with:
+2. Read `benchmark/real_eval_rubric.md` and run a minimal browser-review pass plus a Korean-first spot check.
+3. In your notes, explicitly assess the current build against the rubric's UI/UX-heavy categories:
+   - accessibility_responsive
+   - design_interaction_quality
+   - user_flow_completeness
+   - recoverability
+   Mark each as pass | warn | fail based on evidence from this bounded verification.
+4. Write {artifact_dir}/verifier-report.md with:
 
    # Verifier Report
    verdict: pass | fail
    evidence:
      - preview_url: ...
      - screenshots or notes
+   real_eval_rubric:
+     - accessibility_responsive: pass | warn | fail
+     - design_interaction_quality: pass | warn | fail
+     - user_flow_completeness: pass | warn | fail
+     - recoverability: pass | warn | fail
    open_issues:
      - (empty if pass)
 
-4. Do NOT remove the harness from remaining_harnesses here - the python gate + complete step handle that.
+5. Do NOT claim a full `real_eval pass` unless live LLM, repeat-run stability, and recoverability were actually proven.
+6. Do NOT remove the harness from remaining_harnesses here - the python gate + complete step handle that.
 
 Finish as soon as verifier-report.md is written.
 """
@@ -461,9 +516,9 @@ def step_design(harness: str, cycle: int, ctx: str, artifact_dir: Path) -> int:
     return rc
 
 
-def step_critique(harness: str, cycle: int, artifact_dir: Path) -> tuple[int, bool]:
+def step_critique(harness: str, cycle: int, artifact_dir: Path, prior_rounds: int = 0) -> tuple[int, bool]:
     """Returns (rc, approved). approved=True if verdict line says 'approve'."""
-    prompt = build_critique_prompt(harness, cycle, artifact_dir, prior_rounds=0)
+    prompt = build_critique_prompt(harness, cycle, artifact_dir, prior_rounds=prior_rounds)
     rc, _ = run_codex_step("critique", prompt, artifact_dir)
     report = artifact_dir / "critic-report.md"
     if not report.exists():
@@ -569,6 +624,7 @@ def orchestrate(harness: str, cycle: int, ctx: str) -> int:
 
     design_rc = 1
     critique_rc = 1
+    ko_rc = 1
     approved = False
     retry_ctx = ctx
     for attempt in range(DESIGN_MAX_RETRIES + 1):
@@ -580,7 +636,11 @@ def orchestrate(harness: str, cycle: int, ctx: str) -> int:
             retry_ctx = f"{ctx}\n\nDESIGN STEP FAILED on attempt {attempt + 1}. Retry the edit with smaller, safer changes."
             continue
 
-        critique_rc, approved = step_critique(harness, cycle, artifact_dir)
+        ko_rc = step_ko_copy(harness, cycle, artifact_dir)
+        if ko_rc != 0:
+            log("ko-copy step failed after retries; continuing to critic so the next edit round can still get feedback")
+
+        critique_rc, approved = step_critique(harness, cycle, artifact_dir, prior_rounds=attempt)
         if critique_rc != 0:
             log(f"critique step rc={critique_rc} on attempt {attempt + 1}")
         log(f"critic verdict attempt {attempt + 1}: {'APPROVE' if approved else 'REJECT'}")
@@ -593,13 +653,8 @@ def orchestrate(harness: str, cycle: int, ctx: str) -> int:
             f"blocking_issues before re-editing. This is retry attempt {attempt + 2}."
         )
 
-    ko_rc = 1
     verify_rc = 1
-    if design_rc == 0 and approved:
-        ko_rc = step_ko_copy(harness, cycle, artifact_dir)
-        if ko_rc != 0:
-            log("ko-copy step failed after retries; python gate will mark regression")
-
+    if design_rc == 0 and approved and ko_rc == 0:
         for attempt in range(VERIFY_MAX_RETRIES + 1):
             verify_rc = step_verify(harness, cycle, artifact_dir)
             if verify_rc == 0:
@@ -608,11 +663,11 @@ def orchestrate(harness: str, cycle: int, ctx: str) -> int:
             if attempt >= VERIFY_MAX_RETRIES:
                 break
     else:
-        log("skipping ko-copy/verify because design+critique never reached an approved patch")
+        log("skipping verify because design/ko-copy/critique did not all pass in the same bounded cycle")
 
     gate_rc = step_python_gates(harness)
 
-    if gate_rc == 0 and ko_rc == 0:
+    if gate_rc == 0 and design_rc == 0 and approved and ko_rc == 0 and verify_rc == 0:
         step_complete_harness(harness)
 
     pipeline_rc = 0
@@ -622,7 +677,7 @@ def orchestrate(harness: str, cycle: int, ctx: str) -> int:
         pipeline_rc = 21
     elif design_rc != 0:
         pipeline_rc = 10
-    elif critique_rc != 0 and not approved:
+    elif not approved:
         pipeline_rc = 23
     elif verify_rc != 0:
         pipeline_rc = 22

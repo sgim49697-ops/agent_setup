@@ -37,6 +37,8 @@ def recent_cycle_snapshots(state: dict) -> list[dict]:
 def active_harness(state: dict, arg: str | None) -> str:
     if arg:
         return resolve_harness_token(arg, state)
+    if state.get('project_status') == 'project_completed' and not normalize_remaining_harnesses(state.get('remaining_harnesses')):
+        return QUALITY_GATE_ALIAS
     current = str(state.get('current_harness') or '').strip()
     if current == QUALITY_GATE_ALIAS and not normalize_remaining_harnesses(state.get('remaining_harnesses')):
         return HARNESSES[0]
