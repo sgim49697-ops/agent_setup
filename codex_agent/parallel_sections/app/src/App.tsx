@@ -814,6 +814,78 @@ function App() {
       </button>
     )
   })
+  const lastCompletedStage = [...state.generation.completedStages].at(-1)
+  const lastCompletedLabel = lastCompletedStage
+    ? workflowStages.find((stage) => stage.id === lastCompletedStage)?.label ?? '직전 단계'
+    : '입력 전'
+  const checkpointSummary = !lastCompletedStage
+    ? '아직 잠긴 산출물이 없습니다. 첫 생성 이후부터 안전 지점이 이 선반에 기록됩니다.'
+    : lastCompletedStage === 'final'
+      ? '최종 글까지 닫혔습니다. 지금은 발행 직전 점검만 남았습니다.'
+      : `${lastCompletedLabel}까지는 다시 읽어도 흐름이 끊기지 않는 안전 지점입니다.`
+  const laneVelocity = !brief
+    ? '레인 배정 전'
+    : completedLaneCount === writerLanes.length
+      ? '세 레인 도착'
+      : `${completedLaneCount}/3 레인 도착`
+  const editionStrip = [
+    {
+      label: '현재 판면',
+      value: screenEdition.tail,
+      note: screenTitles[screen].kicker,
+    },
+    {
+      label: '안전 지점',
+      value: lastCompletedLabel,
+      note: checkpointSummary,
+    },
+    {
+      label: '복구 동선',
+      value: screenGuide.label,
+      note: screenGuide.recovery,
+    },
+    {
+      label: '도킹 속도',
+      value: laneVelocity,
+      note: mergeMoment,
+    },
+  ]
+  const setupIntentCards = [
+    {
+      label: '독자층',
+      value: audienceOptions.find((item) => item.value === state.inputs.audience)?.label ?? '미정',
+      note: '설명 깊이와 예시 밀도를 조절해 각 레인의 문장 길이를 균형 있게 나눕니다.',
+    },
+    {
+      label: '톤',
+      value: toneOptions.find((item) => item.value === state.inputs.tone)?.label ?? '미정',
+      note: '머지 데스크가 중복을 지울 때 어떤 문장 결을 남길지 먼저 정합니다.',
+    },
+    {
+      label: '분량',
+      value: lengthOptions.find((item) => item.value === state.inputs.length)?.label ?? '미정',
+      note: '섹션 압축도와 preview 카드 개수를 결정해 첫 화면의 밀도를 미리 통제합니다.',
+    },
+  ]
+  const publishSettings = [
+    {
+      label: '리더 모드',
+      value: activeReaderPanel === 'review' ? '리뷰 메모' : '최종 글',
+      note: 'Ghost처럼 편집 맥락을 버리지 않고 같은 자리에서 검토와 발행 직전 읽기를 오갑니다.',
+    },
+    {
+      label: '공개 준비',
+      value: finalArticle ? '복사 가능' : '머지 대기',
+      note: finalArticle
+        ? '짧은 마크다운 미리보기 아래에서만 내보내기를 열어 과한 전면 노출을 막습니다.'
+        : '최종 글이 닫히기 전에는 발행 CTA를 비활성 상태로 유지합니다.',
+    },
+    {
+      label: '복원 포인트',
+      value: lastCompletedLabel,
+      note: 'Ghost의 post history처럼 마지막 안전 지점을 별도 선반에 남겨 되돌아갈 이유를 분명히 합니다.',
+    },
+  ]
 
   let primaryLabel = '글 생성'
   let primaryDisabled = false
@@ -909,6 +981,16 @@ function App() {
             </div>
           ) : null}
         </aside>
+      </section>
+
+      <section className="telegraph-strip" aria-label="판면 요약">
+        {editionStrip.map((item) => (
+          <article key={item.label} className="telegraph-card">
+            <span>{item.label}</span>
+            <strong>{item.value}</strong>
+            <p>{item.note}</p>
+          </article>
+        ))}
       </section>
 
       <section className="rail-panel">
@@ -1055,6 +1137,15 @@ function App() {
                   이 하네스는 병렬 섹션 오케스트레이션 자체를 검증합니다. 그래서 첫 화면은 입력과
                   방향 결정만 남기고, 실제 산출물은 뒤 단계에서 열리게 바꿨습니다.
                 </p>
+                <div className="intent-grid">
+                  {setupIntentCards.map((card) => (
+                    <article key={card.label} className="intent-card">
+                      <span>{card.label}</span>
+                      <strong>{card.value}</strong>
+                      <p>{card.note}</p>
+                    </article>
+                  ))}
+                </div>
               </article>
 
               <div className="stack-column">
@@ -1478,6 +1569,15 @@ function App() {
                     <li>마크다운 원본 내보내기는 미리보기 아래에서만 확장됩니다.</li>
                     <li>영문 훅은 접근성·테스트 전용 계층에만 남깁니다.</li>
                   </ul>
+                  <div className="publish-meta-grid">
+                    {publishSettings.map((item) => (
+                      <article key={item.label} className="publish-meta-card">
+                        <span>{item.label}</span>
+                        <strong>{item.value}</strong>
+                        <p>{item.note}</p>
+                      </article>
+                    ))}
+                  </div>
                 </article>
 
                 <article className="panel-sheet" data-stagger>

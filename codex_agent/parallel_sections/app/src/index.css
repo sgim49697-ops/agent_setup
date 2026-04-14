@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Hahmlet:wght@500;700;800&family=Noto+Sans+KR:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Hahmlet:wght@500;700;800&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap');
 
 :root {
   --stitch-background: #faf8ff;
@@ -55,8 +55,8 @@
   --color-error: var(--stitch-error);
   --font-display: 'Hahmlet', serif;
   --font-heading: 'Hahmlet', serif;
-  --font-body: 'Noto Sans KR', sans-serif;
-  --font-label: 'Noto Sans KR', sans-serif;
+  --font-body: 'IBM Plex Sans KR', sans-serif;
+  --font-label: 'IBM Plex Sans KR', sans-serif;
   --text-display: clamp(2.95rem, 6vw, 5rem);
   --text-headline: clamp(1.5rem, 2.5vw, 2.45rem);
   --text-title: clamp(1.08rem, 1.45vw, 1.55rem);
