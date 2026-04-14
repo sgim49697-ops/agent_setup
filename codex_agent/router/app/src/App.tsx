@@ -10,6 +10,7 @@ import type {
   Length,
   PipelineOutputs,
   Scorecard,
+  SpecialistId,
   Tone,
 } from './contracts'
 import {
@@ -28,7 +29,7 @@ import {
 
 type OutputKey = 'research_summary' | 'outline' | 'section_drafts' | 'review_notes' | 'voice_notes'
 type FocusSurface = 'research' | 'outline' | 'drafts' | 'review'
-type WizardScreen = 'brief' | 'progress' | 'final'
+type WizardScreen = 'brief' | 'route' | 'progress' | 'final'
 
 type AppState = {
   inputs: BlogGeneratorInputs
@@ -44,6 +45,7 @@ type Action =
     }
   | { type: 'apply-preset'; payload: BlogGeneratorInputs }
   | { type: 'start-run'; message: string }
+  | { type: 'start-pipeline'; message: string }
   | {
       type: 'set-routing'
       routingDecision: NonNullable<GenerationState['routingDecision']>
@@ -128,7 +130,7 @@ function reducer(state: AppState, action: Action): AppState {
         ...state,
         generation: {
           status: 'loading',
-          currentStage: 'research',
+          currentStage: null,
           completedStages: [],
           routingDecision: null,
           chosenSpecialist: null,
@@ -138,18 +140,36 @@ function reducer(state: AppState, action: Action): AppState {
         },
         copyFeedback: '',
       }
+    case 'start-pipeline':
+      return {
+        ...state,
+        generation: state.generation.routingDecision && state.generation.chosenSpecialist
+          ? {
+              ...state.generation,
+              status: 'loading',
+              currentStage: 'research',
+              completedStages: [],
+              outputs: {
+                routing_decision: state.generation.routingDecision,
+              },
+              statusMessage: action.message,
+              errorMessage: null,
+            }
+          : state.generation,
+        copyFeedback: '',
+      }
     case 'set-routing': {
       const chosenSpecialist = getSpecialistProfile(action.routingDecision.specialist)
       return {
         ...state,
         generation: {
           ...state.generation,
-          status: 'loading',
-          currentStage: 'research',
+          status: 'route-locked',
+          currentStage: null,
+          completedStages: [],
           routingDecision: action.routingDecision,
           chosenSpecialist,
           outputs: {
-            ...state.generation.outputs,
             routing_decision: action.routingDecision,
           },
           statusMessage: action.message,
@@ -227,6 +247,7 @@ function statusLabel(status: GenerationStatus) {
   const labels: Record<GenerationStatus, string> = {
     initial: '대기 중',
     loading: '경로 생성 중',
+    'route-locked': '경로 고정',
     populated: '초안 작성 중',
     'review-complete': '검토 정리 완료',
     'export-ready': '출고 준비 완료',
@@ -239,6 +260,7 @@ function statusHook(status: GenerationStatus) {
   const hooks: Record<GenerationStatus, string> = {
     initial: 'initial',
     loading: 'generating',
+    'route-locked': 'route-locked',
     populated: 'drafts-populated',
     'review-complete': 'review-complete',
     'export-ready': 'export-ready',
@@ -278,17 +300,18 @@ function App() {
   })
   const [manualSurface, setManualSurface] = useState<FocusSurface | null>(null)
   const [screen, setScreen] = useState<WizardScreen>('brief')
+  const [routeLensId, setRouteLensId] = useState<SpecialistId | null>(null)
   const runRef = useRef(0)
 
   async function handleGenerate() {
     const runId = runRef.current + 1
     runRef.current = runId
-    setScreen('progress')
     setManualSurface(null)
+    setRouteLensId(null)
 
     dispatch({
       type: 'start-run',
-      message: '라우터가 주제를 분류하고 가장 설득력 있는 스페셜리스트 경로를 잠그는 중입니다.',
+      message: '라우터가 브리프 신호를 정렬해 가장 설득력 있는 경로를 잠그는 중입니다.',
     })
 
     await sleep(260)
@@ -310,19 +333,37 @@ function App() {
     dispatch({
       type: 'set-routing',
       routingDecision,
-      message: `${getSpecialistProfile(routingDecision.specialist).label} 경로를 ${(routingDecision.confidence * 100).toFixed(0)}% 신뢰도로 잠갔습니다.`,
+      message: `${getSpecialistProfile(routingDecision.specialist).label} 경로를 ${(routingDecision.confidence * 100).toFixed(0)}% 신뢰도로 잠갔습니다. 이제 선택 근거와 대안 경로를 확인하세요.`,
+    })
+    setRouteLensId(routingDecision.specialist)
+    setScreen('route')
+  }
+
+  async function handleContinueWithRoute() {
+    const routingDecision = state.generation.routingDecision
+    const chosenSpecialist = state.generation.chosenSpecialist
+
+    if (!routingDecision || !chosenSpecialist) {
+      await handleGenerate()
+      return
+    }
+
+    const runId = runRef.current + 1
+    runRef.current = runId
+    setScreen('progress')
+    setManualSurface(null)
+
+    dispatch({
+      type: 'start-pipeline',
+      message: '선택된 경로를 따라 리서치와 구조 설계를 시작합니다.',
     })
 
-    await sleep(220)
+    await sleep(160)
     if (runRef.current !== runId) {
       return
     }
 
-    const specialistOutput = generateSpecialistOutput(
-      state.inputs,
-      routingDecision,
-      getSpecialistProfile(routingDecision.specialist),
-    )
+    const specialistOutput = generateSpecialistOutput(state.inputs, routingDecision, chosenSpecialist)
 
     dispatch({
       type: 'set-output',
@@ -437,6 +478,7 @@ function App() {
       value,
     })
     setScreen('brief')
+    setRouteLensId(null)
   }
 
   function applyPreset(title: string, audience: Audience, tone: Tone, length: Length) {
@@ -445,6 +487,7 @@ function App() {
       payload: { topic: title, audience, tone, length },
     })
     setScreen('brief')
+    setRouteLensId(null)
   }
 
   function openStage(stageId: GenerationStageId) {
@@ -469,8 +512,12 @@ function App() {
   const finalPost = state.generation.outputs.final_post
 
   const canCopy = Boolean(finalPost)
+  const routeLens =
+    specialistProfiles.find((profile) => profile.id === routeLensId) ?? chosenSpecialist ?? specialistProfiles[0]
   const routeMoment = !routingDecision
     ? '브리프를 읽고 잠금 가능한 경로를 찾는 중입니다.'
+    : state.generation.status === 'route-locked'
+      ? '추천 경로가 잠겼습니다. 이제 선택 근거와 폴백 설명을 확인할 차례입니다.'
     : finalPost
       ? '선택된 경로가 출고 단계까지 도달했습니다.'
       : state.generation.currentStage === 'research'
@@ -482,6 +529,8 @@ function App() {
             : '검토 메모로 경로를 정제해 출고 직전까지 밀어붙이고 있습니다.'
   const nextAction = !routingDecision
     ? '브리프를 확정한 뒤 경로 설계를 시작하세요.'
+    : state.generation.status === 'route-locked'
+      ? '선택 근거를 훑은 뒤 이 경로로 진행하세요.'
     : !researchSummary
       ? '리서치 방향이 고정될 때까지 현재 경로 잠금을 유지하세요.'
       : !outline.length
@@ -518,13 +567,72 @@ function App() {
           ? recommendedSurface
           : manualSurface ?? recommendedSurface
 
-  const currentStageIndex = workflowStages.findIndex((stage) => stage.id === state.generation.currentStage)
-  const progressPercent =
-    state.generation.status === 'export-ready'
-      ? 100
-      : state.generation.status === 'initial' || state.generation.status === 'error'
-        ? 8
-        : Math.max(18, ((Math.max(currentStageIndex, 0) + 1) / workflowStages.length) * 100 - 4)
+  const routeLensSummary =
+    routeLens.id === chosenSpecialist?.id
+      ? '선택된 경로입니다. 현재 브리프와 가장 강하게 맞는 전문가 렌즈를 전면에 세웁니다.'
+      : routeLens.id === 'fallback'
+        ? fallbackCopy
+        : `${routeLens.label}도 후보로 검토했지만 현재 신호 강도에서는 보조 경로로만 유지됩니다.`
+
+  const wizardScreens: Array<{ id: WizardScreen; label: string; enabled: boolean }> = [
+    { id: 'brief', label: '브리프 설정', enabled: true },
+    { id: 'route', label: '경로 선택', enabled: Boolean(routingDecision) },
+    { id: 'progress', label: '생성 진행', enabled: Boolean(routingDecision) },
+    { id: 'final', label: '출고 준비', enabled: canCopy },
+  ]
+
+  const screenProgressPercent =
+    screen === 'brief'
+      ? 18
+      : screen === 'route'
+        ? 42
+        : screen === 'progress'
+          ? 74
+          : 100
+
+  const primaryAction =
+    screen === 'brief'
+      ? {
+          label:
+            state.generation.status === 'loading' && !routingDecision
+              ? '경로 진단 중...'
+              : state.generation.errorMessage
+                ? '경로 다시 계산'
+                : '경로 추천 받기',
+          note: '화면 1의 유일한 주요 버튼입니다. 브리프를 고정하면 다음 화면에서 경로 근거를 검토할 수 있습니다.',
+          disabled: state.generation.status === 'loading' && !routingDecision,
+          onClick: () => {
+            void handleGenerate()
+          },
+          ariaLabel: 'Generate post',
+        }
+      : screen === 'route'
+        ? {
+            label: '이 경로로 진행',
+            note: '화면 2에서는 추천된 경로를 확인한 뒤 하나의 진행 버튼만 남깁니다.',
+            disabled: !routingDecision || state.generation.status === 'loading',
+            onClick: () => {
+              void handleContinueWithRoute()
+            },
+            ariaLabel: undefined,
+          }
+        : screen === 'progress'
+          ? {
+              label: canCopy ? '결과 검토' : '결과 검토 준비 중',
+              note: '화면 3에서는 생성 상태를 읽고 결과 검토 화면으로 넘어가는 흐름만 강조합니다.',
+              disabled: !canCopy,
+              onClick: () => setScreen('final'),
+              ariaLabel: undefined,
+            }
+          : {
+              label: '마크다운 복사',
+              note: '화면 4의 주요 버튼은 복사뿐입니다. 나머지 정보는 최종 확인 보조 레이어로 남깁니다.',
+              disabled: !canCopy,
+              onClick: () => {
+                void copyMarkdown()
+              },
+              ariaLabel: 'Copy markdown',
+            }
 
   const artifactPreview: ArtifactIndex = {
     screenshots: ['runs/desktop-verification.png', 'runs/mobile-verification.png'],
@@ -640,13 +748,14 @@ function App() {
             <span className="skeleton-line skeleton-line-short" />
           </div>
           <div className="loading-reveal">
-            {workflowStages.map((stage) => {
+            {workflowStages.map((stage, index) => {
               const isDone = state.generation.completedStages.includes(stage.id)
               const isCurrent = state.generation.currentStage === stage.id
               return (
                 <div
                   key={stage.id}
                   className={`loading-step ${isDone ? 'is-done' : ''} ${isCurrent ? 'is-current' : ''}`}
+                  style={{ animationDelay: `${index * 90}ms` }}
                 >
                   <span className="loading-step-dot" />
                   <div>
@@ -668,6 +777,9 @@ function App() {
         </div>
         <h3>아직 열린 작업면이 없습니다</h3>
         <p>경로가 잠기면 현재 단계에 맞는 리서치, 구조, 초안, 검토 메모를 한 면씩 보여줍니다.</p>
+        <button type="button" className="empty-cta" onClick={() => setScreen('brief')}>
+          브리프로 돌아가기
+        </button>
       </div>
     )
   }
@@ -680,7 +792,7 @@ function App() {
           <h1>기술 지휘자</h1>
           <p className="brand-copy">
             한 번의 주제 입력을 가장 설득력 있는 스페셜리스트 경로로 잠그고, 출고까지의 흐름을
-            세 화면으로 압축한 라우팅 작업실입니다.
+            네 화면으로 압축한 라우팅 작업실입니다.
           </p>
         </div>
 
@@ -697,75 +809,45 @@ function App() {
         <div className="action-deck stagger-3">
           <button
             type="button"
-            className={`action-button ${screen === 'brief' ? 'is-primary' : 'is-secondary'}`}
-            disabled={state.generation.status === 'loading'}
-            onClick={handleGenerate}
-            aria-label="Generate post"
+            className="action-button is-primary"
+            disabled={primaryAction.disabled}
+            onClick={primaryAction.onClick}
+            aria-label={primaryAction.ariaLabel}
           >
-            {state.generation.status === 'loading'
-              ? '생성 중...'
-              : screen === 'progress'
-                ? '다시 경로 설계'
-                : screen === 'final'
-                  ? '다시 생성'
-                  : '경로 설계 시작'}
+            {primaryAction.label}
           </button>
-
-          {screen === 'progress' ? (
-            <button
-              type="button"
-              className="action-button is-primary"
-              disabled={!canCopy}
-              onClick={() => setScreen('final')}
-            >
-              {canCopy ? '최종 초안 보기' : '최종 초안 준비 중'}
-            </button>
-          ) : (
-            <button
-              type="button"
-              className={`action-button ${screen === 'final' ? 'is-primary' : 'is-secondary'}`}
-              disabled={!canCopy}
-              onClick={copyMarkdown}
-              aria-label="Copy markdown"
-            >
-              마크다운 복사
-            </button>
-          )}
+          <div className="action-note-card">
+            <p className="surface-kicker">현재 액션 규칙</p>
+            <strong>{primaryAction.label}</strong>
+            <p>{primaryAction.note}</p>
+          </div>
         </div>
       </header>
 
       <section className="wizard-shell">
         <div className="screen-rail stagger-4">
-          <div className="screen-pills" role="tablist" aria-label="화면 흐름">
-            <button
-              type="button"
-              className={`screen-pill ${screen === 'brief' ? 'is-active' : ''}`}
-              onClick={() => setScreen('brief')}
-            >
-              브리프 설계
-            </button>
-            <button
-              type="button"
-              className={`screen-pill ${screen === 'progress' ? 'is-active' : ''}`}
-              onClick={() => setScreen('progress')}
-            >
-              경로 진행
-            </button>
-            <button
-              type="button"
-              className={`screen-pill ${screen === 'final' ? 'is-active' : ''}`}
-              onClick={() => {
-                if (canCopy) {
-                  setScreen('final')
-                }
-              }}
-            >
-              출고 준비
-            </button>
+          <div className="screen-pills" aria-label="화면 흐름">
+            {wizardScreens.map((wizardScreen) => (
+              <button
+                key={wizardScreen.id}
+                type="button"
+                className={`screen-pill ${screen === wizardScreen.id ? 'is-active' : ''}`}
+                aria-current={screen === wizardScreen.id ? 'step' : undefined}
+                aria-disabled={!wizardScreen.enabled}
+                onClick={() => {
+                  if (wizardScreen.enabled) {
+                    setScreen(wizardScreen.id)
+                  }
+                }}
+                disabled={!wizardScreen.enabled}
+              >
+                {wizardScreen.label}
+              </button>
+            ))}
           </div>
 
           <div className="progress-meter" aria-hidden="true">
-            <span style={{ width: `${progressPercent}%` }} />
+            <span style={{ width: `${screenProgressPercent}%` }} />
           </div>
         </div>
 
@@ -775,6 +857,9 @@ function App() {
             const isCurrent =
               (state.generation.currentStage === stage.id && state.generation.status !== 'error') ||
               (stage.id === 'final' && state.generation.status === 'export-ready')
+            const canOpenStage =
+              state.generation.status !== 'route-locked' &&
+              (isComplete || isCurrent || (stage.id === 'final' && canCopy))
 
             return (
               <button
@@ -783,6 +868,7 @@ function App() {
                 data-testid={stageTestIds[stage.id]}
                 className={`stage-button ${isComplete ? 'is-complete' : ''} ${isCurrent ? 'is-current' : ''}`}
                 onClick={() => openStage(stage.id)}
+                disabled={!canOpenStage}
               >
                 <span className="stage-index">{String(workflowStages.indexOf(stage) + 1).padStart(2, '0')}</span>
                 <span className="stage-copy">
@@ -874,8 +960,8 @@ function App() {
               </form>
 
               <p className="panel-note">
-                이 화면의 유일한 primary action은 상단의 <strong>경로 설계 시작</strong>입니다. 입력은
-                짧게, 결정은 강하게.
+                이 화면의 유일한 주요 버튼은 상단의 <strong>경로 추천 받기</strong>입니다. 입력은
+                짧게, 진단은 선명하게 유지합니다.
               </p>
 
               {state.generation.errorMessage ? (
@@ -914,7 +1000,7 @@ function App() {
                 </div>
                 <h3>아직 경로가 잠기지 않았습니다</h3>
                 <p>
-                  먼저 브리프를 정리한 뒤 상단 primary action을 눌러야 선택 경로, 폴백 경로,
+                  먼저 브리프를 정리한 뒤 상단 주요 버튼을 눌러야 선택 경로, 폴백 경로,
                   신뢰도가 동시에 열립니다.
                 </p>
               </div>
@@ -941,12 +1027,88 @@ function App() {
           </section>
         ) : null}
 
+        {screen === 'route' ? (
+          <section className="wizard-screen screen-grid screen-grid-route">
+            <article className="panel route-selector stagger-1">
+              <div className="section-head">
+                <p className="eyebrow">화면 2</p>
+                <h2>경로 선택</h2>
+              </div>
+
+              <p className="lead">
+                추천 경로를 확인하고, 왜 이 전문가 경로가 전면에 서는지 읽은 뒤 다음 단계로
+                넘어갑니다. 이 화면은 선택 근거를 보여주되, 아직 모든 산출물을 열어놓지 않습니다.
+              </p>
+
+              <div className="route-ribbon" aria-hidden="true">
+                <span className="route-ribbon-node is-complete">브리프</span>
+                <span className="route-ribbon-node is-active">{chosenSpecialist ? chosenSpecialist.label.replace(' 스페셜리스트', '') : '라우터'}</span>
+                <span className="route-ribbon-node">생성</span>
+                <span className="route-ribbon-node">출고</span>
+              </div>
+
+              <div className="route-choice-grid">
+                {specialistProfiles.map((profile) => {
+                  const isSelected = routingDecision?.specialist === profile.id
+                  const isFocused = routeLens.id === profile.id
+                  const isFallback = profile.id === 'fallback'
+
+                  return (
+                    <button
+                      key={profile.id}
+                      type="button"
+                      className={`route-choice-card ${isSelected ? 'is-selected' : ''} ${isFocused ? 'is-focused' : ''} ${isFallback ? 'is-fallback' : ''}`}
+                      onClick={() => setRouteLensId(profile.id)}
+                    >
+                      <span className="surface-kicker">
+                        {isSelected ? '선택 경로' : isFallback ? '폴백' : '대안 경로'}
+                      </span>
+                      <strong>{profile.label}</strong>
+                      <p>{profile.writingFocus}</p>
+                      <small>
+                        {isSelected
+                          ? routingDecision?.reason
+                          : isFallback
+                            ? fallbackCopy
+                            : '현재 신호 강도에서는 보조 후보로만 유지됩니다.'}
+                      </small>
+                    </button>
+                  )
+                })}
+              </div>
+            </article>
+
+            <aside className="panel route-lens-panel stagger-2">
+              <article className="sidebar-card">
+                <p className="surface-kicker">현재 프리뷰</p>
+                <h3>{routeLens.label}</h3>
+                <p>{routeLensSummary}</p>
+              </article>
+
+              <article className="sidebar-card">
+                <p className="surface-kicker">강한 신호</p>
+                <div className="token-row">
+                  {routeSignals.map((signal) => (
+                    <span key={signal}>{signal}</span>
+                  ))}
+                </div>
+              </article>
+
+              <article className="sidebar-card">
+                <p className="surface-kicker">복구 가능성</p>
+                <h3>대기 경로를 끝까지 보존합니다</h3>
+                <p>{fallbackCopy}</p>
+              </article>
+            </aside>
+          </section>
+        ) : null}
+
         {screen === 'progress' ? (
           <section className="wizard-screen screen-grid screen-grid-progress">
             <article className="panel route-hero stagger-1">
               <div className="route-copy">
                 <div className="section-head">
-                  <p className="eyebrow">화면 2</p>
+                  <p className="eyebrow">화면 3</p>
                   <h2>전문가 경로 진행</h2>
                 </div>
 
@@ -955,6 +1117,13 @@ function App() {
                     ? `${chosenSpecialist.label}가 현재 경로를 주도하고 있습니다. 선택 근거와 폴백 대기 상태를 한 화면에서만 요약합니다.`
                     : '브리프를 읽는 동안 라우터가 현재 경로와 폴백 대기를 정리합니다.'}
                 </p>
+
+                <div className="route-ribbon route-ribbon-compact" aria-hidden="true">
+                  <span className="route-ribbon-node is-complete">브리프</span>
+                  <span className="route-ribbon-node is-complete">{chosenSpecialist ? chosenSpecialist.label.replace(' 스페셜리스트', '') : '라우터'}</span>
+                  <span className="route-ribbon-node is-active">생성</span>
+                  <span className="route-ribbon-node">출고</span>
+                </div>
 
                 <div className="route-meta-grid">
                   <article className="metric-card">
@@ -1029,8 +1198,8 @@ function App() {
                 <p className="surface-kicker">출고 조건</p>
                 <h3>{canCopy ? '최종 초안이 준비되었습니다' : '최종 초안이 준비되면 바로 이동합니다'}</h3>
                 <p>
-                  이 화면의 유일한 primary action은 상단의{' '}
-                  <strong>{canCopy ? '최종 초안 보기' : '최종 초안 준비 중'}</strong>입니다.
+                  이 화면의 유일한 주요 버튼은 상단의{' '}
+                  <strong>{canCopy ? '결과 검토' : '결과 검토 준비 중'}</strong>입니다.
                 </p>
               </article>
             </aside>
@@ -1075,7 +1244,7 @@ function App() {
             <article className="panel final-panel stagger-1">
               <div className="surface-head">
                 <div>
-                  <p className="eyebrow">화면 3</p>
+                  <p className="eyebrow">화면 4</p>
                   <h2>출고 준비</h2>
                 </div>
                 <div className="final-badges">
@@ -1093,6 +1262,9 @@ function App() {
                   </div>
                   <h3>최종 포스트를 준비 중입니다</h3>
                   <p>검토 메모가 모두 정리되면 이 화면에 최종 마크다운이 펼쳐집니다.</p>
+                  <button type="button" className="empty-cta" onClick={() => setScreen('progress')}>
+                    생성 화면으로 돌아가기
+                  </button>
                 </div>
               )}
             </article>
@@ -1124,7 +1296,7 @@ function App() {
                 <p className="surface-kicker">다음 행동</p>
                 <h3>{nextAction}</h3>
                 <p>
-                  이 화면의 유일한 primary action은 상단의 <strong>마크다운 복사</strong>입니다.
+                  이 화면의 유일한 주요 버튼은 상단의 <strong>마크다운 복사</strong>입니다.
                 </p>
               </article>
             </aside>

@@ -9,6 +9,7 @@ export type GenerationStageId = 'research' | 'outline' | 'drafts' | 'review' | '
 export type GenerationStatus =
   | 'initial'
   | 'loading'
+  | 'route-locked'
   | 'populated'
   | 'review-complete'
   | 'export-ready'
