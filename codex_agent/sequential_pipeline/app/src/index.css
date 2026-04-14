@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Song+Myung&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600&family=Noto+Sans+KR:wght@400;500;700&display=swap');
 
 :root {
   --paper: #08131f;
@@ -14,7 +14,7 @@
     0 34px 72px rgba(3, 8, 18, 0.42),
     0 14px 32px rgba(3, 8, 18, 0.18);
   font-family:
-    'IBM Plex Sans KR',
+    'Noto Sans KR',
     sans-serif;
   line-height: 1.6;
   font-weight: 400;
@@ -55,8 +55,9 @@ input,
 select,
 textarea {
   font-family:
-    'IBM Plex Sans KR',
+    'Noto Sans KR',
     sans-serif;
+  font-weight: 500;
 }
 
 button,
@@ -78,9 +79,10 @@ h1,
 h2,
 h3 {
   font-family:
-    'Song Myung',
-    'IBM Plex Sans KR',
+    'Cormorant Garamond',
+    'Noto Sans KR',
     sans-serif;
+  font-optical-sizing: auto;
   line-height: 1.16;
   letter-spacing: -0.03em;
   color: var(--ink);
