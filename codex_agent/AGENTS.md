@@ -56,6 +56,7 @@ Keep runtime marker contracts stable and non-destructive when overlays are appli
 - Keep diffs small, reviewable, and reversible.
 - Run lint, typecheck, tests, and static analysis after changes.
 - Final reports must include changed files, simplifications made, and remaining risks.
+- When the user explicitly asks to save work continuously, commit after each meaningful verified change and push immediately when credentials/permissions allow; if push is blocked, report the blocker right away.
 
 <lore_commit_protocol>
 ## Lore Commit Protocol
