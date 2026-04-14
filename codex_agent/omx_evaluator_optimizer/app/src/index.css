@@ -1,49 +1,40 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Noto+Sans+KR:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Manrope:wght@500;700;800&display=swap');
 
 :root {
-  --paper: #faf8ff;
-  --panel: rgba(255, 255, 255, 0.72);
-  --panel-strong: rgba(242, 243, 255, 0.84);
-  --line: rgba(67, 70, 86, 0.12);
-  --ink: #131b2e;
+  --bg: #faf8ff;
+  --surface: #ffffff;
+  --surface-low: #f2f3ff;
+  --surface-high: #e2e7ff;
+  --surface-ink: #283044;
+  --surface-line: rgba(195, 197, 217, 0.58);
+  --text: #131b2e;
+  --text-inverse: #eef0ff;
   --muted: #515f74;
-  --accent: #0052ff;
-  --accent-strong: #003ec7;
-  --accent-cool: #274f97;
-  --accent-warm: #952200;
-  --ink-inverse: #eef0ff;
-  --muted-inverse: rgba(238, 240, 255, 0.76);
-  --rail-panel: rgba(19, 27, 46, 0.92);
-  --rail-panel-strong: rgba(28, 40, 74, 0.98);
+  --primary: #003ec7;
+  --primary-bright: #0052ff;
+  --primary-fixed: #dde1ff;
+  --accent-amber: #952200;
+  --danger: #ba1a1a;
+  --danger-surface: #ffdad6;
+  --font-body: 'IBM Plex Sans KR', sans-serif;
+  --font-display: 'Manrope', 'IBM Plex Sans KR', sans-serif;
+  --font-label: 'Manrope', 'IBM Plex Sans KR', sans-serif;
   --shadow-soft:
-    0 28px 54px rgba(19, 27, 46, 0.08),
-    0 10px 22px rgba(19, 27, 46, 0.04);
+    0 36px 68px rgba(19, 27, 46, 0.12),
+    0 12px 24px rgba(19, 27, 46, 0.05);
   --shadow-ambient:
-    0 24px 44px rgba(19, 27, 46, 0.06),
-    0 8px 18px rgba(19, 27, 46, 0.03);
-  --font-body:
-    'Noto Sans KR',
-    'Apple SD Gothic Neo',
-    'Malgun Gothic',
-    sans-serif;
-  --font-display:
-    'Manrope',
-    'Noto Sans KR',
-    sans-serif;
-  --font-label:
-    'Manrope',
-    'Noto Sans KR',
-    sans-serif;
+    0 28px 48px rgba(19, 27, 46, 0.08),
+    0 8px 18px rgba(19, 27, 46, 0.04);
   font-family: var(--font-body);
   line-height: 1.5;
   font-weight: 400;
-  color: var(--ink);
+  color: var(--text);
   background:
     linear-gradient(rgba(19, 27, 46, 0.03) 1px, transparent 1px),
     linear-gradient(90deg, rgba(19, 27, 46, 0.03) 1px, transparent 1px),
-    radial-gradient(circle at top left, rgba(0, 82, 255, 0.14), transparent 28%),
-    radial-gradient(circle at right top, rgba(149, 34, 0, 0.08), transparent 24%),
-    linear-gradient(180deg, #faf8ff, #e9eeff);
+    radial-gradient(circle at top left, rgba(0, 82, 255, 0.12), transparent 26%),
+    radial-gradient(circle at 82% 10%, rgba(149, 34, 0, 0.08), transparent 18%),
+    linear-gradient(180deg, #fcfbff, #eef1ff);
   background-size: 28px 28px, 28px 28px, auto, auto, auto;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -51,12 +42,14 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
 html {
-  scroll-behavior: smooth;
+  min-height: 100%;
 }
 
 body {
@@ -64,7 +57,8 @@ body {
   min-width: 320px;
   min-height: 100vh;
   background:
-    radial-gradient(circle at top center, rgba(255, 255, 255, 0.62), transparent 22%);
+    radial-gradient(circle at top center, rgba(255, 255, 255, 0.66), transparent 22%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.14), transparent 30%);
 }
 
 body,
@@ -82,31 +76,29 @@ textarea {
   font: inherit;
 }
 
+button,
+input,
+select,
+textarea,
+summary {
+  outline: none;
+}
+
 button:focus-visible,
 input:focus-visible,
 select:focus-visible,
-textarea:focus-visible {
-  outline: 3px solid rgba(74, 116, 255, 0.26);
-  outline-offset: 2px;
+textarea:focus-visible,
+summary:focus-visible {
+  outline: 3px solid rgba(0, 82, 255, 0.24);
+  outline-offset: 3px;
 }
 
 h1,
 h2,
 h3,
-h4 {
-  font-family: var(--font-display);
-  line-height: 1.05;
-  color: var(--ink);
-}
-
-h1 {
-  font-size: clamp(3rem, 6vw, 5.1rem);
-  letter-spacing: -0.05em;
-}
-
-h2 {
-  font-size: clamp(1.6rem, 2vw, 2.35rem);
-  letter-spacing: -0.04em;
+h4,
+h5 {
+  color: var(--text);
 }
 
 a {

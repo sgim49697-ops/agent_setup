@@ -1,4 +1,11 @@
-import { useEffect, useReducer, useRef, useState, type KeyboardEvent } from 'react'
+import {
+  useEffect,
+  useReducer,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+} from 'react'
 import './App.css'
 import type {
   Audience,
@@ -8,9 +15,13 @@ import type {
   Length,
   PipelineOutputs,
   Tone,
+  WorkflowStage,
 } from './contracts'
 import { generatePipelineOutputs, isForcedErrorTopic } from './generator'
 import { deliverables, evaluationTargets, requiredLoops, topicPresets, workflowStages } from './starterData'
+
+type ScreenId = 'brief' | 'gate' | 'reader' | 'release'
+type ReaderSurface = 'research' | 'outline' | 'drafts' | 'review'
 
 interface AppState {
   inputs: BlogGeneratorInputs
@@ -84,6 +95,37 @@ const verdictCopy = {
   FAIL: '실패',
 } as const
 
+const englishStageLabels: Record<WorkflowStage['id'], string> = {
+  research: 'Research results',
+  outline: 'Outline',
+  drafts: 'Section drafts',
+  review: 'Review notes',
+  final: 'Final post',
+}
+
+const screenMeta = {
+  brief: {
+    label: '브리프 잠금',
+    caption: '입력 계약',
+    note: '주제와 기준을 잠가 가혹한 루프를 시작합니다.',
+  },
+  gate: {
+    label: '활성 게이트',
+    caption: '압박 관제',
+    note: '현재 게이트와 다음 행동만 전면에 남깁니다.',
+  },
+  reader: {
+    label: '집중 읽기',
+    caption: '산출물 검토',
+    note: '연구, 개요, 초안, 리뷰를 한 번에 하나씩 읽습니다.',
+  },
+  release: {
+    label: '출고 승인',
+    caption: '릴리스 씰',
+    note: '마지막 승인안과 복사 준비만 남깁니다.',
+  },
+} as const
+
 const initialInputs: BlogGeneratorInputs = {
   topic: topicPresets[1].title,
   audience: 'advanced',
@@ -94,7 +136,7 @@ const initialInputs: BlogGeneratorInputs = {
 const initialState: AppState = {
   inputs: initialInputs,
   status: 'initial',
-  statusMessage: '건틀릿이 대기 중입니다. 브리프를 확인한 뒤 생성 버튼으로 10회 평가 루프를 시작하세요.',
+  statusMessage: '건틀릿이 대기 중입니다. 브리프를 잠근 뒤 생성 버튼으로 10회 평가 루프를 시작하세요.',
   copyFeedback: '',
   outputs: null,
   revealedIterations: 0,
@@ -116,7 +158,7 @@ function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         inputs: action.preset,
-        statusMessage: '프리셋을 불러왔습니다. 다음 생성 실행에서 OMX 건틀릿이 이 브리프를 다시 재생합니다.',
+        statusMessage: '프리셋을 불러왔습니다. 다음 실행에서 같은 가혹도를 다시 재생합니다.',
         copyFeedback: '',
         errorMessage: null,
       }
@@ -127,7 +169,7 @@ function reducer(state: AppState, action: Action): AppState {
         revealedIterations: 0,
         selectedIteration: 0,
         status: 'loading',
-        statusMessage: '작성자가 첫 초안을 세우고 있습니다. 곧 리뷰어와 수정자가 순차적으로 게이트를 밀어 올립니다.',
+        statusMessage: '작성자, 리뷰어, 수정자, 검증 사이클이 차례대로 게이트를 밀어 올리고 있습니다.',
         isGenerating: true,
         copyFeedback: '',
         errorMessage: null,
@@ -184,6 +226,12 @@ function stageState(
   return status === 'export-ready' ? 'complete' : 'active'
 }
 
+function stageStateLabel(state: ReturnType<typeof stageState>) {
+  if (state === 'active') return '현재 게이트'
+  if (state === 'complete') return '통과'
+  return '대기'
+}
+
 function formatCounts(record: IterationRecord | null) {
   if (!record) return '대기 중'
   return `통과 ${record.passCount} · 보류 ${record.partialCount} · 실패 ${record.failCount}`
@@ -204,13 +252,16 @@ function statusMessageForIteration(record: IterationRecord, total: number) {
   return `${record.iteration}차 루프가 모든 리뷰 게이트를 통과해 승인 후보를 넘깁니다.`
 }
 
+function screenStyle(delayIndex: number): CSSProperties {
+  return { animationDelay: `${delayIndex * 50}ms` }
+}
+
 function App() {
   const [state, dispatch] = useReducer(reducer, initialState)
   const runTokenRef = useRef(0)
   const readerTabRefs = useRef<Array<HTMLButtonElement | null>>([])
-  const [activeSurface, setActiveSurface] = useState<'research' | 'outline' | 'drafts' | 'review'>(
-    'research',
-  )
+  const [activeSurface, setActiveSurface] = useState<ReaderSurface>('research')
+  const [activeScreen, setActiveScreen] = useState<ScreenId>('brief')
 
   useEffect(() => {
     return () => {
@@ -219,13 +270,13 @@ function App() {
   }, [])
 
   const visibleIterations = state.outputs?.iterations.slice(0, state.revealedIterations) ?? []
-  const latestVisibleIteration = visibleIterations[visibleIterations.length - 1] ?? null
+  const latestVisibleIteration = visibleIterations.at(-1) ?? null
   const selectedIteration =
     visibleIterations.find((record) => record.iteration === state.selectedIteration) ??
     latestVisibleIteration
   const finalArticle =
     state.outputs && state.revealedIterations >= requiredLoops ? state.outputs.final_article : null
-  const releasePreview = finalArticle ? finalArticle.markdown.split('\n').slice(0, 6).join('\n') : ''
+  const releasePreview = finalArticle ? finalArticle.markdown.split('\n').slice(0, 8).join('\n') : ''
   const repairRows = selectedIteration?.verdictRows.filter((row) => row.verdict !== 'PASS') ?? []
   const visibleVerificationCycles =
     state.outputs?.verification_cycles.slice(
@@ -235,13 +286,22 @@ function App() {
   const remainingLoops = Math.max(requiredLoops - state.revealedIterations, 0)
   const remainingVerificationCycles = Math.max(requiredLoops - visibleVerificationCycles.length, 0)
   const hasLoopOutputs = Boolean(state.outputs)
-  const stageHooks = {
-    research: '연구 결과',
-    outline: '개요',
-    drafts: '섹션 초안',
-    review: '리뷰 메모',
-    final: '최종 원고',
-  } as const
+  const stageCards = workflowStages.map((stage, index) => ({
+    ...stage,
+    stateClass: stageState(index, state.status, state.revealedIterations),
+  }))
+  const screens = (Object.keys(screenMeta) as ScreenId[]).map((screen) => ({
+    id: screen,
+    ...screenMeta[screen],
+    isLocked:
+      screen === 'gate'
+        ? state.status === 'initial' && !state.outputs
+        : screen === 'reader'
+          ? !hasLoopOutputs
+          : screen === 'release'
+            ? !finalArticle
+            : false,
+  }))
 
   const loopStatus =
     state.status === 'initial'
@@ -252,7 +312,7 @@ function App() {
           ? '강제 실패 토픽 때문에 리뷰 전에 루프가 멈췄습니다.'
           : state.status === 'export-ready'
             ? `건틀릿이 끝났습니다. ${state.outputs?.loop_summary.lastIterationPassCount ?? 0}/9 게이트를 통과했습니다.`
-        : `${selectedIteration?.iteration ?? 0}차 루프가 현재 화면에 열려 있습니다.`
+            : `${selectedIteration?.iteration ?? 0}차 루프가 현재 화면에 열려 있습니다.`
 
   const currentGateTitle =
     state.status === 'initial'
@@ -265,7 +325,7 @@ function App() {
             ? '복구 게이트'
             : state.status === 'export-ready'
               ? '승인 후보'
-              : `${state.revealedIterations}차 루프가 대기 중`
+              : `${state.revealedIterations}차 루프 점검`
 
   const nextActionTitle =
     state.status === 'initial'
@@ -275,19 +335,19 @@ function App() {
         : state.status === 'error'
           ? '브리프 수정 후 재실행'
           : state.status === 'export-ready'
-            ? '원고 복사 또는 증거 확인'
-            : `${selectedIteration?.iteration ?? state.revealedIterations}차 루프 점검`
+            ? '원고 복사 또는 출고 점검'
+            : `${selectedIteration?.iteration ?? state.revealedIterations}차 루프 읽기`
 
   const nextActionBody =
     state.status === 'initial'
       ? '첫 행동은 하나면 충분합니다. 브리프를 다듬고 바로 건틀릿을 시작하세요.'
       : state.status === 'loading'
-        ? '작성자, 리뷰어, 수정자, 검증 사이클이 아직 순서대로 재생되는 중입니다.'
+        ? '가혹한 루프가 아직 재생되는 중이므로, 지금은 현재 게이트와 다음 행동만 추적합니다.'
         : state.status === 'error'
           ? '토픽에서 강제 실패 접두어를 지우고 다시 생성해 제품 흐름을 복구하세요.'
           : state.status === 'export-ready'
             ? '승인 게이트가 열렸으므로, 이제 화면의 중심을 수정 작업에서 출고 점검으로 옮길 수 있습니다.'
-            : '아래 선택된 루프 스냅샷에서 막히는 항목과 최신 수정 반응을 함께 읽으세요.'
+            : '선택된 루프 스냅샷에서 막히는 항목과 방금 반영된 수정을 함께 읽으세요.'
 
   const exportLockTitle =
     finalArticle || state.status === 'export-ready'
@@ -321,39 +381,9 @@ function App() {
       note: '아직 출고를 막는 판정과 수정 압박만 남겨 둡니다.',
     },
   ] as const
+
   const activeReaderTab = readerTabs.find((tab) => tab.id === activeSurface) ?? readerTabs[0]
-  const heroRail = [
-    {
-      title: '초안 점화',
-      detail: state.status === 'initial' ? '브리프 대기' : '1차 거친 후보안 가동',
-      className: state.status === 'initial' ? 'is-queued' : 'is-revealed',
-    },
-    {
-      title: '게이트 압축',
-      detail:
-        state.status === 'initial'
-          ? '리뷰 대기'
-          : `${Math.max(state.revealedIterations, 1)}/${requiredLoops}회 루프 노출`,
-      className:
-        state.status === 'export-ready'
-          ? 'is-revealed'
-          : state.status === 'loading' || state.revealedIterations > 0
-            ? 'is-selected'
-            : 'is-queued',
-    },
-    {
-      title: '승인 잠금',
-      detail: state.status === 'export-ready' ? '복사 가능' : `${remainingLoops}회 남음`,
-      className: state.status === 'export-ready' ? 'is-selected' : 'is-queued',
-    },
-  ] as const
-  const stagedWorkflow = workflowStages.map((stage, index) => ({
-    ...stage,
-    stateClass: stageState(index, state.status, state.revealedIterations),
-  }))
-  const completedStageCount = stagedWorkflow.filter((stage) => stage.stateClass === 'complete').length
-  const activeStageLabel =
-    stagedWorkflow.find((stage) => stage.stateClass === 'active')?.label ?? workflowStages[0].label
+
   const controlSignals = [
     {
       label: '독자 프레임',
@@ -376,13 +406,7 @@ function App() {
       note: `${requiredLoops}회 검증 뒤에만 복사를 엽니다.`,
     },
   ] as const
-  const focusChecklist = [
-    `필수 단계 ${completedStageCount}/${workflowStages.length} 통과`,
-    `현재 표면은 ${activeStageLabel} 중심으로 고정됩니다.`,
-    state.outputs
-      ? `마지막 루프에서 ${state.outputs.loop_summary.lastIterationPassCount}/9 게이트를 통과했습니다.`
-      : '첫 루프 전까지는 승인 후보를 열지 않습니다.',
-  ]
+
   const reviewSignals = [
     {
       label: '선택 루프',
@@ -403,6 +427,7 @@ function App() {
           : '현재 선택 루프에는 추가 수정 압박이 없습니다.',
     },
   ] as const
+
   const gatePressureCards = [
     {
       label: '열린 루프',
@@ -428,32 +453,15 @@ function App() {
       note: state.outputs ? '마지막 루프 기준' : '첫 루프 대기',
     },
   ] as const
-  const releaseSignals = [
-    {
-      label: '출고 상태',
-      value: state.outputs?.loop_summary.readyForExport ? '열림' : '잠김',
-      note:
-        finalArticle || state.status === 'export-ready'
-          ? '복사 가능한 승인안'
-          : '열 번째 루프 전까지 잠금 유지',
-    },
-    {
-      label: '최종 목표',
-      value: '9.4+',
-      note: '최종 점수 하한선',
-    },
-    {
-      label: '남은 압력',
-      value:
-        finalArticle || state.status === 'export-ready'
-          ? '완료'
-          : `${remainingLoops}·${remainingVerificationCycles}`,
-      note:
-        finalArticle || state.status === 'export-ready'
-          ? '추가 압박 없음'
-          : '루프 · 검증 순서',
-    },
-  ] as const
+
+  const statusHookText =
+    state.status === 'export-ready'
+      ? 'export-ready'
+      : state.status === 'review-complete'
+        ? 'review-complete'
+        : state.status === 'loading'
+          ? 'loading'
+          : state.status
 
   function updateField<Key extends keyof BlogGeneratorInputs>(
     field: Key,
@@ -506,6 +514,7 @@ function App() {
     runTokenRef.current = runToken
 
     if (topic.length < 6) {
+      setActiveScreen('brief')
       dispatch({
         type: 'generation_error',
         message: '주제는 최소 6자 이상이어야 작성자가 건틀릿을 시작할 충분한 단서를 얻을 수 있습니다.',
@@ -514,6 +523,7 @@ function App() {
     }
 
     if (isForcedErrorTopic(topic)) {
+      setActiveScreen('brief')
       dispatch({
         type: 'generation_error',
         message: '리뷰어가 이 주제를 분류 단계에서 차단했습니다. 강제 실패 표식을 지운 뒤 다시 실행하세요.',
@@ -521,11 +531,14 @@ function App() {
       return
     }
 
+    setActiveSurface('research')
+    setActiveScreen('gate')
+
     const outputs = generatePipelineOutputs(state.inputs)
     dispatch({ type: 'start_generation', outputs })
 
     for (const record of outputs.iterations) {
-      await sleep(record.iteration === 1 ? 300 : 140)
+      await sleep(record.iteration === 1 ? 320 : 160)
       if (runTokenRef.current !== runToken) return
 
       dispatch({
@@ -537,13 +550,14 @@ function App() {
       })
     }
 
-    await sleep(180)
+    await sleep(220)
     if (runTokenRef.current !== runToken) return
 
     dispatch({
       type: 'finish_generation',
       statusMessage: `${requiredLoops}차 루프가 ${outputs.loop_summary.verificationCycles}회 검증 뒤에 ${outputs.loop_summary.lastIterationPassCount}/9 게이트를 통과했습니다. 승인 후보가 열렸습니다.`,
     })
+    setActiveScreen('release')
   }
 
   async function handleCopyMarkdown() {
@@ -569,716 +583,799 @@ function App() {
     }
   }
 
+  function navigateScreen(screen: ScreenId) {
+    if (screen === 'gate' && !state.outputs) return
+    if (screen === 'reader' && !hasLoopOutputs) return
+    if (screen === 'release' && !finalArticle) return
+    setActiveScreen(screen)
+  }
+
+  const screenPrimary =
+    activeScreen === 'gate'
+      ? {
+          label: '현재 루프 읽기',
+          onClick: () => setActiveScreen('reader'),
+        }
+      : activeScreen === 'reader'
+        ? {
+            label: finalArticle ? '승인안 점검' : '출고 잠금 확인',
+            onClick: () => setActiveScreen('release'),
+          }
+        : null
+
+  const isGeneratePrimary = activeScreen === 'brief'
+  const isCopyPrimary = activeScreen === 'release'
+
+  const utilityGenerateClass = `utility-button ${isGeneratePrimary ? 'is-primary' : 'is-utility'}`
+  const utilityCopyClass = `utility-button ${isCopyPrimary ? 'is-primary' : 'is-utility'}`
+
   return (
     <main className="gauntlet-shell">
-      <section className="hero-grid">
-        <article className="hero-card">
-          <p className="eyebrow">품질 관제실 · OMX 검수 건틀릿</p>
-          <h1>초안 낙관을 꺾는 출고 관제실</h1>
-          <p className="hero-lead">
-            기본 화면은 현재 게이트, 다음 행동, 출고 잠금만 전면에 남깁니다. 증거와 반복 로그는
-            뒤쪽 서랍으로 밀고, 지금 어떤 원고를 얼마나 더 밀어붙여야 하는지만 차갑게 보여 줍니다.
-          </p>
-          <div className="hero-signal-grid" aria-label="현재 압박 신호">
-            {gatePressureCards.map((item) => (
-              <article key={item.label} className="hero-signal-card">
-                <span className="hero-signal-label">{item.label}</span>
-                <strong className="hero-signal-value">{item.value}</strong>
-                <small className="hero-signal-note">{item.note}</small>
-              </article>
-            ))}
+      <aside className="gate-spine" aria-label="품질 건틀릿 진행 상황">
+        <div className="spine-frame">
+          <div className="spine-head">
+            <p className="eyebrow">품질 관제실</p>
+            <h1>출고를 봉인하는 게이트 스파인</h1>
+            <p className="spine-lead">
+              기본 화면은 지금 중요한 행동만 남기고, 검증 증거는 뒤쪽 레이어로 밀어 둡니다.
+            </p>
           </div>
-          <details className="drawer hero-rail-drawer">
-            <summary className="drawer-summary">
-              <div>
-                <p className="panel-label">건틀릿 단계</p>
-                <h3>압박 단계 펼치기</h3>
-                <p>첫 화면은 요약만 남기고, 세부 단계는 필요할 때만 펼칩니다.</p>
-              </div>
-              <span className="meta-pill">3단계 흐름</span>
-            </summary>
-            <div className="drawer-body">
-              <div className="hero-loop-rail" aria-label="품질 관제 흐름">
-                {heroRail.map((item, index) => (
-                  <article key={item.title} className={`loop-rail-step ${item.className}`}>
-                    <span className="loop-rail-index">0{index + 1}</span>
-                    <div className="loop-rail-copy">
-                      <strong>{item.title}</strong>
-                      <span>{item.detail}</span>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </div>
-          </details>
-          <div className="hero-actions">
-            <button
-              type="button"
-              className="primary-button"
-              data-testid="generate-post"
-              onClick={handleGenerate}
-              disabled={state.isGenerating}
-            >
-              {state.isGenerating ? '생성 중...' : '원고 생성 시작'}
-            </button>
-            <button
-              type="button"
-              className="secondary-button"
-              data-testid="copy-markdown"
-              onClick={handleCopyMarkdown}
-            >
-              승인 원고 복사
-            </button>
-          </div>
+
           <div
             className={`status-banner is-${state.status}`}
             aria-live="polite"
             aria-label="현재 생성 상태"
             data-testid="generation-status"
           >
+            <span className="sr-only">{statusHookText}</span>
             <strong>{statusBadgeCopy[state.status]}</strong>
-            <span>{state.statusMessage}</span>
+            <p>{state.statusMessage}</p>
           </div>
-        </article>
 
-        <aside className="input-card">
-          <div className="section-head">
-            <p className="panel-label">브리프 입력 구획</p>
-            <h2>가혹한 루프를 버틸 초안 조건을 먼저 잠급니다</h2>
-            <p>
-              이 입력 구획은 좁지만 냉정해야 합니다. 독자 수준, 주장 강도, 분량 계약을 먼저 고정해야
-              작성자와 리뷰어가 같은 기준으로 서로를 압박할 수 있습니다.
-            </p>
-          </div>
-          <div className="control-signal-grid" aria-label="브리프 고정 신호">
-            {controlSignals.map((signal) => (
-              <article key={signal.label} className="control-signal">
-                <span>{signal.label}</span>
-                <strong>{signal.value}</strong>
-                <small>{signal.note}</small>
-              </article>
-            ))}
-          </div>
-          <form className="input-grid" onSubmit={(event) => event.preventDefault()}>
-            <label htmlFor="topic">
-              <span>주제</span>
-              <textarea
-                id="topic"
-                name="topic"
-                rows={4}
-                value={state.inputs.topic}
-                disabled={state.isGenerating}
-                onChange={(event) => updateField('topic', event.target.value)}
-              />
-            </label>
-            <label htmlFor="audience">
-              <span>독자</span>
-              <select
-                id="audience"
-                name="audience"
-                value={state.inputs.audience}
-                disabled={state.isGenerating}
-                onChange={(event) => updateField('audience', event.target.value as Audience)}
-              >
-                <option value="beginner">입문자</option>
-                <option value="practitioner">실무자</option>
-                <option value="advanced">고급 사용자</option>
-              </select>
-            </label>
-            <label htmlFor="tone">
-              <span>톤</span>
-              <select
-                id="tone"
-                name="tone"
-                value={state.inputs.tone}
-                disabled={state.isGenerating}
-                onChange={(event) => updateField('tone', event.target.value as Tone)}
-              >
-                <option value="clear">명료하게</option>
-                <option value="pragmatic">실무적으로</option>
-                <option value="opinionated">단호하게</option>
-              </select>
-            </label>
-            <label htmlFor="length">
-              <span>분량</span>
-              <select
-                id="length"
-                name="length"
-                value={state.inputs.length}
-                disabled={state.isGenerating}
-                onChange={(event) => updateField('length', event.target.value as Length)}
-              >
-                <option value="short">짧게</option>
-                <option value="medium">균형 있게</option>
-                <option value="long">깊게</option>
-              </select>
-            </label>
-          </form>
-          <p className="copy-feedback" role="status" aria-live="polite">
-            {state.copyFeedback || '복사 결과와 잠금 안내는 여기에서 바로 알려 줍니다.'}
-          </p>
-          <details className="drawer preset-drawer">
-            <summary className="drawer-summary">
-              <div>
-                <p className="panel-label">빠른 시작 프리셋</p>
-                <h3>초기 브리프 후보 열기</h3>
-                <p>기본 화면이 현재 게이트에 집중하도록, 프리셋은 보조 레이어 안에만 남겨 둡니다.</p>
-              </div>
-              <span className="meta-pill">프리셋 {topicPresets.length}개</span>
-            </summary>
-            <div className="drawer-body preset-grid">
-              {topicPresets.map((preset) => (
+          <nav className="screen-switcher" aria-label="화면 전환">
+            {screens.map((screen, index) => {
+              const disabled = screen.isLocked
+              return (
                 <button
-                  key={preset.title}
+                  key={screen.id}
                   type="button"
-                  className="preset-chip"
-                  onClick={() =>
-                    applyPreset(preset.title, preset.audience, preset.tone, preset.length)
-                  }
+                  className={`screen-switch ${activeScreen === screen.id ? 'is-active' : ''} ${
+                    disabled ? 'is-disabled' : ''
+                  }`}
+                  onClick={() => navigateScreen(screen.id)}
+                  disabled={disabled}
+                  style={screenStyle(index)}
                 >
-                  <strong>{preset.title}</strong>
-                  <span>{preset.rationale}</span>
+                  <span className="screen-switch-step">0{index + 1}</span>
+                  <span className="screen-switch-copy">
+                    <strong>{screen.label}</strong>
+                    <small>{screen.caption}</small>
+                  </span>
                 </button>
-              ))}
-            </div>
-          </details>
-        </aside>
-      </section>
+              )
+            })}
+          </nav>
 
-      <section className="focus-strip pressure-board">
-        <article className="focus-card is-primary focus-card-hero">
-          <p className="panel-label">현재 게이트</p>
-          <div className="focus-hero-head">
+          <ol className="spine-notches" aria-label="10회 루프 진행">
+            {Array.from({ length: requiredLoops }, (_, index) => {
+              const iterationNumber = index + 1
+              const isComplete = iterationNumber <= state.revealedIterations
+              const isActive = !isComplete && iterationNumber === state.revealedIterations + 1
+              return (
+                <li
+                  key={iterationNumber}
+                  className={`spine-notch ${isComplete ? 'is-complete' : ''} ${
+                    isActive && state.status !== 'export-ready' ? 'is-active' : ''
+                  }`}
+                  style={screenStyle(index)}
+                >
+                  <span className="spine-check" aria-hidden="true">
+                    <svg viewBox="0 0 16 16" focusable="false">
+                      <path d="M3 8.5 6.2 11.7 13 4.8" />
+                    </svg>
+                  </span>
+                  <div className="spine-notch-copy">
+                    <strong>{iterationNumber}차</strong>
+                    <span>{isComplete ? '통과' : isActive ? '진행 중' : '대기'}</span>
+                  </div>
+                </li>
+              )
+            })}
+          </ol>
+
+          <div className="spine-summary">
+            <article className="summary-card">
+              <span>현재 게이트</span>
+              <strong>{currentGateTitle}</strong>
+              <small>{loopStatus}</small>
+            </article>
+            <article className="summary-card">
+              <span>출고 잠금</span>
+              <strong>{exportLockTitle}</strong>
+              <small>{exportLockBody}</small>
+            </article>
+          </div>
+
+          <div className="spine-seal" aria-hidden="true">
+            <span className={`seal-core ${state.status === 'export-ready' ? 'is-armed' : ''}`} />
             <div>
-              <h2>{currentGateTitle}</h2>
-              <p>{loopStatus}</p>
-            </div>
-            <div className="focus-meter" aria-hidden="true">
-              {stagedWorkflow.map((stage) => (
-                <span
-                  key={stage.id}
-                  className={`focus-meter-bar is-${stage.stateClass}`}
-                />
-              ))}
+              <strong>{state.status === 'export-ready' ? '릴리스 씰 잠금 해제' : '릴리스 씰 대기'}</strong>
+              <span>{state.status === 'export-ready' ? '복사 가능' : `${remainingLoops}회 루프 남음`}</span>
             </div>
           </div>
-          <ul className="focus-checklist">
-            {focusChecklist.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-          <div className="focus-meta">
-            <span className="meta-pill">단계 {completedStageCount}/{workflowStages.length} 통과</span>
-            <span className="meta-pill">현재 표면 {activeStageLabel}</span>
-          </div>
-        </article>
-        <article className="focus-card command-card">
-          <p className="panel-label">다음 행동</p>
-          <h2>{nextActionTitle}</h2>
-          <p>{nextActionBody}</p>
-          <div className="ledger-grid" aria-label="현재 행동 신호">
-            {reviewSignals.map((signal) => (
-              <article key={signal.label} className="ledger-card">
-                <span>{signal.label}</span>
-                <strong>{signal.value}</strong>
-                <p>{signal.note}</p>
-              </article>
-            ))}
-          </div>
-        </article>
-        <article className="focus-card release-card">
-          <p className="panel-label">출고 압력</p>
-          <h2>{exportLockTitle}</h2>
-          <p>{exportLockBody}</p>
-          <div className="ledger-grid" aria-label="출고 압력 신호">
-            {releaseSignals.map((signal) => (
-              <article key={signal.label} className="ledger-card">
-                <span>{signal.label}</span>
-                <strong>{signal.value}</strong>
-                <p>{signal.note}</p>
-              </article>
-            ))}
-          </div>
-        </article>
-      </section>
+        </div>
+      </aside>
 
-      <section className="journey-strip" aria-label="필수 단계">
-        {stagedWorkflow.map((stage, index) => (
-          <article
-            key={stage.id}
-            className={`journey-step is-${stage.stateClass}`}
-            aria-label={stageHooks[stage.id]}
-            data-testid={`stage-${stage.id}`}
-          >
-            <p className="workflow-step">0{index + 1}</p>
-            <div>
-              <strong>{stage.label}</strong>
-              <span>
-                {stage.stateClass === 'active'
-                  ? '현재 게이트'
-                  : stage.stateClass === 'complete'
-                    ? '통과'
-                    : '대기'}
-              </span>
-            </div>
-          </article>
-        ))}
-      </section>
-
-      <details className="drawer stage-drawer">
-        <summary className="drawer-summary">
-          <div>
-            <p className="panel-label">단계 흐름</p>
-            <h3>상세 단계 지도 열기</h3>
-            <p>기본 화면의 요약 띠만으로 부족할 때, 상태 설명이 붙은 전체 단계 맵을 펼칩니다.</p>
+      <section className="control-room">
+        <header className="command-header">
+          <div className="command-copy">
+            <p className="eyebrow">{screenMeta[activeScreen].caption}</p>
+            <h2>{screenMeta[activeScreen].label}</h2>
+            <p>{screenMeta[activeScreen].note}</p>
           </div>
-          <span className="meta-pill">
-            {completedStageCount}/{workflowStages.length} 통과 · {activeStageLabel}
-          </span>
-        </summary>
-        <div className="drawer-body">
-          <section className="stage-strip" aria-label="필수 단계">
-            {stagedWorkflow.map((stage, index) => (
-              <article
-                key={stage.id}
-                className={`stage-card is-${stage.stateClass}`}
-                aria-label={stageHooks[stage.id]}
-                data-testid={`stage-detail-${stage.id}`}
-              >
-                <p className="workflow-step">0{index + 1}</p>
-                <div>
-                  <h3>{stage.label}</h3>
+          <div className="utility-actions">
+            <button
+              type="button"
+              className={utilityGenerateClass}
+              aria-label="Generate post"
+              data-testid="generate-post"
+              onClick={handleGenerate}
+              disabled={state.isGenerating}
+            >
+              {state.isGenerating ? '건틀릿 재생 중' : '원고 생성 시작'}
+            </button>
+            <button
+              type="button"
+              className={utilityCopyClass}
+              aria-label="Copy markdown"
+              data-testid="copy-markdown"
+              onClick={handleCopyMarkdown}
+            >
+              {state.status === 'export-ready' ? '원고 복사' : '복사 잠금'}
+            </button>
+          </div>
+        </header>
+
+        <section className="journey-strip" aria-label="필수 단계">
+          {stageCards.map((stage, index) => (
+            <article
+              key={stage.id}
+              className={`journey-step is-${stage.stateClass}`}
+              aria-label={englishStageLabels[stage.id]}
+              data-testid={`stage-${stage.id}`}
+              style={screenStyle(index)}
+            >
+              <p className="workflow-step">0{index + 1}</p>
+              <div>
+                <strong>{stage.label}</strong>
+                <span>{stageStateLabel(stage.stateClass)}</span>
+              </div>
+            </article>
+          ))}
+        </section>
+
+        <section
+          key={`${activeScreen}-${state.status}-${state.revealedIterations}`}
+          className={`screen-panel screen-panel-${activeScreen} ${
+            state.status === 'error' ? 'is-error-state' : ''
+          }`}
+        >
+          {activeScreen === 'brief' ? (
+            <div className="screen-grid brief-grid">
+              <article className="card brief-card stagger-item" style={screenStyle(0)}>
+                <div className="section-head">
+                  <p className="panel-label">브리프 잠금</p>
+                  <h3>가혹한 루프를 버틸 입력 계약을 먼저 잠급니다</h3>
                   <p>
-                    {stage.stateClass === 'active'
-                      ? '현재 게이트'
-                      : stage.stateClass === 'complete'
-                        ? '통과'
-                        : '대기'}
+                    입력은 넓게 보이지만 느슨하면 안 됩니다. 독자 수준, 주장 강도, 분량 계약이 먼저
+                    고정돼야 작성자와 리뷰어가 같은 기준으로 서로를 압박할 수 있습니다.
                   </p>
                 </div>
-              </article>
-            ))}
-          </section>
-        </div>
-      </details>
 
-      {hasLoopOutputs ? (
-        <div className="loop-output-stack">
-          <section className="workbench-grid">
-            <article className="panel review-panel">
-              <div className="section-head">
-                <p className="panel-label">현재 루프 스냅샷</p>
-                <h2>막힘 메모와 수정 반응을 한 화면에 고정합니다</h2>
-                <p>지금 막는 항목과 방금 적용된 수정은 가까이 두고, 원시 판정표는 서랍 뒤로 밀어 둡니다.</p>
-              </div>
-              {selectedIteration ? (
-                <>
-                  <div className="iteration-meta">
-                    <span className="meta-pill">시작 {selectedIteration.startedAt}</span>
-                    <span className="meta-pill">{formatCounts(selectedIteration)}</span>
-                    <span className="meta-pill">
-                      추가 반복 {selectedIteration.needsAnotherLoop ? '필요' : '불필요'}
-                    </span>
+                <form className="field-grid" onSubmit={(event) => event.preventDefault()}>
+                  <label className={`field ${state.inputs.topic ? 'has-value' : ''}`}>
+                    <span className="field-label">주제</span>
+                    <textarea
+                      id="topic"
+                      name="topic"
+                      aria-label="Topic"
+                      rows={5}
+                      value={state.inputs.topic}
+                      disabled={state.isGenerating}
+                      onChange={(event) => updateField('topic', event.target.value)}
+                    />
+                  </label>
+
+                  <div className="field-row">
+                    <label className="field has-value">
+                      <span className="field-label">독자</span>
+                      <select
+                        id="audience"
+                        name="audience"
+                        aria-label="Audience"
+                        value={state.inputs.audience}
+                        disabled={state.isGenerating}
+                        onChange={(event) => updateField('audience', event.target.value as Audience)}
+                      >
+                        <option value="beginner">입문자</option>
+                        <option value="practitioner">실무자</option>
+                        <option value="advanced">고급 독자</option>
+                      </select>
+                    </label>
+
+                    <label className="field has-value">
+                      <span className="field-label">톤</span>
+                      <select
+                        id="tone"
+                        name="tone"
+                        aria-label="Tone"
+                        value={state.inputs.tone}
+                        disabled={state.isGenerating}
+                        onChange={(event) => updateField('tone', event.target.value as Tone)}
+                      >
+                        <option value="clear">명료하게</option>
+                        <option value="pragmatic">실무적으로</option>
+                        <option value="opinionated">단호하게</option>
+                      </select>
+                    </label>
+
+                    <label className="field has-value">
+                      <span className="field-label">분량</span>
+                      <select
+                        id="length"
+                        name="length"
+                        aria-label="Length"
+                        value={state.inputs.length}
+                        disabled={state.isGenerating}
+                        onChange={(event) => updateField('length', event.target.value as Length)}
+                      >
+                        <option value="short">짧게</option>
+                        <option value="medium">균형 있게</option>
+                        <option value="long">깊게</option>
+                      </select>
+                    </label>
                   </div>
-                  <div className="review-signal-grid">
-                    {reviewSignals.map((signal) => (
-                      <article key={signal.label} className="signal-card">
+                </form>
+
+                {state.errorMessage ? (
+                  <div className="error-panel" role="alert">
+                    <strong>복구 게이트가 개입했습니다</strong>
+                    <p>{state.errorMessage}</p>
+                    <span>실패 표식을 지우고 다시 생성하면 바로 같은 흐름으로 복구됩니다.</span>
+                  </div>
+                ) : null}
+
+                <details className="drawer preset-drawer">
+                  <summary className="drawer-summary">
+                    <div>
+                      <p className="panel-label">빠른 시작 프리셋</p>
+                      <h3>검증용 브리프 후보 열기</h3>
+                      <p>프리셋은 보조 레이어로만 남겨 첫 화면의 압력을 흐리지 않게 합니다.</p>
+                    </div>
+                    <span className="drawer-badge">{topicPresets.length}개</span>
+                  </summary>
+                  <div className="drawer-body preset-grid">
+                    {topicPresets.map((preset, index) => (
+                      <button
+                        key={preset.title}
+                        type="button"
+                        className="preset-chip"
+                        onClick={() =>
+                          applyPreset(preset.title, preset.audience, preset.tone, preset.length)
+                        }
+                        style={screenStyle(index)}
+                      >
+                        <strong>{preset.title}</strong>
+                        <span>{preset.rationale}</span>
+                      </button>
+                    ))}
+                  </div>
+                </details>
+              </article>
+
+              <aside className="brief-side">
+                <article className="card signal-card-stack stagger-item" style={screenStyle(1)}>
+                  <div className="section-head compact">
+                    <p className="panel-label">브리프 신호</p>
+                    <h3>이번 실행에서 고정되는 압박 조건</h3>
+                  </div>
+                  <div className="signal-grid">
+                    {controlSignals.map((signal, index) => (
+                      <article key={signal.label} className="signal-card" style={screenStyle(index)}>
                         <span>{signal.label}</span>
                         <strong>{signal.value}</strong>
                         <p>{signal.note}</p>
                       </article>
                     ))}
                   </div>
-                  <div className="current-loop-grid">
-                    <article className="subpanel">
-                      <p className="panel-label">방금 적용된 수정</p>
-                      <h3>수정자가 이번 차수에 실제로 반영한 변화</h3>
-                      <ul className="bullet-list">
-                        {selectedIteration.optimizerChanges.map((item) => (
-                          <li key={item}>{item}</li>
-                        ))}
-                      </ul>
-                    </article>
-                    <article className="subpanel">
-                      <p className="panel-label">수정 브리프</p>
-                      <h3>아직 출고를 막고 있는 항목</h3>
-                      {repairRows.length > 0 ? (
-                        <ul className="repair-list">
-                          {repairRows.map((row) => (
-                            <li key={row.index}>
-                              <strong>#{row.index}</strong>
-                              <span>{row.note}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <div className="empty-state compact">
-                          {requiredLoops}차 승인 후보에는 열린 수정 항목이 없습니다. 이제 출고 점검으로 넘길 수 있습니다.
-                        </div>
-                      )}
-                    </article>
-                  </div>
-                  <details className="drawer detail-drawer">
-                    <summary className="drawer-summary">
-                      <div>
-                        <p className="panel-label">리뷰어 상세 판정</p>
-                        <h3>전체 판정표 열기</h3>
-                        <p>엄격한 증거는 유지하되, 첫 읽기 표면과 경쟁하지 않도록 뒤 레이어에 둡니다.</p>
-                      </div>
-                      <span className="meta-pill">9개 체크</span>
-                    </summary>
-                    <div className="drawer-body">
-                      <div className="review-table-wrap">
-                        <table className="review-table">
-                          <thead>
-                            <tr>
-                              <th>#</th>
-                              <th>체크 항목</th>
-                              <th>판정</th>
-                              <th>리뷰 메모</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {selectedIteration.verdictRows.map((row) => (
-                              <tr key={row.index}>
-                                <td>{row.index}</td>
-                                <td>{row.label}</td>
-                                <td>
-                                  <span className={`verdict-badge is-${row.verdict.toLowerCase()}`}>
-                                    {verdictCopy[row.verdict]}
-                                  </span>
-                                </td>
-                                <td>{row.note}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  </details>
-                </>
-              ) : (
-                <div className="empty-state">
-                  첫 초안을 생성하면 선택 루프 스냅샷이 채워지고, 건틀릿 브리프가 열립니다.
-                </div>
-              )}
-            </article>
+                </article>
 
-            <section className="panel reader-panel">
-              <div className="section-head">
-                <p className="panel-label">집중 읽기 표면</p>
-                <h2>한 번에 하나의 읽기 표면만 유지합니다</h2>
-                <p>리서치, 구조, 초안, 리뷰 메모는 한 장의 집중된 읽기 표면 안에서만 교체합니다.</p>
-              </div>
-              <div className="reader-tabs" role="tablist" aria-label="읽기 표면">
-                {readerTabs.map((tab, index) => (
+                <article className="card empty-state release-placeholder stagger-item" style={screenStyle(2)}>
+                  <div className="empty-icon" aria-hidden="true">
+                    <span />
+                  </div>
+                  <div>
+                    <p className="panel-label">출고 승인 대기</p>
+                    <h3>승인 원고는 아직 봉인돼 있습니다</h3>
+                    <p>
+                      열 번째 루프와 검증이 모두 끝나기 전에는 최종 본문과 복사가 잠겨 있습니다. 먼저
+                      브리프를 잠그고 건틀릿을 시작하세요.
+                    </p>
+                  </div>
                   <button
-                    key={tab.id}
-                    ref={(node) => {
-                      readerTabRefs.current[index] = node
-                    }}
-                    id={`surface-tab-${tab.id}`}
                     type="button"
-                    role="tab"
-                    aria-selected={activeSurface === tab.id}
-                    aria-label={tab.label}
-                    aria-controls={`surface-panel-${tab.id}`}
-                    tabIndex={activeSurface === tab.id ? 0 : -1}
-                    className={`reader-tab ${activeSurface === tab.id ? 'is-active' : ''}`}
-                    data-testid={`reader-tab-${tab.id}`}
-                    onClick={() => setActiveSurface(tab.id)}
-                    onKeyDown={(event) => handleReaderTabKeyDown(event, index)}
+                    className="inline-action"
+                    onClick={() => setActiveScreen('gate')}
+                    disabled={!state.outputs}
                   >
-                    <span className="reader-tab-copy">
-                      <strong className="reader-tab-title">{tab.label}</strong>
-                      <span className="reader-tab-note">{tab.note}</span>
-                    </span>
+                    활성 게이트 보기
                   </button>
-                ))}
-              </div>
-              <article
-                id={`surface-panel-${activeReaderTab.id}`}
-                className="surface-card"
-                role="tabpanel"
-                aria-labelledby={`surface-tab-${activeReaderTab.id}`}
-                aria-label={activeReaderTab.label}
-                data-testid={`surface-${activeReaderTab.id}`}
-              >
+                </article>
+              </aside>
+            </div>
+          ) : null}
+
+          {activeScreen === 'gate' ? (
+            <div className="screen-grid gate-grid">
+              <article className="card gate-hero stagger-item" style={screenStyle(0)}>
                 <div className="section-head">
-                  <p className="panel-label">{activeReaderTab.label}</p>
-                  <h2>{activeReaderTab.label}</h2>
-                  <p className="surface-note">{activeReaderTab.note}</p>
+                  <p className="panel-label">현재 게이트</p>
+                  <h3>{currentGateTitle}</h3>
+                  <p>{loopStatus}</p>
+                </div>
+
+                <div className="pressure-grid">
+                  {gatePressureCards.map((item, index) => (
+                    <article key={item.label} className="pressure-card" style={screenStyle(index)}>
+                      <span>{item.label}</span>
+                      <strong>{item.value}</strong>
+                      <p>{item.note}</p>
+                    </article>
+                  ))}
+                </div>
+
+                <div className="gate-wave" aria-hidden="true">
+                  {stageCards.map((stage) => (
+                    <span
+                      key={stage.id}
+                      className={`wave-bar is-${stage.stateClass}`}
+                    />
+                  ))}
+                </div>
+
+                {screenPrimary ? (
+                  <button
+                    type="button"
+                    className="screen-primary"
+                    onClick={screenPrimary.onClick}
+                  >
+                    {screenPrimary.label}
+                  </button>
+                ) : null}
+              </article>
+
+              <article className="card gate-briefing stagger-item" style={screenStyle(1)}>
+                <div className="section-head compact">
+                  <p className="panel-label">다음 행동</p>
+                  <h3>{nextActionTitle}</h3>
+                  <p>{nextActionBody}</p>
+                </div>
+                <div className="signal-grid">
+                  {reviewSignals.map((signal, index) => (
+                    <article key={signal.label} className="signal-card" style={screenStyle(index)}>
+                      <span>{signal.label}</span>
+                      <strong>{signal.value}</strong>
+                      <p>{signal.note}</p>
+                    </article>
+                  ))}
+                </div>
+              </article>
+
+              <article className="card gate-snapshot stagger-item" style={screenStyle(2)}>
+                <div className="section-head compact">
+                  <p className="panel-label">현재 스냅샷</p>
+                  <h3>막히는 항목과 수정 반응을 좁게 유지합니다</h3>
                 </div>
                 {selectedIteration ? (
-                  activeSurface === 'research' ? (
-                    <ul className="bullet-list">
-                      {selectedIteration.researchSummary.map((item) => (
-                        <li key={item}>{item}</li>
-                      ))}
-                    </ul>
-                  ) : activeSurface === 'outline' ? (
-                    <ol className="outline-list">
-                      {selectedIteration.outline.map((item) => (
-                        <li key={item}>{item}</li>
-                      ))}
-                    </ol>
-                  ) : activeSurface === 'drafts' ? (
-                    <div className="draft-stack">
-                      {selectedIteration.sectionDrafts.map((draft) => (
-                        <article key={draft.title} className="draft-card">
-                          <h3>{draft.title}</h3>
-                          <p>{draft.body}</p>
-                          <strong>{draft.takeaway}</strong>
-                        </article>
-                      ))}
+                  <>
+                    <div className="iteration-meta">
+                      <span className="meta-pill">시작 {selectedIteration.startedAt}</span>
+                      <span className="meta-pill">{formatCounts(selectedIteration)}</span>
+                      <span className="meta-pill">
+                        추가 반복 {selectedIteration.needsAnotherLoop ? '필요' : '불필요'}
+                      </span>
                     </div>
-                  ) : (
-                    <ol className="review-notes">
-                      {selectedIteration.reviewNotes.map((note) => (
-                        <li key={note}>{note}</li>
-                      ))}
-                    </ol>
-                  )
+                    <ul className="repair-list">
+                      {repairRows.length > 0 ? (
+                        repairRows.slice(0, 3).map((row) => (
+                          <li key={row.index}>
+                            <strong>#{row.index}</strong>
+                            <span>{row.note}</span>
+                          </li>
+                        ))
+                      ) : (
+                        <li>
+                          <strong>완료</strong>
+                          <span>현재 선택 루프에는 열린 수정 압박이 없습니다.</span>
+                        </li>
+                      )}
+                    </ul>
+                  </>
                 ) : (
-                  <div className="empty-state">
-                    {activeSurface === 'research'
-                      ? '1차 반복이 열리면 연구 결과가 이곳에 쌓입니다.'
-                      : activeSurface === 'outline'
-                        ? '작성 초안이 검토되면 개요 순서가 이곳에 나타납니다.'
-                        : activeSurface === 'drafts'
-                          ? '루프가 실제로 평가할 초안을 만들기 전까지 섹션 초안은 숨겨 둡니다.'
-                          : '리뷰 메모는 첫 초안이 점수화된 뒤에 여기에 채워집니다.'}
+                  <div className="loading-stack" aria-hidden="true">
+                    <span className="loading-line" />
+                    <span className="loading-line" />
+                    <span className="loading-line short" />
                   </div>
                 )}
               </article>
-            </section>
-          </section>
 
-          <section
-            className="panel final-panel"
-            aria-label={stageHooks.final}
-            data-testid="final-post-panel"
-          >
-            <div className="section-head">
-              <p className="panel-label">최종 원고</p>
-              <h2>승인 직전 원고만 첫 화면에 남깁니다</h2>
-              <p>열 번째 루프가 모든 게이트를 통과할 때만 출고를 엽니다. 긴 본문과 원문 마크다운은 모두 뒤쪽 서랍에 둡니다.</p>
-            </div>
-            {finalArticle ? (
-              <>
-                <div className="release-spotlight">
-                  <p className="article-kicker">{requiredLoops}차 승인안</p>
-                  <h3>{finalArticle.title}</h3>
-                  <p className="article-intro">{finalArticle.intro}</p>
-                  <ul className="release-highlights">
-                    {finalArticle.mergedSections.slice(0, 3).map((section) => (
-                      <li key={section.title}>
-                        <strong>{section.title}</strong>
-                        <span>{section.takeaway}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="release-preview">
-                    <p className="panel-label">승인안 미리보기</p>
-                    <pre className="markdown-preview">{releasePreview}</pre>
+              <details className="card drawer gate-drawer stagger-item" style={screenStyle(3)}>
+                <summary className="drawer-summary">
+                  <div>
+                    <p className="panel-label">검증 요약</p>
+                    <h3>반복 검증 펄스 열기</h3>
+                    <p>비교, 평가, 검증 기록은 필요할 때만 깊게 펼칩니다.</p>
                   </div>
-                </div>
-                <details className="drawer detail-drawer article-drawer">
-                  <summary className="drawer-summary">
-                    <div>
-                      <p className="panel-label">전체 본문</p>
-                      <h3>승인된 본문 전체 보기</h3>
-                      <p>긴 본문은 기본 표면 밖으로 빼고, 필요할 때만 전체 섹션을 펼칩니다.</p>
+                  <span className="drawer-badge">{visibleVerificationCycles.length}개</span>
+                </summary>
+                <div className="drawer-body verification-grid">
+                  {visibleVerificationCycles.length > 0 ? (
+                    visibleVerificationCycles.map((cycle) => (
+                      <article key={cycle.cycle} className="verification-card">
+                        <p className="panel-label">{cycle.cycle}차 검증</p>
+                        <h3>{cycle.label}</h3>
+                        <p>{cycle.delta}</p>
+                      </article>
+                    ))
+                  ) : (
+                    <div className="empty-state compact">
+                      첫 초안이 열리면 비교 · 평가 · 검증 사이클이 차례대로 이곳에 쌓입니다.
                     </div>
-                    <span className="meta-pill">섹션 {finalArticle.mergedSections.length}개</span>
-                  </summary>
-                  <div className="drawer-body">
-                    <div className="article-preview">
-                      <p className="article-kicker">{requiredLoops}차 승인 후보</p>
-                      <h3>{finalArticle.title}</h3>
-                      <p className="article-intro">{finalArticle.intro}</p>
-                      <div className="article-sections">
-                        {finalArticle.mergedSections.map((section) => (
-                          <article key={section.title} className="article-section">
-                            <h4>{section.title}</h4>
-                            <p>{section.body}</p>
-                            <strong>{section.takeaway}</strong>
+                  )}
+                </div>
+              </details>
+            </div>
+          ) : null}
+
+          {activeScreen === 'reader' ? (
+            <div className="screen-grid reader-grid">
+              <article className="card reader-rail stagger-item" style={screenStyle(0)}>
+                <div className="section-head compact">
+                  <p className="panel-label">루프 선택</p>
+                  <h3>한 번에 한 루프만 붙잡습니다</h3>
+                </div>
+                <div className="timeline-grid">
+                  {Array.from({ length: requiredLoops }, (_, index) => index + 1).map((iterationNumber) => {
+                    const record = visibleIterations.find((item) => item.iteration === iterationNumber) ?? null
+                    const isSelected = selectedIteration?.iteration === iterationNumber
+                    const isRevealed = Boolean(record)
+
+                    return (
+                      <button
+                        key={iterationNumber}
+                        type="button"
+                        className={`timeline-card ${isSelected ? 'is-selected' : ''} ${
+                          isRevealed ? 'is-revealed' : 'is-queued'
+                        }`}
+                        onClick={() =>
+                          record && dispatch({ type: 'select_iteration', iteration: iterationNumber })
+                        }
+                        disabled={!record}
+                      >
+                        <p className="timeline-kicker">{iterationNumber}차 반복</p>
+                        <strong>{record ? phaseCopy[record.phase] : '대기'}</strong>
+                        <span>{formatCounts(record)}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </article>
+
+              <article className="card reader-surface stagger-item" style={screenStyle(1)}>
+                <div className="section-head">
+                  <p className="panel-label">집중 읽기</p>
+                  <h3>한 번에 하나의 산출물만 전면에 남깁니다</h3>
+                  <p>연구, 구조, 초안, 리뷰를 한 장의 읽기 표면 안에서만 교체합니다.</p>
+                </div>
+
+                <div className="reader-tabs" role="tablist" aria-label="읽기 표면">
+                  {readerTabs.map((tab, index) => (
+                    <button
+                      key={tab.id}
+                      ref={(node) => {
+                        readerTabRefs.current[index] = node
+                      }}
+                      id={`surface-tab-${tab.id}`}
+                      type="button"
+                      role="tab"
+                      aria-selected={activeSurface === tab.id}
+                      aria-label={tab.label}
+                      aria-controls={`surface-panel-${tab.id}`}
+                      tabIndex={activeSurface === tab.id ? 0 : -1}
+                      className={`reader-tab ${activeSurface === tab.id ? 'is-active' : ''}`}
+                      onClick={() => setActiveSurface(tab.id)}
+                      onKeyDown={(event) => handleReaderTabKeyDown(event, index)}
+                    >
+                      <span className="reader-tab-copy">
+                        <strong>{tab.label}</strong>
+                        <small>{tab.note}</small>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                <article
+                  id={`surface-panel-${activeReaderTab.id}`}
+                  className="surface-card"
+                  role="tabpanel"
+                  aria-labelledby={`surface-tab-${activeReaderTab.id}`}
+                >
+                  <div className="section-head compact">
+                    <p className="panel-label">{activeReaderTab.label}</p>
+                    <h3>{activeReaderTab.label}</h3>
+                    <p>{activeReaderTab.note}</p>
+                  </div>
+
+                  {selectedIteration ? (
+                    activeSurface === 'research' ? (
+                      <ul className="content-list">
+                        {selectedIteration.researchSummary.map((item) => (
+                          <li key={item}>{item}</li>
+                        ))}
+                      </ul>
+                    ) : activeSurface === 'outline' ? (
+                      <ol className="content-list ordered">
+                        {selectedIteration.outline.map((item) => (
+                          <li key={item}>{item}</li>
+                        ))}
+                      </ol>
+                    ) : activeSurface === 'drafts' ? (
+                      <div className="draft-stack">
+                        {selectedIteration.sectionDrafts.map((draft) => (
+                          <article key={draft.title} className="draft-card">
+                            <h4>{draft.title}</h4>
+                            <p>{draft.body}</p>
+                            <strong>{draft.takeaway}</strong>
                           </article>
                         ))}
                       </div>
-                      <p className="article-closing">{finalArticle.closing}</p>
-                    </div>
-                  </div>
-                </details>
-                <details className="drawer detail-drawer markdown-drawer">
-                  <summary className="drawer-summary">
-                    <div>
-                      <p className="panel-label">마크다운 원문</p>
-                      <h3>복사용 원문 열기</h3>
-                      <p>복사 실패나 포맷 점검이 필요할 때만 원문 마크다운을 펼칩니다.</p>
-                    </div>
-                    <span className="meta-pill">원문</span>
-                  </summary>
-                  <div className="drawer-body">
-                    <pre className="markdown-export">{finalArticle.markdown}</pre>
-                  </div>
-                </details>
-              </>
-            ) : (
-              <div className="empty-state">
-                최종 원고는 {requiredLoops}차 루프가 끝나기 전까지 잠겨 있습니다.
-              </div>
-            )}
-          </section>
-
-          <details className="panel proof-panel proof-drawer">
-            <summary className="drawer-summary">
-              <div>
-                <p className="panel-label">검증 증거</p>
-                <h2>증거 팩은 한 단계 뒤에 둡니다</h2>
-                <p>비교, 평가, 검증 기록은 유지하되 기본 표면에서는 요약만 남깁니다.</p>
-              </div>
-              <span className="meta-pill">
-                검증 {visibleVerificationCycles.length}/{requiredLoops}
-              </span>
-            </summary>
-            <div className="drawer-body">
-              <div className="verification-summary">
-                <article className="subpanel compact">
-                  <p className="panel-label">노출된 검증</p>
-                  <h3>
-                    {visibleVerificationCycles.length}/{requiredLoops}
-                  </h3>
-                  <p>비교, 검증, 평가 펄스가 반복적으로 누적되어야만 출고가 열립니다.</p>
-                </article>
-                <article className="subpanel compact">
-                  <p className="panel-label">최신 변화</p>
-                  <h3>{visibleVerificationCycles.at(-1)?.label ?? '1차 검증 대기'}</h3>
-                  <p>{visibleVerificationCycles.at(-1)?.delta ?? '첫 초안을 생성하면 검증 압력이 이곳에 드러납니다.'}</p>
-                </article>
-                <article className="subpanel compact">
-                  <p className="panel-label">루프 요약</p>
-                  {state.outputs ? (
-                    <>
-                      <h3>{state.outputs.loop_summary.lastIterationPassCount}/9 게이트 통과</h3>
-                      <p>
-                        최소 반복 충족 {state.outputs.loop_summary.minimumLoopsMet ? '완료' : '미완료'} · 출고 준비{' '}
-                        {state.outputs.loop_summary.readyForExport ? '완료' : '잠금'}
-                      </p>
-                    </>
+                    ) : (
+                      <ol className="content-list ordered">
+                        {selectedIteration.reviewNotes.map((note) => (
+                          <li key={note}>{note}</li>
+                        ))}
+                      </ol>
+                    )
                   ) : (
-                    <>
-                      <h3>1차 루프 대기</h3>
-                      <p>한 번 루프를 실행하면 승인 요약과 증거 체크리스트가 이곳에 열립니다.</p>
-                    </>
+                    <div className="empty-state">
+                      <div className="empty-icon" aria-hidden="true">
+                        <span />
+                      </div>
+                      <div>
+                        <h4>첫 루프가 아직 열리지 않았습니다</h4>
+                        <p>건틀릿을 시작하면 선택한 읽기 표면에 맞는 산출물만 순서대로 채워집니다.</p>
+                      </div>
+                    </div>
                   )}
                 </article>
-              </div>
-              <details className="drawer detail-drawer">
-                <summary className="drawer-summary">
-                  <div>
-                    <p className="panel-label">루프 타임라인</p>
-                    <h3>10회 반복 루프 열기</h3>
-                    <p>이 건틀릿은 첫 답변을 신뢰하지 않습니다. 모든 루프가 스스로 승격을 벌어야 합니다.</p>
-                  </div>
-                  <span className="meta-pill">{visibleIterations.length}/{requiredLoops} 노출</span>
-                </summary>
-                <div className="drawer-body">
-                  <div className="timeline-grid">
-                    {Array.from({ length: requiredLoops }, (_, index) => index + 1).map((iterationNumber) => {
-                      const record = visibleIterations.find((item) => item.iteration === iterationNumber) ?? null
-                      const isSelected = selectedIteration?.iteration === iterationNumber
-                      const isRevealed = Boolean(record)
+              </article>
 
-                      return (
-                        <button
-                          key={iterationNumber}
-                          type="button"
-                          className={`timeline-card ${isSelected ? 'is-selected' : ''} ${
-                            isRevealed ? 'is-revealed' : 'is-queued'
-                          }`}
-                          onClick={() =>
-                            record && dispatch({ type: 'select_iteration', iteration: iterationNumber })
-                          }
-                          disabled={!record}
-                        >
+              <aside className="reader-side">
+                <article className="card stagger-item" style={screenStyle(2)}>
+                  <div className="section-head compact">
+                    <p className="panel-label">수정 메모</p>
+                    <h3>출고를 막는 지점만 옆에 붙잡습니다</h3>
+                  </div>
+                  {selectedIteration ? (
+                    <>
+                      <ul className="content-list compact-list">
+                        {selectedIteration.optimizerChanges.slice(0, 4).map((item) => (
+                          <li key={item}>{item}</li>
+                        ))}
+                      </ul>
+                      <details className="drawer detail-drawer">
+                        <summary className="drawer-summary">
                           <div>
-                            <p className="timeline-kicker">{iterationNumber}차 반복</p>
-                            <strong>{record ? record.buildStatus : '리뷰 대기'}</strong>
+                            <p className="panel-label">전체 판정표</p>
+                            <h3>9개 체크 열기</h3>
                           </div>
-                          <p className="timeline-counts">{formatCounts(record)}</p>
-                          <span className={`phase-pill is-${record?.phase ?? 'writer'}`}>
-                            {record ? phaseCopy[record.phase] : '대기'}
-                          </span>
-                        </button>
-                      )
-                    })}
-                  </div>
+                          <span className="drawer-badge">상세</span>
+                        </summary>
+                        <div className="drawer-body">
+                          <div className="review-table-wrap">
+                            <table className="review-table">
+                              <thead>
+                                <tr>
+                                  <th>#</th>
+                                  <th>체크 항목</th>
+                                  <th>판정</th>
+                                  <th>리뷰 메모</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {selectedIteration.verdictRows.map((row) => (
+                                  <tr key={row.index}>
+                                    <td>{row.index}</td>
+                                    <td>{row.label}</td>
+                                    <td>
+                                      <span className={`verdict-badge is-${row.verdict.toLowerCase()}`}>
+                                        {verdictCopy[row.verdict]}
+                                      </span>
+                                    </td>
+                                    <td>{row.note}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </details>
+                    </>
+                  ) : (
+                    <div className="loading-stack" aria-hidden="true">
+                      <span className="loading-line" />
+                      <span className="loading-line" />
+                      <span className="loading-line short" />
+                    </div>
+                  )}
+
+                  {screenPrimary ? (
+                    <button type="button" className="screen-primary" onClick={screenPrimary.onClick}>
+                      {screenPrimary.label}
+                    </button>
+                  ) : null}
+                </article>
+              </aside>
+            </div>
+          ) : null}
+
+          {activeScreen === 'release' ? (
+            <div className="screen-grid release-grid">
+              <section
+                className="card final-panel stagger-item"
+                aria-label={englishStageLabels.final}
+                data-testid="final-post-panel"
+                style={screenStyle(0)}
+              >
+                <div className="section-head">
+                  <p className="panel-label">출고 승인</p>
+                  <h3>승인 직전 원고만 전면에 남깁니다</h3>
+                  <p>긴 본문과 원문 마크다운은 모두 뒤쪽 서랍에 두고, 승인 후보의 핵심만 먼저 읽게 합니다.</p>
                 </div>
-              </details>
-              <details className="drawer detail-drawer">
-                <summary className="drawer-summary">
-                  <div>
-                    <p className="panel-label">검증 상세</p>
-                    <h3>비교 · 평가 · 검증 사이클 열기</h3>
-                    <p>증거 선은 건틀릿을 감사해야 할 때만 세부까지 펼칩니다.</p>
+
+                {finalArticle ? (
+                  <>
+                    <div className="release-spotlight">
+                      <p className="release-kicker">{requiredLoops}차 승인안</p>
+                      <h4>{finalArticle.title}</h4>
+                      <p className="article-intro">{finalArticle.intro}</p>
+                      <ul className="release-highlights">
+                        {finalArticle.mergedSections.slice(0, 3).map((section) => (
+                          <li key={section.title}>
+                            <strong>{section.title}</strong>
+                            <span>{section.takeaway}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div className="release-preview">
+                      <p className="panel-label">승인안 미리보기</p>
+                      <pre className="markdown-preview">{releasePreview}</pre>
+                    </div>
+
+                    <details className="drawer detail-drawer">
+                      <summary className="drawer-summary">
+                        <div>
+                          <p className="panel-label">전체 본문</p>
+                          <h3>승인된 본문 전체 보기</h3>
+                          <p>긴 본문은 필요할 때만 펼쳐 읽습니다.</p>
+                        </div>
+                        <span className="drawer-badge">섹션 {finalArticle.mergedSections.length}개</span>
+                      </summary>
+                      <div className="drawer-body">
+                        <div className="article-preview">
+                          <p className="release-kicker">{requiredLoops}차 승인 후보</p>
+                          <h4>{finalArticle.title}</h4>
+                          <p className="article-intro">{finalArticle.intro}</p>
+                          <div className="article-sections">
+                            {finalArticle.mergedSections.map((section) => (
+                              <article key={section.title} className="article-section">
+                                <h5>{section.title}</h5>
+                                <p>{section.body}</p>
+                                <strong>{section.takeaway}</strong>
+                              </article>
+                            ))}
+                          </div>
+                          <p className="article-closing">{finalArticle.closing}</p>
+                        </div>
+                      </div>
+                    </details>
+
+                    <details className="drawer detail-drawer">
+                      <summary className="drawer-summary">
+                        <div>
+                          <p className="panel-label">마크다운 원문</p>
+                          <h3>복사용 원문 열기</h3>
+                          <p>복사 실패나 포맷 점검이 필요할 때만 원문을 펼칩니다.</p>
+                        </div>
+                        <span className="drawer-badge">원문</span>
+                      </summary>
+                      <div className="drawer-body">
+                        <pre className="markdown-export">{finalArticle.markdown}</pre>
+                      </div>
+                    </details>
+                  </>
+                ) : (
+                  <div className="empty-state">
+                    <div className="empty-icon" aria-hidden="true">
+                      <span />
+                    </div>
+                    <div>
+                      <h4>승인 원고가 아직 잠겨 있습니다</h4>
+                      <p>열 번째 루프와 반복 검증이 끝날 때까지는 최종 본문과 복사가 열리지 않습니다.</p>
+                    </div>
+                    <button type="button" className="inline-action" onClick={() => setActiveScreen('gate')}>
+                      활성 게이트 보기
+                    </button>
                   </div>
-                  <span className="meta-pill">{visibleVerificationCycles.length}개 노출</span>
-                </summary>
-                <div className="drawer-body">
-                  <div className="verification-grid">
+                )}
+              </section>
+
+              <aside className="release-side">
+                <details className="card drawer stagger-item" style={screenStyle(1)} open>
+                  <summary className="drawer-summary">
+                    <div>
+                      <p className="panel-label">증거 팩</p>
+                      <h3>검증과 산출물 묶음 열기</h3>
+                    </div>
+                    <span className="drawer-badge">{deliverables.length}개</span>
+                  </summary>
+                  <div className="drawer-body">
+                    <div className="deliverable-grid">
+                      {deliverables.map((item) => (
+                        <article key={item.id} className="deliverable-card">
+                          <h4>{item.title}</h4>
+                          <p>{item.description}</p>
+                        </article>
+                      ))}
+                    </div>
+                    <ul className="content-list compact-list target-list">
+                      {evaluationTargets.map((target) => (
+                        <li key={target}>{target}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </details>
+
+                <details className="card drawer stagger-item" style={screenStyle(2)}>
+                  <summary className="drawer-summary">
+                    <div>
+                      <p className="panel-label">반복 검증</p>
+                      <h3>검증 사이클 열기</h3>
+                    </div>
+                    <span className="drawer-badge">{visibleVerificationCycles.length}개</span>
+                  </summary>
+                  <div className="drawer-body verification-grid">
                     {visibleVerificationCycles.map((cycle) => (
                       <article key={cycle.cycle} className="verification-card">
-                        <p className="timeline-kicker">{cycle.cycle}차 검증</p>
-                        <h3>{cycle.label}</h3>
-                        <div className="verification-badges">
-                          <span className="meta-pill">검증 · 통과</span>
-                          <span className="meta-pill">비교 · 통과</span>
-                          <span className="meta-pill">평가 · 통과</span>
-                        </div>
+                        <p className="panel-label">{cycle.cycle}차 검증</p>
+                        <h4>{cycle.label}</h4>
                         <p>{cycle.delta}</p>
                       </article>
                     ))}
                   </div>
-                </div>
-              </details>
-              <details className="drawer detail-drawer">
-                <summary className="drawer-summary">
-                  <div>
-                    <p className="panel-label">증거 팩</p>
-                    <h3>아티팩트와 루브릭 목표 열기</h3>
-                    <p>모든 증거는 남겨 두되, 더 이상 제품 표면을 압도하지 않게 합니다.</p>
-                  </div>
-                  <span className="meta-pill">파일 {deliverables.length}개</span>
-                </summary>
-                <div className="drawer-body">
-                  <div className="deliverable-grid">
-                    {deliverables.map((item) => (
-                      <article key={item.id} className="deliverable-card">
-                        <h3>{item.title}</h3>
-                        <p>{item.description}</p>
-                      </article>
-                    ))}
-                  </div>
-                  <ul className="target-list">
-                    {evaluationTargets.map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
-              </details>
+                </details>
+              </aside>
             </div>
-          </details>
-        </div>
-      ) : null}
-
-      {state.errorMessage ? (
-        <section className="error-panel" role="alert">
-          <strong>루프가 차단되었습니다.</strong>
-          <p>{state.errorMessage}</p>
-          <span>일반 주제 제목으로 바꾼 뒤 다시 생성하면 흐름을 복구할 수 있습니다.</span>
+          ) : null}
         </section>
-      ) : null}
+
+        <div className="feedback-ribbon" role="status" aria-live="polite">
+          {state.copyFeedback || '복사 결과와 잠금 안내는 이 리본에서 바로 알려 줍니다.'}
+        </div>
+      </section>
     </main>
   )
 }
