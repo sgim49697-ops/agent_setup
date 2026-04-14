@@ -1,7 +1,6 @@
-import { useReducer, useRef, useState } from 'react'
+import { useEffect, useReducer, useRef, useState } from 'react'
 import './App.css'
 import type {
-  ArtifactIndex,
   Audience,
   BlogGeneratorInputs,
   GenerationState,
@@ -29,6 +28,9 @@ import {
   workflowStages,
   writerLanes,
 } from './starterData'
+
+type WorkspaceScreen = 'setup' | 'draft' | 'publish'
+type ScreenDirection = 'forward' | 'backward'
 
 type AppState = {
   inputs: BlogGeneratorInputs
@@ -90,7 +92,7 @@ const initialGeneration: GenerationState = {
   completedStages: [],
   unitStatuses: emptyUnitStatuses(),
   outputs: {},
-  statusMessage: '코디네이터가 공통 브리프를 기다리고 있습니다. 먼저 보드를 생성해 공통 프레임을 고정하세요.',
+  statusMessage: '브리프를 잠그면 세 개의 레인이 동시에 열리고, 마지막에 머지 데스크가 글의 톤을 정렬합니다.',
   errorMessage: null,
 }
 
@@ -100,6 +102,14 @@ const stageHookLabels = {
   drafts: 'Section drafts',
   review: 'Review notes',
   final: 'Final post',
+} as const
+
+const stageTestIds = {
+  research: 'stage-research',
+  outline: 'stage-outline',
+  drafts: 'stage-drafts',
+  review: 'stage-review',
+  final: 'stage-final',
 } as const
 
 const audienceOptions: { value: Audience; label: string }[] = [
@@ -120,6 +130,37 @@ const lengthOptions: { value: Length; label: string }[] = [
   { value: 'long', label: '길게' },
 ]
 
+const screenOrder: WorkspaceScreen[] = ['setup', 'draft', 'publish']
+
+const screenTitles: Record<
+  WorkspaceScreen,
+  { kicker: string; title: string; description: string }
+> = {
+  setup: {
+    kicker: '브리프 설정',
+    title: '공통 논지와 독자 압력을 먼저 잠근 뒤 병렬 레인을 엽니다',
+    description: '첫 화면은 입력과 방향 결정만 남기고, 긴 산출물과 검증 정보는 뒤 단계로 밀어냈습니다.',
+  },
+  draft: {
+    kicker: '병렬 작성',
+    title: '세 개 레인이 동시에 쓰고, 머지 레일이 현재 합류 압력을 계속 보여줍니다',
+    description: '각 레인은 비교용 요약만 먼저 보이고, 세부 패킷은 하나씩 선택해서 읽습니다.',
+  },
+  publish: {
+    kicker: '머지/발행',
+    title: '리뷰 메모와 최종 글을 한 화면에 겹치지 않고, 발행 직전 상태로 마감합니다',
+    description: '리뷰 메모와 최종 글은 같은 자리에서 교대로 열리고, 내보내기는 짧은 미리보기 뒤에 전체 원본 전달본을 둡니다.',
+  },
+}
+
+const stageScreenMap = {
+  research: 'setup',
+  outline: 'setup',
+  drafts: 'draft',
+  review: 'publish',
+  final: 'publish',
+} as const satisfies Record<(typeof workflowStages)[number]['id'], WorkspaceScreen>
+
 function unique<T>(items: T[]) {
   return Array.from(new Set(items))
 }
@@ -137,7 +178,7 @@ function reducer(state: AppState, action: Action): AppState {
           state.generation.status === 'error'
             ? {
                 ...initialGeneration,
-                statusMessage: '브리프를 수정했습니다. 다시 생성해 보드를 처음부터 재구성하세요.',
+                statusMessage: '입력을 바꿨습니다. 다시 생성하면 코디네이터가 브리프를 새로 고정합니다.',
               }
             : state.generation,
       }
@@ -147,7 +188,7 @@ function reducer(state: AppState, action: Action): AppState {
         inputs: action.payload,
         generation: {
           ...state.generation,
-          statusMessage: '프리셋을 불러왔습니다. 이제 코디네이터가 글을 레인별 소유 범위로 나눌 수 있습니다.',
+          statusMessage: '프리셋을 불러왔습니다. 브리프를 잠그면 세 레인이 바로 병렬로 나뉩니다.',
           errorMessage: null,
         },
         copyFeedback: '',
@@ -307,7 +348,7 @@ function reducer(state: AppState, action: Action): AppState {
             coordinator: 'error',
           },
           outputs: {},
-          statusMessage: '공통 브리프가 완성되기 전에 코디네이터가 멈췄습니다.',
+          statusMessage: '코디네이터가 브리프를 완성하지 못했습니다. 입력을 조정한 뒤 다시 시작하세요.',
           errorMessage: action.message,
         },
         copyFeedback: '',
@@ -324,7 +365,7 @@ function sleep(ms: number) {
 function statusLabel(status: GenerationStatus) {
   const labels: Record<GenerationStatus, string> = {
     initial: '준비 전',
-    loading: '보드 구성 중',
+    loading: '진행 중',
     populated: '보드 준비 완료',
     'review-complete': '리뷰 정리 완료',
     'export-ready': '내보내기 준비 완료',
@@ -355,6 +396,23 @@ function laneStatusLabel(id: WriterLaneId) {
   return '마무리 레인'
 }
 
+function stageVisualState(stageId: (typeof workflowStages)[number]['id'], generation: GenerationState) {
+  if (generation.status === 'error' && stageId === 'research') {
+    return 'error'
+  }
+  if (generation.completedStages.includes(stageId)) {
+    return 'complete'
+  }
+  if (generation.currentStage === stageId) {
+    return 'current'
+  }
+  return 'pending'
+}
+
+function screenIndex(screen: WorkspaceScreen) {
+  return screenOrder.indexOf(screen)
+}
+
 function App() {
   const [state, dispatch] = useReducer(reducer, {
     inputs: initialInputs,
@@ -362,16 +420,27 @@ function App() {
     copyFeedback: '',
   })
   const runRef = useRef(0)
-  const [activeReaderPanel, setActiveReaderPanel] = useState<'review' | 'final' | null>(null)
+  const [screenMotion, setScreenMotion] = useState<{
+    current: WorkspaceScreen
+    direction: ScreenDirection
+    revision: number
+  }>({
+    current: 'setup',
+    direction: 'forward',
+    revision: 0,
+  })
+  const [activeReaderPanel, setActiveReaderPanel] = useState<'review' | 'final'>('review')
+  const [activeLane, setActiveLane] = useState<WriterLaneId>('writer_a')
+  const lastAutoScreen = useRef<WorkspaceScreen>('setup')
 
   async function handleGenerate() {
     const runId = runRef.current + 1
     runRef.current = runId
-    setActiveReaderPanel(null)
+    setActiveReaderPanel('review')
 
     dispatch({
       type: 'start-run',
-      message: '코디네이터가 공통 브리프를 고정한 뒤, 보드를 세 개의 섹션 레인으로 나눕니다.',
+      message: '코디네이터가 공통 브리프를 잠그고, 세 개 레인의 소유 범위를 먼저 분리합니다.',
     })
 
     await sleep(260)
@@ -382,8 +451,7 @@ function App() {
     if (/^\s*(fail|error)\b/i.test(state.inputs.topic)) {
       dispatch({
         type: 'set-error',
-        message:
-          '코디네이터 리서치 단계에서 유효한 브리프를 만들지 못했습니다. 주제를 수정한 뒤 보드를 다시 실행하세요.',
+        message: '코디네이터가 유효한 공통 브리프를 만들지 못했습니다. 주제를 조금 더 구체적으로 바꿔 다시 시작하세요.',
       })
       return
     }
@@ -395,7 +463,7 @@ function App() {
       brief,
       outline,
       assignments,
-      message: '코디네이터 브리프를 고정했습니다. 이제 아웃라인, 레인 배정, 머지 기준을 확인할 수 있습니다.',
+      message: '브리프와 아웃라인을 고정했습니다. 이제 레인별 초안이 병렬로 채워집니다.',
     })
 
     await sleep(220)
@@ -420,7 +488,7 @@ function App() {
           dispatch({
             type: 'set-lane-packet',
             packet,
-            message: `${laneStatusLabel(packet.writerId)}이 미리보기 블록 ${packet.draftPreview.length}개를 마쳤습니다.`,
+            message: `${laneStatusLabel(packet.writerId)}이 미리보기 블록 ${packet.draftPreview.length}개를 넘겼습니다.`,
           })
           return packet
         }),
@@ -433,7 +501,7 @@ function App() {
 
     dispatch({
       type: 'start-merge',
-      message: '머지 데스크가 중복을 줄이고, 전환을 넣고, 전체 묶음의 톤을 정렬하고 있습니다.',
+      message: '머지 데스크가 중복을 줄이고, 전환을 정리하고, 전체 톤을 다시 맞추고 있습니다.',
     })
 
     await sleep(300)
@@ -446,7 +514,7 @@ function App() {
     dispatch({
       type: 'set-merge-report',
       report: mergeReport,
-      message: '머지 리뷰를 마쳤습니다. 이제 읽기용 최종 글과 내보내기 구성을 준비할 수 있습니다.',
+      message: '머지 리뷰가 끝났습니다. 이제 최종 글과 내보내기 구성이 열립니다.',
     })
 
     await sleep(180)
@@ -459,7 +527,7 @@ function App() {
     dispatch({
       type: 'finalize-run',
       outputs: assembleFinalOutputs(brief, outline, assignments, lanePackets, mergeReport, finalArticle),
-      message: '뉴스룸 보드가 완료됐습니다. 최종 글은 바로 읽을 수 있고, 필요할 때 마크다운을 내보낼 수 있습니다.',
+      message: '최종 글이 준비됐습니다. 읽기용 화면을 확인한 뒤 마크다운을 내보낼 수 있습니다.',
     })
   }
 
@@ -469,7 +537,7 @@ function App() {
     if (!markdown) {
       dispatch({
         type: 'set-copy-feedback',
-        message: '먼저 병합된 글을 생성하세요. 내보내기 준비 완료 상태가 된 뒤에만 복사할 수 있습니다.',
+        message: '최종 글이 준비되면 이 버튼으로 마크다운을 바로 복사할 수 있습니다.',
       })
       return
     }
@@ -478,12 +546,12 @@ function App() {
       await navigator.clipboard.writeText(markdown)
       dispatch({
         type: 'set-copy-feedback',
-        message: '최종 글 내보내기에서 마크다운을 복사했습니다.',
+        message: '마크다운을 클립보드에 복사했습니다.',
       })
     } catch {
       dispatch({
         type: 'set-copy-feedback',
-        message: '이 브라우저에서는 클립보드 복사에 실패했지만, 아래에 최종 마크다운이 그대로 보입니다.',
+        message: '이 환경에서는 클립보드 복사가 막혀 있어 아래 미리보기에서 직접 확인할 수 있습니다.',
       })
     }
   }
@@ -506,6 +574,20 @@ function App() {
     })
   }
 
+  function moveToScreen(next: WorkspaceScreen) {
+    setScreenMotion((current) => {
+      if (current.current === next) {
+        return current
+      }
+
+      return {
+        current: next,
+        direction: screenIndex(next) >= screenIndex(current.current) ? 'forward' : 'backward',
+        revision: current.revision + 1,
+      }
+    })
+  }
+
   const brief = state.generation.outputs.research_summary
   const outline = state.generation.outputs.outline ?? []
   const assignments = state.generation.outputs.assignments ?? []
@@ -513,638 +595,742 @@ function App() {
   const mergeReport = state.generation.outputs.review_notes
   const finalArticle = state.generation.outputs.final_article
   const completedLaneCount = lanePackets.length
-  const mergeMoment = !brief
-    ? '코디네이터가 공통 논지를 고정하기를 기다리는 중입니다.'
-    : !completedLaneCount
-      ? '코디네이터는 끝났지만 각 레인이 아직 자기 섹션 패킷을 넘겨야 합니다.'
-      : !mergeReport
-        ? '모든 레인 패킷이 도착했습니다. 이제 머지 데스크가 중복과 전환을 정리합니다.'
-        : finalArticle
-          ? '머지가 끝났습니다. 내보내기가 열렸고 글을 바로 전달할 수 있습니다.'
-          : '머지 리뷰는 끝났고, 이제 최종 조립만 남았습니다.'
-  const nextAction = !brief
-    ? '보드를 생성해 공통 프레임을 먼저 만드세요.'
-    : completedLaneCount < writerLanes.length
-      ? '모든 레인이 초안을 마칠 때까지 기다린 뒤 독자용 화면을 올리세요.'
-      : !mergeReport
-        ? '머지 수정안을 검토하고, 겹침을 정리하도록 데스크를 밀어주세요.'
-        : '병합된 글을 검토한 뒤 마크다운을 내보내세요.'
-
-  const currentReaderPanel = finalArticle ? activeReaderPanel ?? 'final' : 'review'
   const liveStatusHook = state.generation.status === 'export-ready' ? 'export-ready' : null
   const markdownPreview = finalArticle
-    ? finalArticle.markdown.split('\n').slice(0, 8).join('\n')
+    ? finalArticle.markdown.split('\n').slice(0, 10).join('\n')
     : ''
+  const activeLaneAssignment = assignments.find((item) => item.writerId === activeLane) ?? assignments[0] ?? null
+  const activeLanePacket = lanePackets.find((item) => item.writerId === activeLane) ?? lanePackets[0] ?? null
+  const autoScreen: WorkspaceScreen = state.generation.errorMessage
+    ? 'setup'
+    : finalArticle || mergeReport
+      ? 'publish'
+      : state.generation.status === 'initial'
+        ? 'setup'
+        : 'draft'
 
-  const artifactPreview: ArtifactIndex = {
-    screenshots: ['runs/desktop-verification.png', 'runs/mobile-verification.png'],
-    final_urls: ['http://127.0.0.1:<dev-port>'],
-    notes: [
-      '섹션 소유 범위 노출',
-      '머지 수정 포인트 노출',
-      '독자 우선 최종 글 검증',
-      '검증 뒤 평가 완료',
-    ],
-    deliverables: deliverables.map((item) => item.title),
-  }
+  useEffect(() => {
+    if (lastAutoScreen.current === autoScreen) {
+      return
+    }
+
+    lastAutoScreen.current = autoScreen
+    setScreenMotion((current) => {
+      if (current.current === autoScreen) {
+        return current
+      }
+
+      return {
+        current: autoScreen,
+        direction: screenIndex(autoScreen) >= screenIndex(current.current) ? 'forward' : 'backward',
+        revision: current.revision + 1,
+      }
+    })
+  }, [autoScreen])
+
+  useEffect(() => {
+    if (finalArticle) {
+      setActiveReaderPanel('final')
+      return
+    }
+
+    if (mergeReport) {
+      setActiveReaderPanel('review')
+    }
+  }, [finalArticle, mergeReport])
+
+  useEffect(() => {
+    if (lanePackets.some((packet) => packet.writerId === activeLane)) {
+      return
+    }
+
+    if (lanePackets[0]) {
+      setActiveLane(lanePackets[0].writerId)
+      return
+    }
+
+    if (assignments[0]) {
+      setActiveLane(assignments[0].writerId)
+    }
+  }, [activeLane, assignments, lanePackets])
+
+  const progressValue =
+    (state.generation.completedStages.length +
+      (state.generation.currentStage &&
+      !state.generation.completedStages.includes(state.generation.currentStage)
+        ? 0.45
+        : 0)) /
+    workflowStages.length
+
+  const mergeMoment = !brief
+    ? '코디네이터가 아직 공통 프레임을 잠그기 전입니다.'
+    : !completedLaneCount
+      ? '브리프는 고정됐고, 레인 패킷이 도착하기를 기다리는 중입니다.'
+      : !mergeReport
+        ? '모든 패킷이 모이는 즉시 머지 데스크가 중복과 전환을 정리합니다.'
+        : finalArticle
+          ? '머지가 닫혔고 최종 글까지 준비됐습니다. 이제 전달만 남았습니다.'
+          : '리뷰는 끝났고 최종 글 조립이 마지막 단계에 있습니다.'
+
+  const nextAction = !brief
+    ? '브리프를 잠가 세 개 레인의 소유 범위를 먼저 정하세요.'
+    : completedLaneCount < writerLanes.length
+      ? '레인 카드에서 누락된 초안이 없는지 보고, 합류 전까지 흐름을 기다리세요.'
+      : !mergeReport
+        ? '머지 데스크가 중복을 닫을 때까지 레인 요약과 기준을 확인하세요.'
+        : '최종 글을 검토하고 마크다운을 복사해 발행 단계로 넘기세요.'
+
+  const screen = screenMotion.current
+  const stageCards = workflowStages.map((stage, index) => {
+    const visualState = stageVisualState(stage.id, state.generation)
+    return (
+      <button
+        key={stage.id}
+        type="button"
+        className={`stage-pill is-${visualState}`}
+        data-testid={stageTestIds[stage.id]}
+        onClick={() => moveToScreen(stageScreenMap[stage.id])}
+      >
+        <span className={`stage-index is-${visualState}`} aria-hidden="true">
+          {visualState === 'complete' ? (
+            <svg className="stage-check" viewBox="0 0 16 16" fill="none">
+              <path d="M3.5 8.5 6.8 11.8 12.5 4.8" />
+            </svg>
+          ) : (
+            <span>{index + 1}</span>
+          )}
+        </span>
+        <span className="stage-copy">
+          <span className="stage-label">{stage.label}</span>
+          <span className="stage-summary">{stage.description}</span>
+          <span className="sr-only">{stageHookLabels[stage.id]}</span>
+        </span>
+      </button>
+    )
+  })
+
+  const screenAction =
+    screen === 'setup'
+      ? {
+          primaryLabel: state.generation.status === 'loading' ? '브리프 잠그는 중' : '글 생성',
+          primaryDisabled: state.generation.status === 'loading',
+          primaryHandler: handleGenerate,
+          primaryAriaLabel: 'Generate post',
+        }
+      : screen === 'draft'
+        ? {
+          primaryLabel: mergeReport || finalArticle ? '머지 결과 보기' : '병렬 작성 진행 중',
+          primaryDisabled: !(mergeReport || finalArticle),
+          primaryHandler: () => moveToScreen('publish'),
+          primaryAriaLabel: 'Open publish view',
+        }
+        : {
+            primaryLabel: finalArticle ? '마크다운 복사' : '발행 대기 중',
+            secondaryLabel: '작성 보드로 돌아가기',
+            primaryDisabled: !finalArticle,
+            secondaryDisabled: false,
+            primaryHandler: copyMarkdown,
+            secondaryHandler: () => moveToScreen('draft'),
+            primaryAriaLabel: 'Copy markdown',
+            secondaryAriaLabel: 'Back to drafts',
+          }
 
   return (
-    <main className="newsroom-shell">
-      <section className="hero">
-        <div className="hero-copy">
-          <p className="eyebrow">병렬 섹션 보드</p>
-          <h1>기술 블로그 포스트 생성 워크스페이스</h1>
-          <p className="lead">
-            코디네이터가 공통 브리프를 먼저 고정하고, 세 개의 레인이 병렬로 초안을 만든 뒤,
-            머지 데스크가 하나의 읽기 좋은 글로 묶습니다.
+    <main className="workspace-shell">
+      <section className="workspace-hero">
+        <div className="hero-copy-panel">
+          <p className="hero-kicker">병렬 섹션</p>
+          <h1>세 개의 섹션 레인이 각자 쓰고, 하나의 데스크가 마지막 문장을 정렬합니다</h1>
+          <p className="hero-lead">
+            대시보드처럼 모든 산출물을 한 번에 펼치지 않고, 입력과 병렬 작성, 머지와 발행을
+            순서대로 넘기며 첫 화면의 정보 밀도를 낮췄습니다.
           </p>
-
-          <div className="hero-actions">
-            <button
-              type="button"
-              className="primary"
-              aria-label="Generate post"
-              onClick={handleGenerate}
-              disabled={state.generation.status === 'loading'}
-            >
-              <span className="action-copy">
-                {state.generation.status === 'loading' ? '생성 중...' : '글 생성'}
-              </span>
-            </button>
-            <button type="button" className="secondary" aria-label="Copy markdown" onClick={copyMarkdown}>
-              <span className="action-copy">마크다운 복사</span>
-            </button>
+          <div className="hero-chips">
+            <span className="meta-chip">세 레인 소유 분리</span>
+            <span className="meta-chip">합류 레일 시각화</span>
+            <span className="meta-chip">독자 우선 발행 화면</span>
           </div>
-
-          <div className="status-band" aria-live="polite">
-            <span className={`status-pill status-${state.generation.status}`}>
-              {statusLabel(state.generation.status)}
-            </span>
-            {liveStatusHook ? <small className="live-hook">{liveStatusHook}</small> : null}
-            <p>{state.generation.statusMessage}</p>
-            {state.copyFeedback ? <small>{state.copyFeedback}</small> : null}
-          </div>
-
-          <div className="next-move-card">
-            <p className="block-label">다음 행동</p>
-            <h2>{finalArticle ? '병합된 글을 검토하고 내보내세요' : '레인 보드가 멈추지 않게 이어가세요'}</h2>
-            <p>{nextAction}</p>
-            <div className="chip-row">
-              <span className="meta-chip">공통 리서치와 아웃라인</span>
-              <span className="meta-chip">병렬 섹션 초안</span>
-              <span className="meta-chip">리뷰와 최종 글</span>
-            </div>
-          </div>
-
-          {state.generation.errorMessage ? (
-            <div className="error-panel" role="alert">
-              <strong>코디네이터 브리프 생성 실패</strong>
-              <p>{state.generation.errorMessage}</p>
-            </div>
-          ) : null}
         </div>
 
-        <aside className="panel-surface input-rail">
-          <p className="panel-label">입력 패널</p>
-          <form className="input-grid">
-            <label>
-              <span>주제</span>
-              <textarea
-                aria-label="Topic"
-                name="topic"
-                rows={4}
-                value={state.inputs.topic}
-                onChange={(event) => updateField('topic', event.target.value)}
-              />
-            </label>
-            <label>
-              <span>독자층</span>
-              <select
-                aria-label="Audience"
-                name="audience"
-                value={state.inputs.audience}
-                onChange={(event) => updateField('audience', event.target.value as Audience)}
+        <aside className="hero-status-panel" aria-live="polite">
+          <div className="status-topline">
+            <span className={`status-chip status-${state.generation.status}`}>{statusLabel(state.generation.status)}</span>
+            <span className="status-progress">{Math.max(8, Math.round(progressValue * 100))}% 진행</span>
+          </div>
+          {liveStatusHook ? <span className="sr-only">{liveStatusHook}</span> : null}
+          <p className="status-message">{state.generation.statusMessage}</p>
+          <p className="status-next">{nextAction}</p>
+          {state.copyFeedback ? <p className="status-feedback">{state.copyFeedback}</p> : null}
+          {state.generation.errorMessage ? (
+            <div className="error-panel" role="alert">
+              <strong>브리프 생성이 중단됐습니다</strong>
+              <p>{state.generation.errorMessage}</p>
+              <button
+                type="button"
+                className="support-button error-recovery"
+                onClick={() => moveToScreen('setup')}
               >
-                {audienceOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>톤</span>
-              <select
-                aria-label="Tone"
-                name="tone"
-                value={state.inputs.tone}
-                onChange={(event) => updateField('tone', event.target.value as Tone)}
-              >
-                {toneOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>분량</span>
-              <select
-                aria-label="Length"
-                name="length"
-                value={state.inputs.length}
-                onChange={(event) => updateField('length', event.target.value as Length)}
-              >
-                {lengthOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </form>
-          <p className="rail-note">
-            이 하네스는 프런트엔드만으로 동작하며, 결정론적 로컬 생성으로 오케스트레이션 패턴
-            자체를 평가할 수 있게 설계돼 있습니다.
-          </p>
-
-          <details className="quick-briefs">
-            <summary className="quick-briefs-summary">
-              <span className="panel-label">빠른 브리프</span>
-              <div>
-                <strong>시작 속도를 높이고 싶을 때만 프리셋을 불러오세요</strong>
-                <p>프리셋은 보드 구성보다 뒤에 오는 보조 도구라 기본값으로 접혀 있습니다.</p>
-              </div>
-            </summary>
-
-            <div className="quick-brief-list">
-              {topicPresets.map((preset) => (
-                <button
-                  key={preset.title}
-                  type="button"
-                  className="preset-chip"
-                  onClick={() => applyPreset(preset.title, preset.audience, preset.tone, preset.length)}
-                >
-                  <strong>{preset.title}</strong>
-                  <span>{preset.rationale}</span>
-                </button>
-              ))}
+                입력 다듬기
+              </button>
             </div>
-          </details>
+          ) : null}
         </aside>
       </section>
 
-      <section className="panel-surface stage-panel">
-        <div className="section-head">
-          <p className="eyebrow">단계 스트립</p>
-          <h2>공통 프레임에서 병렬 작성, 머지, 최종 글까지 한 번에 추적합니다</h2>
-          <p>Stitch 기준에 맞춰 현재 단계와 다음 전환을 첫 화면에서 바로 읽을 수 있게 정리했습니다.</p>
+      <section className="rail-panel">
+        <div className="rail-head">
+          <div>
+            <p className="section-kicker">진행 레일</p>
+            <h2>현재 단계는 항상 위에 남기고, 본문은 한 화면씩만 열어 둡니다</h2>
+          </div>
+          <div className="progress-track" aria-hidden="true">
+            <span className="progress-fill" style={{ width: `${Math.max(12, progressValue * 100)}%` }} />
+          </div>
         </div>
-
-        <div className="stage-grid">
-          {workflowStages.map((stage) => {
-            const isCurrent = state.generation.currentStage === stage.id
-            const isComplete = state.generation.completedStages.includes(stage.id)
-
-            return (
-              <article
-                key={stage.id}
-                className={`stage-card ${isCurrent ? 'is-current' : ''} ${isComplete ? 'is-complete' : ''}`}
-              >
-                <div className="hook-row">
-                  <p className="block-label">{stage.label}</p>
-                  <span className="hook-chip">{stageHookLabels[stage.id]}</span>
-                </div>
-                <h3>{isCurrent ? '현재 진행 단계' : isComplete ? '완료된 단계' : '다음 대기 단계'}</h3>
-                <p>{stage.description}</p>
-              </article>
-            )
-          })}
-        </div>
+        <div className="stage-rail">{stageCards}</div>
       </section>
 
-      <section className="board-priority">
-        <article className="panel-surface">
-          <div className="section-head">
-            <p className="eyebrow">레인 보드</p>
-            <h2>병렬 섹션 카드를 먼저 보고, 머지 준비는 그다음에 확인합니다</h2>
-            <p>특정 레인 패킷을 열기 전까지는 모든 카드를 짧고 비교하기 쉬운 밀도로 유지합니다.</p>
-          </div>
-          <div className="writer-board">
-            {writerLanes.map((lane) => {
-              const assignment = assignments.find((item) => item.writerId === lane.id)
-              const packet = lanePackets.find((item) => item.writerId === lane.id)
-              const laneStatus = state.generation.unitStatuses[lane.id]
+      <section
+        key={`${screen}-${screenMotion.revision}`}
+        className={`screen-stage is-${screenMotion.direction}`}
+      >
+        <div className="screen-shell">
+          <header className="screen-head">
+            <div>
+              <p className="section-kicker">{screenTitles[screen].kicker}</p>
+              <h2>{screenTitles[screen].title}</h2>
+              <p className="screen-description">{screenTitles[screen].description}</p>
+            </div>
+            <div className="action-cluster">
+              <button
+                type="button"
+                className="action-button is-primary"
+                aria-label={screenAction.primaryAriaLabel}
+                onClick={screenAction.primaryHandler}
+                disabled={screenAction.primaryDisabled}
+              >
+                {screenAction.primaryLabel}
+              </button>
+              {'secondaryLabel' in screenAction ? (
+                <button
+                  type="button"
+                  className="action-button is-secondary"
+                  aria-label={screenAction.secondaryAriaLabel}
+                  onClick={screenAction.secondaryHandler}
+                  disabled={screenAction.secondaryDisabled}
+                >
+                  {screenAction.secondaryLabel}
+                </button>
+              ) : null}
+            </div>
+          </header>
 
-              return (
-                <article key={lane.id} className={`writer-card status-${laneStatus}`}>
-                  <div className="writer-head">
-                    <div>
-                      <p className="block-label">레인 상태</p>
-                      <h3>{lane.label}</h3>
-                    </div>
-                    <span className={`lane-pill lane-${laneStatus}`}>{unitStatusLabel(laneStatus)}</span>
+          {screen === 'setup' ? (
+            <div className="screen-grid screen-grid-setup">
+              <article className="panel-sheet" data-stagger>
+                <div className="panel-head">
+                  <p className="section-kicker">입력 패널</p>
+                  <h3>공통 브리프를 잠그면 바로 병렬 레인으로 넘어갑니다</h3>
+                </div>
+                <form className="brief-form">
+                  <label className={`field-control ${state.inputs.topic ? 'is-filled' : ''}`}>
+                    <span className="field-label">주제</span>
+                    <textarea
+                      aria-label="Topic"
+                      name="topic"
+                      rows={5}
+                      value={state.inputs.topic}
+                      onChange={(event) => updateField('topic', event.target.value)}
+                    />
+                  </label>
+                  <label className={`field-control ${state.inputs.audience ? 'is-filled' : ''}`}>
+                    <span className="field-label">독자층</span>
+                    <select
+                      aria-label="Audience"
+                      name="audience"
+                      value={state.inputs.audience}
+                      onChange={(event) => updateField('audience', event.target.value as Audience)}
+                    >
+                      {audienceOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <div className="field-row">
+                    <label className={`field-control ${state.inputs.tone ? 'is-filled' : ''}`}>
+                      <span className="field-label">톤</span>
+                      <select
+                        aria-label="Tone"
+                        name="tone"
+                        value={state.inputs.tone}
+                        onChange={(event) => updateField('tone', event.target.value as Tone)}
+                      >
+                        {toneOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className={`field-control ${state.inputs.length ? 'is-filled' : ''}`}>
+                      <span className="field-label">분량</span>
+                      <select
+                        aria-label="Length"
+                        name="length"
+                        value={state.inputs.length}
+                        onChange={(event) => updateField('length', event.target.value as Length)}
+                      >
+                        {lengthOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
                   </div>
+                </form>
+                <p className="panel-note">
+                  이 하네스는 결정론적 생성으로 병렬 섹션 오케스트레이션 자체를 검증합니다. 그래서
+                  첫 화면은 입력과 방향 결정만 남기고, 실제 산출물은 뒤 단계에서 열리게 바꿨습니다.
+                </p>
+              </article>
 
-                  <p className="lane-focus">{lane.focus}</p>
-                  <p className="subtle-copy">{lane.mergeDuty}</p>
+              <div className="stack-column">
+                <article className="panel-sheet" data-stagger>
+                  <div className="panel-head">
+                    <p className="section-kicker">편집 메모</p>
+                    <h3>현재 브리프는 이런 톤으로 발행됩니다</h3>
+                  </div>
+                  <div className="summary-grid">
+                    <div className="summary-card">
+                      <span>독자층</span>
+                      <strong>{audienceOptions.find((item) => item.value === state.inputs.audience)?.label}</strong>
+                    </div>
+                    <div className="summary-card">
+                      <span>톤</span>
+                      <strong>{toneOptions.find((item) => item.value === state.inputs.tone)?.label}</strong>
+                    </div>
+                    <div className="summary-card">
+                      <span>분량</span>
+                      <strong>{lengthOptions.find((item) => item.value === state.inputs.length)?.label}</strong>
+                    </div>
+                  </div>
+                  <ul className="compact-list">
+                    <li>1단계는 입력과 방향 결정만 보여 줍니다.</li>
+                    <li>2단계에서 세 레인의 소유 범위를 비교합니다.</li>
+                    <li>3단계에서 리뷰 메모와 최종 글을 한 자리에서 교대로 확인합니다.</li>
+                  </ul>
+                </article>
 
-                  {assignment ? (
-                    <>
-                      <div className="sub-block">
-                        <h4>담당 섹션</h4>
-                        <div className="chip-row">
-                          {assignment.sectionIds.map((sectionId) => {
-                            const section = outline.find((item) => item.id === sectionId)
-                            return (
-                              <span key={sectionId} className="meta-chip">
-                                {section?.title ?? sectionId}
-                              </span>
-                            )
-                          })}
+                <article className="empty-state" data-stagger>
+                  <span className="empty-icon" aria-hidden="true">◇</span>
+                  <h3>아직 병렬 레인이 열리지 않았습니다</h3>
+                  <p>
+                    대표 프리셋 하나를 불러온 뒤 바로 생성해도 됩니다. 이 카드 자체가 빈 상태와
+                    복구 진입점을 겸합니다.
+                  </p>
+                  <button
+                    type="button"
+                    className="support-button"
+                    onClick={() =>
+                      applyPreset(
+                        topicPresets[1].title,
+                        topicPresets[1].audience,
+                        topicPresets[1].tone,
+                        topicPresets[1].length,
+                      )
+                    }
+                  >
+                    대표 프리셋 적용
+                  </button>
+                </article>
+
+                <article className="panel-sheet" data-stagger>
+                  <div className="panel-head">
+                    <p className="section-kicker">빠른 프리셋</p>
+                    <h3>브리프를 짧게 잡고 바로 실험할 때만 씁니다</h3>
+                  </div>
+                  <div className="preset-grid">
+                    {topicPresets.map((preset) => (
+                      <button
+                        key={preset.title}
+                        type="button"
+                        className="preset-card"
+                        onClick={() => applyPreset(preset.title, preset.audience, preset.tone, preset.length)}
+                      >
+                        <strong>{preset.title}</strong>
+                        <span>{preset.rationale}</span>
+                      </button>
+                    ))}
+                  </div>
+                </article>
+              </div>
+            </div>
+          ) : null}
+
+          {screen === 'draft' ? (
+            <div className="screen-grid screen-grid-draft">
+              <div className="stack-column">
+                <article className="panel-sheet merge-graphic-card" data-stagger>
+                  <div className="panel-head panel-head-inline">
+                    <div>
+                      <p className="section-kicker">합류 레일</p>
+                      <h3>세 레인이 아래 한 지점으로 모이며 현재 합류 압력을 보여줍니다</h3>
+                    </div>
+                    <p className="panel-inline-copy">{mergeMoment}</p>
+                  </div>
+                  <div className="merge-graphic" aria-hidden="true">
+                    {writerLanes.map((lane) => {
+                      const laneStatus = state.generation.unitStatuses[lane.id]
+                      return (
+                        <div key={lane.id} className={`merge-arm arm-${lane.id} is-${laneStatus}`}>
+                          <span className="merge-node" />
                         </div>
-                        <p>{assignment.ownershipRule}</p>
-                      </div>
+                      )
+                    })}
+                    <span className={`merge-hub is-${mergeReport ? 'complete' : state.generation.status === 'loading' ? 'loading' : 'pending'}`} />
+                  </div>
+                </article>
 
-                      {packet ? (
-                        <>
-                          <div className="sub-block">
-                            <h4>상태 요약</h4>
-                            <p>{packet.statusSummary}</p>
+                <div className="lane-grid">
+                  {writerLanes.map((lane, index) => {
+                    const assignment = assignments.find((item) => item.writerId === lane.id)
+                    const packet = lanePackets.find((item) => item.writerId === lane.id)
+                    const laneStatus = state.generation.unitStatuses[lane.id]
+
+                    return (
+                      <button
+                        key={lane.id}
+                        type="button"
+                        className={`lane-card is-${laneStatus} ${activeLane === lane.id ? 'is-selected' : ''}`}
+                        onClick={() => setActiveLane(lane.id)}
+                        aria-pressed={activeLane === lane.id}
+                        data-stagger
+                        style={{ animationDelay: `${index * 50}ms` }}
+                      >
+                        <div className="lane-card-top">
+                          <div className="lane-topline">
+                            <span className={`lane-orb is-${laneStatus}`} aria-hidden="true" />
+                            <span className={`lane-pill lane-${laneStatus}`}>{unitStatusLabel(laneStatus)}</span>
                           </div>
+                          <span className="lane-section-id">0{index + 1}</span>
+                        </div>
+                        <h3>{lane.label}</h3>
+                        <p className="lane-focus-copy">{lane.focus}</p>
+                        {assignment ? (
+                          <div className="chip-row">
+                            {assignment.sectionIds.map((sectionId) => {
+                              const section = outline.find((item) => item.id === sectionId)
+                              return (
+                                <span key={sectionId} className="meta-chip">
+                                  {section?.title ?? sectionId}
+                                </span>
+                              )
+                            })}
+                          </div>
+                        ) : null}
+                        {packet ? (
+                          <p className="lane-summary">{packet.statusSummary}</p>
+                        ) : (
+                          <div className="skeleton-stack" aria-hidden="true">
+                            <span className="skeleton-line" />
+                            <span className="skeleton-line is-short" />
+                            <span className="skeleton-line" />
+                          </div>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
 
-                          <details className="lane-drawer">
-                            <summary className="lane-drawer-summary">{lane.label} 패킷 열기</summary>
-
-                            <div className="preview-stack">
-                              {packet.draftPreview.map((preview) => (
-                                <article key={preview.id} className="preview-card">
-                                  <h4>{preview.title}</h4>
-                                  <p>{preview.deck}</p>
-                                  <ul className="compact-list">
-                                    {preview.bullets.map((bullet) => (
-                                      <li key={bullet}>{bullet}</li>
-                                    ))}
-                                  </ul>
-                                  <p className="takeaway">{preview.takeaway}</p>
-                                </article>
-                              ))}
-                            </div>
-
-                            <div className="sub-block">
-                              <h4>핸드오프 메모</h4>
-                              <p>{packet.handoffNote}</p>
-                            </div>
-                          </details>
+              <div className="stack-column">
+                <article className="panel-sheet" data-stagger>
+                  <div className="panel-head">
+                    <p className="section-kicker">선택된 레인</p>
+                    <h3>{activeLaneAssignment ? laneStatusLabel(activeLaneAssignment.writerId) : '레인을 고르면 상세가 열립니다'}</h3>
+                  </div>
+                  {activeLaneAssignment ? (
+                    <div className="detail-stack">
+                      <p className="detail-copy">{activeLaneAssignment.ownershipRule}</p>
+                      <div className="info-strip">
+                        <span className="info-badge">소유 범위</span>
+                        <p>{activeLaneAssignment.handoffBoundary}</p>
+                      </div>
+                      {activeLanePacket ? (
+                        <>
+                          <div className="info-strip">
+                            <span className="info-badge">상태 요약</span>
+                            <p>{activeLanePacket.statusSummary}</p>
+                          </div>
+                          <div className="preview-stack">
+                            {activeLanePacket.draftPreview.map((preview) => (
+                              <article key={preview.id} className="preview-card">
+                                <h4>{preview.title}</h4>
+                                <p>{preview.deck}</p>
+                                <ul className="compact-list">
+                                  {preview.bullets.map((bullet) => (
+                                    <li key={bullet}>{bullet}</li>
+                                  ))}
+                                </ul>
+                                <p className="preview-takeaway">{preview.takeaway}</p>
+                              </article>
+                            ))}
+                          </div>
                         </>
                       ) : (
-                        <div className="empty-state">
-                          <p>이 레인은 이미 배정됐고, 초안 작성 단계가 시작되기를 기다리고 있습니다.</p>
+                        <div className="empty-state compact-empty">
+                          <span className="empty-icon" aria-hidden="true">⋯</span>
+                          <h3>이 레인의 초안은 아직 작성 중입니다</h3>
+                          <p>머지 전에는 skeleton과 상태 요약만 보여 주고, 실제 패킷은 도착한 뒤에만 펼칩니다.</p>
+                          <button type="button" className="support-button" onClick={() => moveToScreen('setup')}>
+                            브리프 화면으로 돌아가기
+                          </button>
                         </div>
                       )}
-                    </>
+                    </div>
                   ) : (
-                    <div className="empty-state">
-                      <p>코디네이터가 아직 이 레인을 배정하지 않았습니다.</p>
+                    <div className="empty-state compact-empty">
+                      <span className="empty-icon" aria-hidden="true">◎</span>
+                      <h3>레인 배정 전입니다</h3>
+                      <p>브리프를 먼저 잠가야 각 레인의 소유 범위와 상세 패킷이 열립니다.</p>
+                      <button type="button" className="support-button" onClick={() => moveToScreen('setup')}>
+                        브리프 작성으로 이동
+                      </button>
                     </div>
                   )}
                 </article>
-              )
-            })}
-          </div>
-        </article>
 
-        <aside className="panel-surface merge-rail">
-          <div className="section-head">
-            <p className="eyebrow">머지 레일</p>
-            <h2>현재 데스크 압력과 다음 행동을 한 칸에서 확인합니다</h2>
-          </div>
-
-          <div className="merge-rail-stack">
-            <article className="info-card">
-              <p className="block-label">현재 시점</p>
-              <h3>{mergeReport ? '머지 완료' : completedLaneCount ? '머지 진행 중' : '레인 대기 중'}</h3>
-              <p>{mergeMoment}</p>
-            </article>
-
-            <article className="info-card">
-              <p className="block-label">레인 커버리지</p>
-              <h3>
-                {completedLaneCount}/{writerLanes.length}개 레인 전달 완료
-              </h3>
-              <p>
-                {assignments.length
-                  ? `${assignments.length}개의 소유 규칙이 보드 전체에 고정돼 있습니다.`
-                  : '보드가 초기화되면 코디네이터의 소유 규칙이 이곳에 나타납니다.'}
-              </p>
-            </article>
-
-            <article className="info-card">
-              <p className="block-label">다음 행동</p>
-              <h3>{finalArticle ? '내보내기 또는 재검토' : '머지 데스크 집중 유지'}</h3>
-              <p>{nextAction}</p>
-            </article>
-          </div>
-        </aside>
-      </section>
-
-      <details className="panel-surface secondary-panel">
-        <summary className="secondary-summary">
-          <span className="eyebrow">공통 계획 패널</span>
-          <div>
-            <h2>코디네이터 프레임, 레인 소유 범위, 머지 기준을 접어 둡니다</h2>
-            <p>보드 뒤에 있는 공통 브리프가 필요할 때만 이 계획 맥락을 열어 확인하세요.</p>
-          </div>
-        </summary>
-
-        <div className="secondary-body">
-          <div className="section-head">
-            <p className="eyebrow">오케스트레이션 스트립</p>
-            <h2>공통 프레임을 먼저 고정하고, 소유 범위를 정한 뒤에 초안으로 내려갑니다</h2>
-          </div>
-          <div className="orchestration-grid">
-            <article className="info-card">
-              <div className="hook-row">
-                <p className="block-label">리서치 결과</p>
-                <span className="hook-chip">Research results</span>
-              </div>
-              {brief ? (
-                <>
-                  <h3>코디네이터 브리프</h3>
-                  <p>{brief.angle}</p>
-                  <strong>{brief.thesis}</strong>
-                  <p className="subtle-copy">{brief.audienceLens}</p>
-                  <p className="subtle-copy">{brief.commonFrame}</p>
-                </>
-              ) : (
-                <div className="empty-state">
-                  <p>보드를 생성해 공통 논지와 독자 관점을 먼저 고정하세요.</p>
-                </div>
-              )}
-            </article>
-
-            <article className="info-card">
-              <div className="hook-row">
-                <p className="block-label">아웃라인</p>
-                <span className="hook-chip">Outline</span>
-              </div>
-              {outline.length > 0 ? (
-                <>
-                  <div className="outline-list">
-                    {outline.map((section) => (
-                      <article key={section.id} className="outline-item">
-                        <div className="outline-top">
-                          <h3>{section.title}</h3>
-                          <span className="meta-chip">{section.writerHint}</span>
-                        </div>
-                        <p>{section.goal}</p>
-                      </article>
-                    ))}
+                <article className="panel-sheet" data-stagger>
+                  <div className="panel-head">
+                    <p className="section-kicker">머지 데스크</p>
+                    <h3>{mergeReport ? '합류 기준이 정리됐습니다' : '데스크가 보고 있는 기준'}</h3>
                   </div>
-
-                  <div className="assignment-strip">
-                    <h4>레인 배정</h4>
-                    <div className="assignment-list">
-                      {assignments.map((assignment) => (
-                        <article key={assignment.writerId} className="assignment-card">
-                          <strong>{laneStatusLabel(assignment.writerId)}</strong>
-                          <p>{assignment.ownershipRule}</p>
-                        </article>
-                      ))}
-                    </div>
+                  <div className="detail-stack">
+                    <p className="detail-copy">{nextAction}</p>
+                    {brief ? (
+                      <div className="criteria-grid">
+                        {brief.mergeCriteria.map((criterion) => (
+                          <article key={criterion.label} className="criterion-card">
+                            <h4>{criterion.label}</h4>
+                            <p>{criterion.detail}</p>
+                          </article>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="empty-state compact-empty">
+                        <span className="empty-icon" aria-hidden="true">↺</span>
+                        <h3>머지 기준이 아직 없습니다</h3>
+                        <p>코디네이터가 리서치와 아웃라인을 먼저 고정하면 이 자리에 합류 기준이 채워집니다.</p>
+                        <button type="button" className="support-button" onClick={() => moveToScreen('setup')}>
+                          입력 다시 보기
+                        </button>
+                      </div>
+                    )}
                   </div>
-                </>
-              ) : (
-                <div className="empty-state">
-                  <p>코디네이터가 끝나면 아웃라인과 레인 배정이 함께 나타납니다.</p>
-                </div>
-              )}
-            </article>
-
-            <article className="info-card">
-              <p className="block-label">머지 기준</p>
-              {brief ? (
-                <div className="criteria-list">
-                  {brief.mergeCriteria.map((criterion) => (
-                    <article key={criterion.label} className="criterion-card">
-                      <h3>{criterion.label}</h3>
-                      <p>{criterion.detail}</p>
-                    </article>
-                  ))}
-                </div>
-              ) : (
-                <div className="empty-state">
-                  <p>어떤 레인도 초안을 시작하기 전에 머지 기준이 먼저 이곳에 나타납니다.</p>
-                </div>
-              )}
-            </article>
-          </div>
-        </div>
-      </details>
-
-      <section className="reader-grid">
-        {mergeReport || finalArticle ? (
-          <article className="panel-surface final-panel">
-            <div className="reader-shell-head">
-              <div className="section-head">
-                <p className="eyebrow">Reader surface</p>
-                <h2>Only one post-merge surface stays open at a time</h2>
-              </div>
-
-              <div className="reader-tabs" role="tablist" aria-label="Post-merge surface">
-                <button
-                  type="button"
-                  className={`reader-tab ${currentReaderPanel === 'review' ? 'is-active' : ''}`}
-                  onClick={() => setActiveReaderPanel('review')}
-                  role="tab"
-                  aria-selected={currentReaderPanel === 'review'}
-                >
-                  Review notes
-                </button>
-                <button
-                  type="button"
-                  className={`reader-tab ${currentReaderPanel === 'final' ? 'is-active' : ''}`}
-                  onClick={() => setActiveReaderPanel('final')}
-                  role="tab"
-                  aria-selected={currentReaderPanel === 'final'}
-                >
-                  Final post
-                </button>
-              </div>
-            </div>
-
-            {currentReaderPanel === 'review' ? (
-              mergeReport ? (
-                <div className="merge-layout">
-                  <div className="merge-notes">
-                    <h3>Review notes</h3>
-                    <ul className="compact-list">
-                      {mergeReport.reviewNotes.map((note) => (
-                        <li key={note}>{note}</li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <div className="fix-grid">
-                    {[mergeReport.dedupeFix, mergeReport.transitionFix, mergeReport.toneFix].map((fix) => (
-                      <article key={fix.label} className="fix-card">
-                        <h3>{fix.label}</h3>
-                        <p><strong>Before:</strong> {fix.before}</p>
-                        <p><strong>After:</strong> {fix.after}</p>
-                        <p className="subtle-copy">{fix.rationale}</p>
-                      </article>
-                    ))}
-                  </div>
-
-                  <div className="merge-summary">
-                    <h3>Finalization note</h3>
-                    <p>{mergeReport.finalizationNote}</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="empty-state">
-                  <p>Merge notes appear after all three lanes finish and the review desk starts compressing the bundle.</p>
-                </div>
-              )
-            ) : finalArticle ? (
-              <>
-                <div className="article-reader">
-                  <p className="article-kicker">Newsroom merge complete</p>
-                  <h3>{finalArticle.title}</h3>
-                  <p className="article-intro">{finalArticle.intro}</p>
-
-                  {finalArticle.mergedSections.map((section) => (
-                    <section key={section.id} className="article-section">
-                      <h4>{section.title}</h4>
-                      <p className="article-deck">{section.deck}</p>
-                      {section.paragraphs.map((paragraph) => (
-                        <p key={paragraph}>{paragraph}</p>
-                      ))}
-                      <p className="takeaway">{section.takeaway}</p>
-                    </section>
-                  ))}
-
-                  <div className="article-closing">
-                    <h4>Closing checklist</h4>
-                    <p>{finalArticle.closing}</p>
-                  </div>
-                </div>
-
-                <div className="export-card export-preview-card">
-                  <p className="block-label">Markdown export</p>
-                  <h3>Keep the raw handoff short on the default surface</h3>
-                  <p className="subtle-copy">
-                    The excerpt keeps the export contract visible without letting the full raw
-                    Markdown dominate the reader-ready article.
-                  </p>
-                  <pre className="markdown-preview markdown-preview-peek">{markdownPreview}</pre>
-                </div>
-
-                <details className="export-card export-drawer">
-                  <summary className="export-summary">
-                    <div>
-                      <p className="block-label">Markdown export</p>
-                      <h3>Open the raw handoff only when you need the full export</h3>
-                    </div>
-                    <p>
-                      Copy stays available above, so the reader surface can stay focused on the
-                      merged article by default.
-                    </p>
-                  </summary>
-                  <pre className="markdown-preview">{finalArticle.markdown}</pre>
-                </details>
-              </>
-            ) : (
-              <div className="empty-state">
-                <p>The final article appears here after merge review closes duplication, transitions, and tone drift.</p>
-              </div>
-            )}
-          </article>
-        ) : (
-          <article className="panel-surface final-panel">
-            <div className="section-head">
-              <p className="eyebrow">Reader surface</p>
-              <h2>Review notes and the final post stay parked until merge is ready</h2>
-            </div>
-            <div className="reader-empty-grid">
-              <article className="info-card">
-                <p className="block-label">Review notes</p>
-                <h3>Reserved for merge fixes</h3>
-                <p>Keep the reader surface quiet until every lane hands off its packet.</p>
-              </article>
-              <article className="info-card">
-                <p className="block-label">Final post</p>
-                <h3>Unlocked after merge</h3>
-                <p>The article and Markdown export only take over after the merge desk closes overlap.</p>
-              </article>
-            </div>
-          </article>
-        )}
-      </section>
-
-      <details className="panel-surface utility-drawer">
-        <summary className="utility-summary">
-          <span className="eyebrow">Evidence + Evaluation</span>
-          <div>
-            <h2>Open the benchmark contract only when you need the audit layer</h2>
-            <p>
-              The board, merge rail, and reader-ready article stay on the primary surface. This
-              drawer keeps benchmark obligations available without leading the product story.
-            </p>
-          </div>
-        </summary>
-
-        <div className="utility-body evidence-grid">
-          <article className="panel-surface utility-card">
-            <div className="section-head">
-              <p className="eyebrow">Evidence</p>
-              <h2>Deliverables this harness must leave behind</h2>
-            </div>
-            <div className="artifact-list">
-              {deliverables.map((item) => (
-                <article key={item.id} className="artifact-card">
-                  <h3>{item.title}</h3>
-                  <p>{item.description}</p>
                 </article>
-              ))}
-            </div>
-          </article>
-
-          <article className="panel-surface utility-card">
-            <div className="section-head">
-              <p className="eyebrow">Evaluation</p>
-              <h2>Review lenses and run contract</h2>
-            </div>
-
-            <div className="sub-block">
-              <h3>Review lenses</h3>
-              <ul className="compact-list">
-                {reviewLenses.map((lens) => (
-                  <li key={lens}>{lens}</li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="sub-block">
-              <h3>Evaluation checklist</h3>
-              <ul className="compact-list">
-                {evaluationChecklist.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="sub-block">
-              <h3>Artifact contract</h3>
-              <div className="contract-card">
-                <p>Expected screenshots: {artifactPreview.screenshots.join(', ')}</p>
-                <p>Expected notes: {artifactPreview.notes.join(' / ')}</p>
-                <p>Expected deliverables: {artifactPreview.deliverables.join(', ')}</p>
               </div>
             </div>
-          </article>
+          ) : null}
+
+          {screen === 'publish' ? (
+            <div className="screen-grid screen-grid-publish final-panel">
+              <div className="stack-column">
+                <article className="panel-sheet" data-stagger>
+                  <div className="reader-toggle-group" role="tablist" aria-label="출력 패널 전환">
+                    <button
+                      type="button"
+                      className={`reader-toggle ${activeReaderPanel === 'review' ? 'is-active' : ''}`}
+                      role="tab"
+                      id="reader-tab-review"
+                      aria-controls="reader-panel-review"
+                      aria-selected={activeReaderPanel === 'review'}
+                      onClick={() => setActiveReaderPanel('review')}
+                    >
+                      리뷰 메모
+                    </button>
+                    <button
+                      type="button"
+                      className={`reader-toggle ${activeReaderPanel === 'final' ? 'is-active' : ''}`}
+                      role="tab"
+                      id="reader-tab-final"
+                      aria-controls="reader-panel-final"
+                      aria-selected={activeReaderPanel === 'final'}
+                      onClick={() => setActiveReaderPanel('final')}
+                    >
+                      최종 글
+                    </button>
+                  </div>
+                </article>
+
+                {mergeReport || finalArticle ? (
+                  activeReaderPanel === 'review' ? (
+                    <article
+                      id="reader-panel-review"
+                      className="panel-sheet"
+                      role="tabpanel"
+                      aria-labelledby="reader-tab-review"
+                      data-stagger
+                    >
+                      <div className="panel-head">
+                        <p className="section-kicker">리뷰 메모</p>
+                        <h3>머지 데스크는 중복, 전환, 톤 밀도를 이 세 축으로 정리합니다</h3>
+                      </div>
+                      {mergeReport ? (
+                        <div className="detail-stack">
+                          <ul className="compact-list">
+                            {mergeReport.reviewNotes.map((note) => (
+                              <li key={note}>{note}</li>
+                            ))}
+                          </ul>
+                          <div className="criteria-grid">
+                            {[mergeReport.dedupeFix, mergeReport.transitionFix, mergeReport.toneFix].map((fix) => (
+                              <article key={fix.label} className="criterion-card">
+                                <h4>{fix.label}</h4>
+                                <p><strong>이전</strong> {fix.before}</p>
+                                <p><strong>이후</strong> {fix.after}</p>
+                                <p>{fix.rationale}</p>
+                              </article>
+                            ))}
+                          </div>
+                          <article className="panel-inset">
+                            <p className="section-kicker">최종화 메모</p>
+                            <p>{mergeReport.finalizationNote}</p>
+                          </article>
+                        </div>
+                      ) : null}
+                    </article>
+                  ) : (
+                    <article
+                      id="reader-panel-final"
+                      className="panel-sheet"
+                      role="tabpanel"
+                      aria-labelledby="reader-tab-final"
+                      data-stagger
+                    >
+                      <div className="panel-head">
+                        <p className="section-kicker">최종 글</p>
+                        <h3>독자용 화면을 먼저 보여 주고 원본 전달본은 따로 둡니다</h3>
+                      </div>
+                      {finalArticle ? (
+                        <div className="article-stack">
+                          <article className="article-reader">
+                            <p className="article-kicker">병합 완료</p>
+                            <h3>{finalArticle.title}</h3>
+                            <p className="article-intro">{finalArticle.intro}</p>
+                            {finalArticle.mergedSections.map((section) => (
+                              <section key={section.id} className="article-section">
+                                <h4>{section.title}</h4>
+                                <p className="article-deck">{section.deck}</p>
+                                {section.paragraphs.map((paragraph) => (
+                                  <p key={paragraph}>{paragraph}</p>
+                                ))}
+                                <p className="preview-takeaway">{section.takeaway}</p>
+                              </section>
+                            ))}
+                            <div className="article-closing">
+                              <h4>마무리 체크</h4>
+                              <p>{finalArticle.closing}</p>
+                            </div>
+                          </article>
+                        </div>
+                      ) : null}
+                    </article>
+                  )
+                ) : (
+                  <article className="empty-state" data-stagger>
+                    <span className="empty-icon" aria-hidden="true">✦</span>
+                    <h3>머지 데스크가 아직 닫히지 않았습니다</h3>
+                    <p>리뷰 메모와 최종 글은 머지가 끝난 뒤에만 열립니다. 지금은 작성 화면에서 레인 상태를 먼저 확인하세요.</p>
+                    <button type="button" className="support-button" onClick={() => moveToScreen('draft')}>
+                      작성 보드로 돌아가기
+                    </button>
+                  </article>
+                )}
+              </div>
+
+              <div className="stack-column">
+                <article className="panel-sheet" data-stagger>
+                  <div className="panel-head">
+                    <p className="section-kicker">발행 체크</p>
+                    <h3>발행 직전에는 요약된 설정과 다음 행동만 남깁니다</h3>
+                  </div>
+                  <div className="summary-grid">
+                    <div className="summary-card">
+                      <span>독자층</span>
+                      <strong>{audienceOptions.find((item) => item.value === state.inputs.audience)?.label}</strong>
+                    </div>
+                    <div className="summary-card">
+                      <span>톤</span>
+                      <strong>{toneOptions.find((item) => item.value === state.inputs.tone)?.label}</strong>
+                    </div>
+                    <div className="summary-card">
+                      <span>분량</span>
+                      <strong>{lengthOptions.find((item) => item.value === state.inputs.length)?.label}</strong>
+                    </div>
+                  </div>
+                  <ul className="compact-list">
+                    <li>리뷰 메모와 최종 글은 동시에 열지 않습니다.</li>
+                    <li>마크다운 원본 내보내기는 미리보기 아래에서만 확장됩니다.</li>
+                    <li>영문 훅은 접근성·테스트 전용 계층에만 남깁니다.</li>
+                  </ul>
+                </article>
+
+                <article className="panel-sheet" data-stagger>
+                  <div className="panel-head">
+                    <p className="section-kicker">내보내기 미리보기</p>
+                    <h3>기본 화면에는 짧은 미리보기만 남깁니다</h3>
+                  </div>
+                  <pre className="markdown-preview">
+                    {markdownPreview || '최종 글이 준비되면 여기에 마크다운 미리보기가 나타납니다.'}
+                  </pre>
+                </article>
+
+                <details className="panel-sheet evidence-drawer" data-stagger>
+                  <summary className="drawer-summary">
+                    <div>
+                      <p className="section-kicker">보조 근거 레이어</p>
+                      <h3>평가와 산출물 계약은 필요할 때만 엽니다</h3>
+                    </div>
+                    <p>제품 화면보다 벤치마크 의무가 먼저 보이지 않도록 가장 아래로 밀어 둡니다.</p>
+                  </summary>
+                  <div className="drawer-body">
+                    <div className="detail-stack">
+                      <h4>필수 산출물</h4>
+                      <div className="criteria-grid">
+                        {deliverables.map((item) => (
+                          <article key={item.id} className="criterion-card">
+                            <h4>{item.title}</h4>
+                            <p>{item.description}</p>
+                          </article>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="detail-stack">
+                      <h4>검토 렌즈</h4>
+                      <ul className="compact-list">
+                        {reviewLenses.map((lens) => (
+                          <li key={lens}>{lens}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div className="detail-stack">
+                      <h4>평가 체크리스트</h4>
+                      <ul className="compact-list">
+                        {evaluationChecklist.map((item) => (
+                          <li key={item}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </details>
+              </div>
+            </div>
+          ) : null}
         </div>
-      </details>
+      </section>
     </main>
   )
 }

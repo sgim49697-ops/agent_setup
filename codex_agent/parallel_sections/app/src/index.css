@@ -1,32 +1,43 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Noto+Sans+KR:wght@400;500;700;800&display=swap');
+
 :root {
-  --paper: #f4ede1;
-  --panel: rgba(255, 251, 245, 0.94);
-  --line: rgba(16, 35, 58, 0.12);
-  --ink: #10233a;
-  --muted: #5a6b7d;
-  --accent: #ff6a3d;
-  --accent-strong: #d94a21;
-  --accent-cool: #136f63;
-  --shadow-soft:
-    0 22px 44px rgba(16, 35, 58, 0.08),
-    0 8px 18px rgba(16, 35, 58, 0.05);
-  font-family:
-    'Space Grotesk',
-    'Segoe UI',
-    sans-serif;
-  line-height: 1.5;
+  --color-background: #faf8ff;
+  --color-surface: #faf8ff;
+  --color-surface-low: #f2f3ff;
+  --color-surface-lowest: #ffffff;
+  --color-surface-high: #e2e7ff;
+  --color-outline: #c3c5d9;
+  --color-text: #131b2e;
+  --color-muted: #434656;
+  --color-primary: #003ec7;
+  --color-primary-strong: #0052ff;
+  --color-secondary: #515f74;
+  --color-inverse: #eef0ff;
+  --color-tertiary: #952200;
+  --color-error: #ba1a1a;
+  --font-heading: 'Manrope', 'Noto Sans KR', sans-serif;
+  --font-body: 'Noto Sans KR', sans-serif;
+  --motion-micro: 160ms;
+  --motion-screen: 360ms;
+  --ease-standard: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-screen: cubic-bezier(0.22, 1, 0.36, 1);
+  color: var(--color-text);
+  font-family: var(--font-body);
   font-weight: 400;
-  color: var(--ink);
+  line-height: 1.5;
   background:
-    radial-gradient(circle at top left, rgba(255, 106, 61, 0.12), transparent 26%),
-    linear-gradient(180deg, #f8f2e8, #efe6d8);
+    radial-gradient(circle at top left, rgba(0, 82, 255, 0.14), transparent 24%),
+    radial-gradient(circle at bottom right, rgba(191, 48, 3, 0.1), transparent 26%),
+    linear-gradient(180deg, #fdfcff, #eef2ff);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
@@ -35,9 +46,9 @@ html {
 }
 
 body {
-  margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  margin: 0;
 }
 
 body,
@@ -45,10 +56,7 @@ button,
 input,
 select,
 textarea {
-  font-family:
-    'Space Grotesk',
-    'Segoe UI',
-    sans-serif;
+  font-family: var(--font-body);
 }
 
 button,
@@ -58,37 +66,41 @@ textarea {
   font: inherit;
 }
 
-button:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible {
-  outline: 3px solid rgba(255, 106, 61, 0.24);
-  outline-offset: 2px;
-}
-
 h1,
 h2,
-h3 {
-  font-family:
-    'Fraunces',
-    Georgia,
-    serif;
-  line-height: 1.05;
-  color: var(--ink);
+h3,
+h4 {
+  font-family: var(--font-heading);
+  color: var(--color-text);
+  letter-spacing: -0.04em;
 }
 
 h1 {
-  font-size: clamp(3rem, 6vw, 5.2rem);
-  letter-spacing: -0.05em;
+  font-size: clamp(3rem, 6vw, 5.1rem);
+  line-height: 0.98;
 }
 
 h2 {
-  font-size: clamp(1.6rem, 2vw, 2.4rem);
-  letter-spacing: -0.04em;
+  font-size: clamp(1.65rem, 2.6vw, 2.6rem);
+  line-height: 1.02;
+}
+
+h3 {
+  font-size: clamp(1.18rem, 1.6vw, 1.65rem);
+  line-height: 1.08;
 }
 
 a {
   color: inherit;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible {
+  outline: 3px solid rgba(0, 82, 255, 0.24);
+  outline-offset: 3px;
 }
 
 #root {
