@@ -31,7 +31,7 @@ done
 python3 - <<'PY'
 from datetime import datetime, timezone
 from pathlib import Path
-from master_loop_state import HARNESSES, save_state
+from master_loop_state import DEFAULT_DEFERRED_HARNESSES, automation_harnesses, save_state
 state_path = Path('/home/user/projects/agent_setup/codex_agent/.omx/state/master-ux-loop.json')
 now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
 state = {
@@ -50,7 +50,8 @@ state = {
     'next_cycle_required': True,
     'current_phase': 'cycle-resume',
     'current_harness': 'benchmark_foundation',
-    'remaining_harnesses': HARNESSES,
+    'remaining_harnesses': automation_harnesses(),
+    'deferred_harnesses': DEFAULT_DEFERRED_HARNESSES,
     'remaining_cycle_history': [],
     'phase_history': [],
     'remaining_regression_count': 0,
@@ -60,7 +61,7 @@ state = {
     'updated_at': now,
     'reset_at': now,
     'last_progress_at': now,
-    'last_progress_summary': 'master loop reset and awaiting next cycle launch; read docs/master-loop-reset-watchdog-guidance.md before restarting',
+    'last_progress_summary': 'master loop reset with single_agent deferred/excluded and awaiting next cycle launch; read docs/master-loop-reset-watchdog-guidance.md before restarting',
     'blocker_reason': '',
 }
 save_state(state_path, state)

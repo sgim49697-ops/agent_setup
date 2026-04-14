@@ -20,6 +20,9 @@ HARNESSES = [
     "evaluator_optimizer",
     "omx_evaluator_optimizer",
 ]
+DEFAULT_DEFERRED_HARNESSES = [
+    "single_agent",
+]
 
 BOOL_FIELDS = {
     "hard_blocker",
@@ -143,6 +146,20 @@ def normalize_remaining_harnesses(value: Any) -> list[str]:
     return [str(value).strip()] if str(value).strip() else []
 
 
+def automation_harnesses(include_deferred: bool = False) -> list[str]:
+    if include_deferred:
+        return HARNESSES.copy()
+    excluded = set(DEFAULT_DEFERRED_HARNESSES)
+    return [harness for harness in HARNESSES if harness not in excluded]
+
+
+def effective_deferred_harnesses(state: dict[str, Any] | None = None) -> list[str]:
+    configured = set(DEFAULT_DEFERRED_HARNESSES)
+    if state:
+        configured.update(normalize_remaining_harnesses(state.get("deferred_harnesses")))
+    return [harness for harness in HARNESSES if harness in configured]
+
+
 def resolve_quality_gate_target(state: dict[str, Any] | None = None) -> str:
     if state:
         remaining = normalize_remaining_harnesses(state.get("remaining_harnesses"))
@@ -207,7 +224,7 @@ def infer_current_harness(state: dict[str, Any]) -> str:
 
 def preferred_remaining_harness(state: dict[str, Any], include_deferred: bool = False) -> str:
     remaining = normalize_remaining_harnesses(state.get("remaining_harnesses"))
-    deferred = set(normalize_remaining_harnesses(state.get("deferred_harnesses")))
+    deferred = set(effective_deferred_harnesses(state))
     if include_deferred:
         return remaining[0] if remaining else QUALITY_GATE_ALIAS
     for harness in remaining:
@@ -264,10 +281,11 @@ def normalize_state(state: dict[str, Any]) -> dict[str, Any]:
     normalized.setdefault("current_harness_cycle_streak", 0)
     normalized.setdefault("remaining_cycle_history", [])
     normalized.setdefault("phase_history", [])
-    normalized.setdefault("deferred_harnesses", [])
+    normalized.setdefault("deferred_harnesses", DEFAULT_DEFERRED_HARNESSES.copy())
     normalized["remaining_harnesses"] = normalize_remaining_harnesses(normalized.get("remaining_harnesses"))
     normalized["remaining_cycle_history"] = normalize_json_list(normalized.get("remaining_cycle_history"))
     normalized["phase_history"] = normalize_json_list(normalized.get("phase_history"))
+    normalized["deferred_harnesses"] = effective_deferred_harnesses(normalized)
     normalized["current_harness"] = infer_current_harness(normalized)
     remaining = normalize_remaining_harnesses(normalized.get("remaining_harnesses"))
     if normalized.get("project_status") == "project_completed" and not remaining:
@@ -276,7 +294,6 @@ def normalize_state(state: dict[str, Any]) -> dict[str, Any]:
         normalized["current_harness"] = QUALITY_GATE_ALIAS
         normalized["current_phase"] = "quality-gate"
         normalized["next_cycle_required"] = False
-        normalized["deferred_harnesses"] = []
         normalized["quality_gate_error_count"] = 0
         normalized["quality_gate_failure_streak"] = 0
         normalized["last_quality_gate_signature"] = ""

@@ -173,6 +173,14 @@ Important:
 - bounded-cycle evidence does **not** automatically mean full real-eval pass
 - full real-eval still requires live LLM, repeated runs, and recoverability proof
 
+### Default deferred harness
+`single_agent` is now treated as a fixed deferred/default-excluded harness for the automatic master loop.
+
+Implications:
+- reset/relaunch starts from `sequential_pipeline`
+- full-project regression rescans do not requeue `single_agent`
+- `single_agent` can still be inspected or run manually, but it is no longer part of the default automatic lane
+
 ## Observability
 
 Useful files:

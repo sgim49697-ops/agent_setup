@@ -23,14 +23,15 @@ python3 "$ROOT/scripts/master_loop_trace_sanity.py" --quiet >/dev/null || true
 python3 "$ROOT/scripts/master_loop_baseline_metrics.py" --quiet >/dev/null || true
 python3 "$ROOT/scripts/master_loop_quality_gate.py" --active-harness "$(python3 - <<'INNER'
 from pathlib import Path
-from master_loop_state import load_state, normalize_remaining_harnesses
+from master_loop_state import automation_harnesses, load_state, normalize_remaining_harnesses
 state=load_state(Path('/home/user/projects/agent_setup/codex_agent/.omx/state/master-ux-loop.json'))
 current=str(state.get('current_harness') or '').strip()
 if current and current != 'benchmark_foundation':
     print(current)
 else:
     remaining=normalize_remaining_harnesses(state.get('remaining_harnesses'))
-    print(remaining[0] if remaining else 'single_agent')
+    active=automation_harnesses()
+    print(remaining[0] if remaining else active[0])
 INNER
 )" --quiet >/dev/null || true
 fi

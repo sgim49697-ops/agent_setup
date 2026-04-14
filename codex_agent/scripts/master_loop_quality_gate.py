@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from master_loop_artifact_freshness import latest_artifact_mtime
-from master_loop_state import HARNESSES, QUALITY_GATE_ALIAS, load_state, normalize_remaining_harnesses, resolve_harness_token, save_state
+from master_loop_state import HARNESSES, QUALITY_GATE_ALIAS, automation_harnesses, load_state, normalize_remaining_harnesses, resolve_harness_token, save_state
 from master_loop_trace_sanity import analyze_trace, read_progress_events
 from master_loop_ui_language_gate import scan_harness
 from master_loop_validator import build_report as build_validator_report
@@ -35,23 +35,24 @@ def recent_cycle_snapshots(state: dict) -> list[dict]:
 
 
 def active_harness(state: dict, arg: str | None) -> str:
+    active_harnesses = automation_harnesses()
     if arg:
         return resolve_harness_token(arg, state)
     if state.get('project_status') == 'project_completed' and not normalize_remaining_harnesses(state.get('remaining_harnesses')):
         return QUALITY_GATE_ALIAS
     current = str(state.get('current_harness') or '').strip()
     if current == QUALITY_GATE_ALIAS and not normalize_remaining_harnesses(state.get('remaining_harnesses')):
-        return HARNESSES[0]
+        return active_harnesses[0]
     if current:
         resolved_current = resolve_harness_token(current, state)
-        if resolved_current in set(HARNESSES):
+        if resolved_current in set(active_harnesses):
             return resolved_current
-    if current and current in set(HARNESSES):
+    if current and current in set(active_harnesses):
         return current
     remaining = normalize_remaining_harnesses(state.get('remaining_harnesses'))
     if remaining:
         return remaining[0]
-    return 'single_agent'
+    return active_harnesses[0]
 
 
 
@@ -59,7 +60,7 @@ def active_harness(state: dict, arg: str | None) -> str:
 def full_project_rescan(state: dict) -> tuple[list[str], dict]:
     failing: list[str] = []
     scan_results: dict[str, dict] = {}
-    for harness in HARNESSES:
+    for harness in automation_harnesses():
         result = scan_harness(harness)
         scan_results[harness] = {
             'ok': result.get('ok', False),

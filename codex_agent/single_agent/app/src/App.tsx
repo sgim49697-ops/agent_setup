@@ -333,11 +333,10 @@ function App() {
         .slice(0, 4)
     : []
   const liveRegionMessage = [
-    statusLabel(state.generation.status),
-    currentStage.label,
-    `status ${state.generation.status}`,
+    `상태 ${statusLabel(state.generation.status)}`,
+    `현재 단계 ${currentStage.label}`,
     state.copyFeedback || state.generation.statusMessage,
-  ].join(' | ')
+  ].join(' · ')
   const screenIndex = screenMeta.findIndex((screen) => screen.id === currentScreen)
   const activeScreenMeta = screenMeta[screenIndex] ?? screenMeta[0]
   const progressScreenLocked =
@@ -385,6 +384,76 @@ function App() {
       tone: copyStatus.tone,
     },
   ]
+  const nextStage =
+    currentStageIndex >= 0 && currentStageIndex < workflowStages.length - 1
+      ? workflowStages[currentStageIndex + 1]
+      : null
+  const ribbonLead =
+    currentScreen === 'brief'
+      ? '브리프에서 출고까지 같은 결의 리본으로 연결합니다'
+      : currentScreen === 'progress'
+        ? '현재 단계와 다음 인계를 같은 리본 위에 붙여 둡니다'
+        : '출고 직전 판단만 남기고 전문은 뒤쪽 레이어로 물립니다'
+  const ribbonSummary =
+    currentScreen === 'brief'
+      ? '첫 화면에서는 입력을 잠그는 이유와 다음 화면으로 넘어갈 준비만 짧게 보여 줍니다.'
+      : currentScreen === 'progress'
+        ? '둘째 화면은 지금 읽어야 할 단계와 다음 인계만 남겨 진행 압박을 줄입니다.'
+        : '셋째 화면은 제목, 구조, 복사 상태만 먼저 남기고 전문은 뒤쪽 레이어로 미룹니다.'
+  const ribbonCurrentFocus =
+    currentScreen === 'brief'
+      ? {
+          label: '지금 초점',
+          title: '브리프 잠금',
+          detail:
+            briefChips.length > 0
+              ? `${briefChips.join(' · ')} 기준으로 첫 단계를 시작합니다.`
+              : '독자, 톤, 길이를 먼저 고정한 뒤 생성으로 넘깁니다.',
+        }
+      : currentScreen === 'progress'
+        ? {
+            label: '지금 초점',
+            title: currentStage.label,
+            detail:
+              state.generation.status === 'error'
+                ? '오류는 이 단계 앞에서 멈추고, 첫 화면으로 되돌려 복구 경로를 짧게 유지합니다.'
+                : state.generation.status === 'loading'
+                  ? '한 번에 한 단계씩만 열어 읽기 부담을 줄이고, 완료된 단계는 뒤로 접어 둡니다.'
+                  : '닫힌 단계는 다시 읽을 수 있지만 현재 단계만 가장 강하게 드러납니다.',
+          }
+      : {
+          label: '지금 초점',
+          title: finalPost ? '출고 판독' : '게시 잠금',
+          detail: finalPost
+            ? '제목, 구조, 복사 상태만 먼저 판독해 마지막 판단을 짧게 끝냅니다.'
+            : '진행 화면에서 최종 단계가 닫히면 이 면이 자동으로 열립니다.',
+        }
+  const ribbonNextFocus =
+    currentScreen === 'brief'
+      ? {
+          label: '다음 인계',
+          title: '리서치 단계',
+          detail: '생성과 동시에 둘째 화면으로 미끄러지며 리서치 카드가 가장 먼저 열립니다.',
+        }
+      : currentScreen === 'progress'
+        ? {
+            label: '다음 인계',
+            title: finalPost ? '게시 준비' : (nextStage?.label ?? '최종 원고'),
+            detail: finalPost
+              ? '게시 면에서는 전문을 먼저 펼치지 않고 제목과 구조부터 짧게 확인합니다.'
+              : '현재 단계가 닫히는 즉시 다음 카드가 이어서 선택되어 흐름이 끊기지 않습니다.',
+          }
+      : {
+          label: '다음 인계',
+          title: '마크다운 복사',
+          detail: '복사 이후에는 외부 게시 도구로 넘길 수 있도록 결과 상태만 또렷하게 남깁니다.',
+        }
+  const ribbonContext =
+    currentScreen === 'brief'
+      ? `${topicSnapshot} · ${briefChips.join(' · ') || '입력 기준을 고정하는 중'}`
+      : currentScreen === 'progress'
+        ? `${currentStage.label} 이후 ${nextStage?.label ?? '최종 원고'}로 이어집니다.`
+        : `${finalSections.length ? `${finalSections.length}개 섹션` : '섹션 대기'} · ${copyStatus.label}`
 
   const screenFrameProps = (screenId: ScreenId): WizardScreenProps => {
     const hidden = currentScreen !== screenId
@@ -854,6 +923,33 @@ function App() {
         })}
       </nav>
 
+      <section
+        aria-label="단계 인계 리본"
+        className="story-ribbon surface-card enter-block"
+        style={{ animationDelay: '0ms' }}
+      >
+        <div className="story-ribbon-head">
+          <div className="story-ribbon-copy">
+            <p className="kicker">스토리 리본</p>
+            <h2>{ribbonLead}</h2>
+            <p>{ribbonSummary}</p>
+            <p className="ribbon-context">{ribbonContext}</p>
+          </div>
+          <div className="story-ribbon-focus">
+            <article className="ribbon-focus-card">
+              <span>{ribbonCurrentFocus.label}</span>
+              <strong>{ribbonCurrentFocus.title}</strong>
+              <p>{ribbonCurrentFocus.detail}</p>
+            </article>
+            <article className="ribbon-focus-card is-next">
+              <span>{ribbonNextFocus.label}</span>
+              <strong>{ribbonNextFocus.title}</strong>
+              <p>{ribbonNextFocus.detail}</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
       <section className="wizard-viewport surface-card">
         <div
           className={`wizard-track wizard-screen-${currentScreen}`.trim()}
@@ -914,7 +1010,6 @@ function App() {
                     <h3>작성 기준 네 가지</h3>
                   </div>
                   <button
-                    aria-label="Generate post"
                     className="primary-button"
                     data-testid="Generate post"
                     disabled={state.generation.status === 'loading'}
@@ -930,7 +1025,6 @@ function App() {
                     className={`field-shell field-topic ${state.inputs.topic.trim() ? 'has-value' : ''}`.trim()}
                   >
                     <textarea
-                      aria-label="Topic"
                       data-testid="Topic"
                       name="topic"
                       onChange={(event) =>
@@ -950,7 +1044,6 @@ function App() {
                   <div className="brief-select-grid">
                     <label className="field-shell has-value">
                       <select
-                        aria-label="Audience"
                         data-testid="Audience"
                         name="audience"
                         onChange={(event) =>
@@ -974,7 +1067,6 @@ function App() {
 
                     <label className="field-shell has-value">
                       <select
-                        aria-label="Tone"
                         data-testid="Tone"
                         name="tone"
                         onChange={(event) =>
@@ -998,7 +1090,6 @@ function App() {
 
                     <label className="field-shell has-value">
                       <select
-                        aria-label="Length"
                         data-testid="Length"
                         name="length"
                         onChange={(event) =>
@@ -1179,6 +1270,14 @@ function App() {
                   {workflowStages.map((stage, index) => {
                     const visualState = stageVisualState(stage, state.generation)
                     const isSelected = selectedStage === stage.id
+                    const compactProgressCopy =
+                      visualState === 'complete'
+                        ? '완료'
+                        : visualState === 'current'
+                          ? '진행 중'
+                          : visualState === 'error'
+                            ? '복구 필요'
+                            : '곧 열림'
 
                     return (
                       <button
@@ -1211,7 +1310,7 @@ function App() {
                         </div>
                         <div className="stage-card-copy">
                           <strong>{stage.label}</strong>
-                          <p>{stageProgressCopy(state.generation, stage)}</p>
+                          <p>{isSelected ? stageProgressCopy(state.generation, stage) : compactProgressCopy}</p>
                         </div>
                         <div className="stage-card-mark" aria-hidden="true">
                           {visualState === 'complete' ? (
@@ -1322,7 +1421,6 @@ function App() {
                         <h3>{finalTitle}</h3>
                       </div>
                       <button
-                        aria-label="Copy markdown"
                         className="primary-button"
                         data-testid="Copy markdown"
                         onClick={() => void handleCopyMarkdown()}

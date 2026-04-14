@@ -8,7 +8,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from master_loop_state import load_state, normalize_remaining_harnesses, safe_mode_enabled
+from master_loop_state import automation_harnesses, load_state, normalize_remaining_harnesses, safe_mode_enabled
 
 ROOT = Path("/home/user/projects/agent_setup/codex_agent")
 STATE_PATH = ROOT / ".omx/state/master-ux-loop.json"
@@ -26,7 +26,7 @@ def resolve_harness(state: dict, explicit: str | None) -> str:
     remaining = normalize_remaining_harnesses(state.get("remaining_harnesses"))
     if remaining:
         return remaining[0]
-    return "single_agent"
+    return automation_harnesses()[0]
 
 
 def resolve_cycle(state: dict, explicit: int | None) -> int:
