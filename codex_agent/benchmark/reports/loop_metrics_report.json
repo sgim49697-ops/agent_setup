@@ -1,0 +1,137 @@
+{
+  "generated_at": "2026-04-15T01:09:17Z",
+  "latest_reset_timestamp": "2026-04-14T11:00:52Z",
+  "excluded_harnesses": [
+    "single_agent"
+  ],
+  "score_note": "Composite score = latest available quality score (existing evaluation_report) + current-loop efficiency metrics (runtime, cycle count, token usage).",
+  "weights": {
+    "quality_base_score_100": 0.55,
+    "wall_clock_efficiency_100": 0.15,
+    "cycle_efficiency_100": 0.15,
+    "token_efficiency_100": 0.15
+  },
+  "rows": [
+    {
+      "harness": "omx_evaluator_optimizer",
+      "cycles_to_pass": 1,
+      "cycle_numbers": [
+        15
+      ],
+      "wall_clock_to_pass_seconds": 1817.0,
+      "active_attempt_seconds": 1817.0,
+      "token_usage_total": 890473,
+      "quality_base_score_10": 9.8,
+      "quality_base_score_100": 98.0,
+      "quality_source": "evaluation_report.final.final_score",
+      "quality_evaluated_at": "2026-04-12T06:36:55Z",
+      "legacy_l3_overall_10": 9.6,
+      "wall_clock_efficiency_100": 100.0,
+      "cycle_efficiency_100": 100.0,
+      "token_efficiency_100": 100.0,
+      "composite_score_100": 98.9
+    },
+    {
+      "harness": "evaluator_optimizer",
+      "cycles_to_pass": 1,
+      "cycle_numbers": [
+        14
+      ],
+      "wall_clock_to_pass_seconds": 2634.0,
+      "active_attempt_seconds": 2634.0,
+      "token_usage_total": 1101074,
+      "quality_base_score_10": 8.92,
+      "quality_base_score_100": 89.2,
+      "quality_source": "evaluation_report.final.final_score",
+      "quality_evaluated_at": "2026-04-12T05:46:04Z",
+      "legacy_l3_overall_10": 8.9,
+      "wall_clock_efficiency_100": 68.98,
+      "cycle_efficiency_100": 100.0,
+      "token_efficiency_100": 80.87,
+      "composite_score_100": 86.54
+    },
+    {
+      "harness": "sequential_pipeline",
+      "cycles_to_pass": 1,
+      "cycle_numbers": [
+        1
+      ],
+      "wall_clock_to_pass_seconds": 2966.0,
+      "active_attempt_seconds": 2966.0,
+      "token_usage_total": 1518495,
+      "quality_base_score_10": 9.3,
+      "quality_base_score_100": 93.0,
+      "quality_source": "evaluation_report.final.final_score",
+      "quality_evaluated_at": "2026-04-12T06:44:26Z",
+      "legacy_l3_overall_10": 8.6,
+      "wall_clock_efficiency_100": 61.26,
+      "cycle_efficiency_100": 100.0,
+      "token_efficiency_100": 58.64,
+      "composite_score_100": 84.13
+    },
+    {
+      "harness": "orchestrator_worker",
+      "cycles_to_pass": 2,
+      "cycle_numbers": [
+        12,
+        13
+      ],
+      "wall_clock_to_pass_seconds": 5111.0,
+      "active_attempt_seconds": 4810.0,
+      "token_usage_total": 2061030,
+      "quality_base_score_10": 9.4,
+      "quality_base_score_100": 94.0,
+      "quality_source": "evaluation_report.final.final_score",
+      "quality_evaluated_at": "2026-04-12T09:29:21Z",
+      "legacy_l3_overall_10": 8.8,
+      "wall_clock_efficiency_100": 35.55,
+      "cycle_efficiency_100": 50.0,
+      "token_efficiency_100": 43.21,
+      "composite_score_100": 71.01
+    },
+    {
+      "harness": "router",
+      "cycles_to_pass": 3,
+      "cycle_numbers": [
+        9,
+        10,
+        11
+      ],
+      "wall_clock_to_pass_seconds": 6345.0,
+      "active_attempt_seconds": 6114.0,
+      "token_usage_total": 2257543,
+      "quality_base_score_10": 9.35,
+      "quality_base_score_100": 93.5,
+      "quality_source": "evaluation_report.final.final_score",
+      "quality_evaluated_at": "2026-04-12T08:20:58Z",
+      "legacy_l3_overall_10": 8.7,
+      "wall_clock_efficiency_100": 28.64,
+      "cycle_efficiency_100": 33.33,
+      "token_efficiency_100": 39.44,
+      "composite_score_100": 66.64
+    },
+    {
+      "harness": "parallel_sections",
+      "cycles_to_pass": 5,
+      "cycle_numbers": [
+        2,
+        3,
+        6,
+        7,
+        8
+      ],
+      "wall_clock_to_pass_seconds": 12590.0,
+      "active_attempt_seconds": 8969.0,
+      "token_usage_total": 3801067,
+      "quality_base_score_10": 9.35,
+      "quality_base_score_100": 93.5,
+      "quality_source": "evaluation_report.final.final_score",
+      "quality_evaluated_at": "2026-04-12T09:55:11Z",
+      "legacy_l3_overall_10": 8.7,
+      "wall_clock_efficiency_100": 14.43,
+      "cycle_efficiency_100": 20.0,
+      "token_efficiency_100": 23.43,
+      "composite_score_100": 60.1
+    }
+  ]
+}
