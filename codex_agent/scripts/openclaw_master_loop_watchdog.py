@@ -334,6 +334,14 @@ def ensure_tmux_observer_windows() -> None:
         log('created tmux heartbeat10 window')
 
 
+def shutdown_completion_observers() -> None:
+    subprocess.run(['systemctl', '--user', 'stop', 'ux-master-loop-watchdog.timer'], check=False, capture_output=True, text=True)
+    if tmux_has_session():
+        run(['tmux', 'kill-session', '-t', SESSION])
+        log('closed ux-master-bg tmux session after project completion')
+    log('stopped ux-master-loop-watchdog.timer after project completion')
+
+
 def runner_alive() -> bool:
     proc = run(['tmux', 'list-panes', '-t', f'{SESSION}:{RUNNER_WINDOW}', '-F', '#{{pane_dead}} #{{pane_current_command}}'])
     if proc.returncode != 0:
@@ -661,6 +669,7 @@ def main() -> int:
         state['completed_at'] = utc_now()
         write_state(state)
         checkpoint_git()
+        shutdown_completion_observers()
         log('completion marker detected; watchdog exiting without restart')
         return 0
 

@@ -157,6 +157,9 @@ The reset path archives prior completion markers plus derived quality reports so
 watchdog/worker cycle starts from a clean `in_progress` state instead of inheriting stale
 completion metadata.
 
+On project completion, the watchdog now also shuts down its own repeating timer and tears down
+the `ux-master-bg` observer tmux session, because there is no remaining loop work to monitor.
+
 ### Real-eval rubric as a design/UX bar
 `benchmark/real_eval_rubric.md` is not the same as the lab-comparison rubric.
 
